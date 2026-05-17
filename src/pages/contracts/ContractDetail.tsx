@@ -21,6 +21,7 @@ export default function ContractDetail() {
   const [c, setC] = useState<any>(null);
   const [milestones, setMilestones] = useState<any[]>([]);
   const [signatures, setSignatures] = useState<any[]>([]);
+  const [parties, setParties] = useState<{ founder?: string; builder?: string }>({});
   const [loading, setLoading] = useState(true);
   const [newM, setNewM] = useState({ title: "", description: "", amount: "", due_date: "" });
 
@@ -32,6 +33,13 @@ export default function ContractDetail() {
     setMilestones(m ?? []);
     const { data: s } = await supabase.from("contract_signatures").select("*").eq("contract_id", id);
     setSignatures(s ?? []);
+
+    if (data) {
+      const { data: founders } = await supabase.from("startup_profiles").select("company_name").eq("id", data.founder_id).maybeSingle();
+      const { data: builders } = await supabase.from("builder_profiles").select("full_name").eq("id", data.builder_id).maybeSingle();
+      setParties({ founder: founders?.company_name, builder: builders?.full_name });
+    }
+
     setLoading(false);
   };
   useEffect(() => { load(); }, [id]);
@@ -139,7 +147,10 @@ export default function ContractDetail() {
       <table><tr><th>#</th><th>Title</th><th>Amount</th><th>Due</th></tr>
       ${milestones.filter((m:any)=>m.status!=="cancelled").map((m:any,i:number)=>`<tr><td>${i+1}</td><td>${m.title}</td><td>$${m.amount}</td><td>${m.due_date ?? "—"}</td></tr>`).join("")}
       </table>
-      <div class="sig"><div>Founder signature${founderSigned ? " ✓ Signed" : ""}</div><div>Builder signature${builderSigned ? " ✓ Signed" : ""}</div></div>
+      <div class="sig">
+        <div>Founder signature<br/>${parties.founder ? parties.founder : ""}<br/>${founderSigned ? "✓ Signed" : ""}</div>
+        <div>Builder signature<br/>${parties.builder ? parties.builder : ""}<br/>${builderSigned ? "✓ Signed" : ""}</div>
+      </div>
       </body></html>`;
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); w.focus(); w.print(); }
@@ -253,8 +264,8 @@ export default function ContractDetail() {
           <Card>
             <CardHeader><CardTitle className="text-base">Signatures</CardTitle></CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <SignRow label="Founder" signed={founderSigned} />
-              <SignRow label="Builder" signed={builderSigned} />
+              <SignRow label="Founder" signed={founderSigned} name={parties.founder} />
+              <SignRow label="Builder" signed={builderSigned} name={parties.builder} />
 
               {isFounder && c.status === "contract_drafted" && milestones.length > 0 && (
                 <Button className="w-full" size="sm" onClick={sendForSigning}>Send for signing</Button>
@@ -286,10 +297,13 @@ function Clause({ label, value, onChange, disabled }: { label: string; value: bo
   );
 }
 
-function SignRow({ label, signed }: { label: string; signed: boolean }) {
+function SignRow({ label, signed, name }: { label: string; signed: boolean; name?: string }) {
   return (
     <div className="flex items-center justify-between">
-      <span>{label}</span>
+      <div>
+        <span className="font-medium">{label}</span>
+        {signed && name && <div className="text-xs text-muted-foreground mt-0.5">{name}</div>}
+      </div>
       <Badge variant={signed ? "default" : "outline"}>{signed ? "Signed" : "Pending"}</Badge>
     </div>
   );

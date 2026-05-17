@@ -1,0 +1,76 @@
+import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Loader2, ArrowRight } from "lucide-react";
+
+export default function PublicProject() {
+  const { id } = useParams();
+  const [project, setProject] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+    (async () => {
+      const { data: p } = await supabase.from("projects").select("*").eq("id", id).maybeSingle();
+      setProject(p);
+      setLoading(false);
+    })();
+  }, [id]);
+
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  if (!project) return <p className="text-center text-muted-foreground py-20">Project not found or is private.</p>;
+
+  return (
+    <div className="space-y-6 max-w-5xl mx-auto py-10 px-4">
+      {/* Banner CTA for unauthenticated users */}
+      <Card className="bg-primary/5 border-primary/20 shadow-sm mb-8">
+        <CardContent className="flex flex-col sm:flex-row items-center justify-between py-6 gap-4">
+          <div>
+            <h2 className="text-lg font-semibold">Join Simple Launchpad to participate</h2>
+            <p className="text-sm text-muted-foreground mt-1">Create an account to submit your solution and get hired by founders.</p>
+          </div>
+          <div className="flex gap-3 w-full sm:w-auto shrink-0">
+            <Link to="/login" className="w-full sm:w-auto"><Button variant="outline" className="w-full">Log in</Button></Link>
+            <Link to="/register" className="w-full sm:w-auto"><Button className="w-full">Sign up <ArrowRight className="h-4 w-4 ml-2" /></Button></Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+        <div className="flex-1">
+          <Badge variant="outline" className="mb-2 bg-background border-border">{project.category}</Badge>
+          <h1 className="text-3xl font-semibold tracking-tight text-balance">{project.title}</h1>
+          <p className="text-base text-muted-foreground mt-2 text-balance leading-relaxed">{project.short_description}</p>
+        </div>
+        <div className="flex flex-col items-start sm:items-end gap-3 shrink-0">
+          <div className="flex items-center gap-2">
+            {project.budget && <div className="text-lg font-semibold bg-primary/5 text-primary px-3 py-1 rounded-full">${project.budget}</div>}
+            <Badge variant="secondary" className="px-3 py-1 text-sm font-medium">{project.status}</Badge>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card><CardHeader><CardTitle className="text-xs text-muted-foreground">Timeline</CardTitle></CardHeader><CardContent className="font-medium">{project.timeline || "—"}</CardContent></Card>
+        <Card><CardHeader><CardTitle className="text-xs text-muted-foreground">Difficulty</CardTitle></CardHeader><CardContent className="font-medium capitalize">{project.difficulty || "—"}</CardContent></Card>
+      </div>
+
+      <Section title="Problem statement">{project.description}</Section>
+      <Section title="Requirements">{project.requirements}</Section>
+      <Section title="Deliverables">{project.deliverables}</Section>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: any }) {
+  if (!children) return null;
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-base">{title}</CardTitle></CardHeader>
+      <CardContent className="text-sm whitespace-pre-wrap text-foreground/80">{children}</CardContent>
+    </Card>
+  );
+}

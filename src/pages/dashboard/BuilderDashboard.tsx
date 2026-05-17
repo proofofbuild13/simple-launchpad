@@ -18,7 +18,7 @@ export default function BuilderDashboard() {
     (async () => {
       const [{ count: subC }, { count: cc }, { data: rec }, { data: subs }] = await Promise.all([
         supabase.from("submissions").select("*", { count: "exact", head: true }).eq("builder_id", user.id),
-        supabase.from("contracts").select("*", { count: "exact", head: true }).eq("builder_id", user.id).eq("status", "active"),
+        supabase.from("contracts").select("*", { count: "exact", head: true }).eq("builder_id", user.id).in("status", ["contract_drafted", "active"]),
         supabase.from("projects").select("*").eq("status", "open").eq("visibility", "public").order("created_at", { ascending: false }).limit(5),
         supabase.from("submissions").select("*, projects(title)").eq("builder_id", user.id).order("created_at", { ascending: false }).limit(5),
       ]);

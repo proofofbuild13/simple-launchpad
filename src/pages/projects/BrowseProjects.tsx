@@ -9,7 +9,7 @@ import { Users, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { Bookmark } from "lucide-react";
+import { Bookmark, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -54,14 +54,24 @@ export default function BrowseProjects() {
     e.preventDefault(); e.stopPropagation();
     if (!user) { toast.error("Sign in to save"); return; }
     if (savedIds.has(projectId)) {
-      await supabase.from("saved_projects").delete().eq("user_id", user.id).eq("project_id", projectId);
+      const { error } = await supabase.from("saved_projects").delete().eq("user_id", user.id).eq("project_id", projectId);
+      if (error) { console.error("Remove save error:", error); toast.error("Failed to remove save"); return; }
       const next = new Set(savedIds); next.delete(projectId); setSavedIds(next);
       toast.success("Removed from saved");
     } else {
-      await supabase.from("saved_projects").insert({ user_id: user.id, project_id: projectId });
+      const { error } = await supabase.from("saved_projects").insert({ user_id: user.id, project_id: projectId });
+      if (error) { console.error("Save error:", error); toast.error(error.message || "Failed to save project"); return; }
       const next = new Set(savedIds); next.add(projectId); setSavedIds(next);
       toast.success("Project saved");
     }
+  };
+
+  const handleShare = (e: React.MouseEvent, projectId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const link = `${window.location.origin}/p/${projectId}`;
+    navigator.clipboard.writeText(link);
+    toast.success("Share link copied to clipboard");
   };
 
   const filtered = projects.filter((p) =>
@@ -99,8 +109,11 @@ export default function BrowseProjects() {
                       <h3 className="font-semibold text-sm">{p.title}</h3>
                       <div className="flex items-center gap-1">
                         {p.budget && <Badge variant="secondary">${p.budget}</Badge>}
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => handleShare(e, p.id)}>
+                          <Share2 className="h-4 w-4 text-muted-foreground" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => toggleSave(e, p.id)}>
-                          <Bookmark className={`h-4 w-4 ${savedIds.has(p.id) ? "fill-current text-primary" : ""}`} />
+                          <Bookmark className={`h-4 w-4 ${savedIds.has(p.id) ? "fill-current text-primary" : "text-muted-foreground"}`} />
                         </Button>
                       </div>
                     </div>

@@ -14,16 +14,19 @@ export default function StartupDashboard() {
   const [stats, setStats] = useState<Stats>({ projects: 0, submissions: 0, contracts: 0 });
   const [recentProjects, setRecentProjects] = useState<any[]>([]);
   const [recentSubs, setRecentSubs] = useState<any[]>([]);
+  const [shortlisted, setShortlisted] = useState(0);
 
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const [{ data: projects, count: pc }, { count: sc }, { count: cc }] = await Promise.all([
+      const [{ data: projects, count: pc }, { count: sc }, { count: cc }, { count: shortlistedCount }] = await Promise.all([
         supabase.from("projects").select("*", { count: "exact" }).eq("founder_id", user.id).order("created_at", { ascending: false }).limit(5),
         supabase.from("submissions").select("*, projects!inner(founder_id)", { count: "exact", head: true }).eq("projects.founder_id", user.id),
-        supabase.from("contracts").select("*", { count: "exact", head: true }).eq("founder_id", user.id).eq("status", "active"),
+        supabase.from("contracts").select("*", { count: "exact", head: true }).eq("founder_id", user.id).in("status", ["contract_drafted", "active"]),
+        supabase.from("submissions").select("*, projects!inner(founder_id)", { count: "exact", head: true }).eq("projects.founder_id", user.id).eq("status", "shortlisted"),
       ]);
       setStats({ projects: pc ?? 0, submissions: sc ?? 0, contracts: cc ?? 0 });
+      setShortlisted(shortlistedCount ?? 0);
       setRecentProjects(projects ?? []);
       const { data: subs } = await supabase
         .from("submissions").select("*, projects!inner(title, founder_id)")
@@ -45,7 +48,7 @@ export default function StartupDashboard() {
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard icon={FolderKanban} label="Active projects" value={stats.projects} />
         <StatCard icon={FileCheck2} label="Total submissions" value={stats.submissions} />
-        <StatCard icon={Users} label="Shortlisted" value={0} />
+        <StatCard icon={Users} label="Shortlisted" value={shortlisted} />
         <StatCard icon={FileSignature} label="Active contracts" value={stats.contracts} />
       </div>
 

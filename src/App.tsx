@@ -20,10 +20,12 @@ import PostProject from "./pages/projects/PostProject";
 import MyProjects from "./pages/projects/MyProjects";
 import BrowseProjects from "./pages/projects/BrowseProjects";
 import ProjectDetail from "./pages/projects/ProjectDetail";
+import PublicProject from "./pages/projects/PublicProject";
 import Leaderboard from "./pages/projects/Leaderboard";
 import SubmitSolution from "./pages/submissions/SubmitSolution";
 import MySubmissions from "./pages/submissions/MySubmissions";
 import SubmissionReview from "./pages/submissions/SubmissionReview";
+import EditSubmission from "./pages/submissions/EditSubmission";
 import Offers from "./pages/contracts/Offers";
 import OfferDetail from "./pages/offers/OfferDetail";
 import MakeOffer from "./pages/offers/MakeOffer";
@@ -71,6 +73,7 @@ const App = () => (
 
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/403" element={<Unauthorized />} />
+            <Route path="/p/:id" element={<PublicProject />} />
 
             <Route element={<AdminGuard><DashboardLayout /></AdminGuard>}>
               <Route path="/admin" element={<AdminDashboard />} />
@@ -96,6 +99,7 @@ const App = () => (
 
               <Route path="/submissions" element={<MySubmissions />} />
               <Route path="/submissions/:id" element={<SubmissionReview />} />
+              <Route path="/submissions/:id/edit" element={<EditSubmission />} />
 
               <Route path="/interviews" element={<Interviews />} />
               <Route path="/interviews/new" element={<ScheduleInterview />} />

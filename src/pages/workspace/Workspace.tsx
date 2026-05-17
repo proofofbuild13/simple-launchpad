@@ -22,7 +22,7 @@ const STATUS_COLOR: Record<string, string> = {
   submitted: "bg-amber-500/15 text-amber-600",
   revision_requested: "bg-amber-500/15 text-amber-600",
   approved: "bg-emerald-500/15 text-emerald-600",
-  paid: "bg-primary/15 text-primary",
+  fully_settled: "bg-primary/15 text-primary",
   dispute: "bg-destructive/15 text-destructive",
 };
 
@@ -31,7 +31,7 @@ const COLUMNS: [string, string][] = [
   ["submitted", "Submitted"],
   ["revision_requested", "Revisions"],
   ["approved", "Approved"],
-  ["paid", "Settled"],
+  ["fully_settled", "Settled"],
 ];
 
 export default function Workspace() {
@@ -259,7 +259,7 @@ export default function Workspace() {
               </Button>
             )}
 
-            {(isFounder || isBuilder) && active.status !== "paid" && active.status !== "dispute" && (
+            {(isFounder || isBuilder) && active.status !== "fully_settled" && active.status !== "dispute" && (
               <div className="flex gap-2 items-center pt-3 border-t">
                 <Input placeholder="Dispute reason" value={disputeReason} onChange={(e) => setDisputeReason(e.target.value)} className="flex-1" />
                 <Button size="sm" variant="ghost" onClick={() => openDispute(active)}><AlertTriangle className="h-4 w-4 mr-1" />Open dispute</Button>
@@ -276,13 +276,13 @@ export default function Workspace() {
           <h2 className="text-lg font-semibold">Payments</h2>
         </div>
 
-        {milestones.filter((m) => ["approved", "paid"].includes(m.status) || paymentRecords[m.id]).length === 0 && (
+        {milestones.filter((m) => ["approved", "fully_settled"].includes(m.status) || paymentRecords[m.id]).length === 0 && (
           <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">
             Approved milestones will appear here for payment tracking.
           </CardContent></Card>
         )}
 
-        {milestones.filter((m) => ["approved", "paid"].includes(m.status) || paymentRecords[m.id]).map((m) => {
+        {milestones.filter((m) => ["approved", "fully_settled"].includes(m.status) || paymentRecords[m.id]).map((m) => {
           const pr = paymentRecords[m.id];
           const inv = pr ? invoices[pr.id] : null;
           const cp = inv ? commissionPayments[inv.id] : null;
