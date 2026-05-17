@@ -1,43 +1,57 @@
 
-## Goal
+## Diagnosis
 
-Disconnect from Lovable Cloud's Supabase and wire the app to your own Supabase project `nvnvyzxzjezlgzgpniyt` (URL `https://nvnvyzxzjezlgzgpniyt.supabase.co`) via the Supabase connector.
+Looking at the live network traffic on your new Supabase project `nvnvyzxzjezlgzgpniyt`:
 
-## Steps
+1. **Signup succeeds** (`POST /auth/v1/signup` → 200) — auth works.
+2. **`POST /rest/v1/user_roles` → 401, `42501: new row violates row-level security policy`**
+3. **`POST /rest/v1/builder_profiles` → 401, same RLS error**
+4. **`POST /auth/v1/token` → 400, `email_not_confirmed`** — login is blocked because Supabase is set to require email confirmation.
 
-1. **Link the Supabase connector**
-   - Call the Supabase connector flow so your project credentials (URL + publishable/anon key, and service role for server use) are available as environment variables to the app.
-   - You'll pick the connection that points to project `nvnvyzxzjezlgzgpniyt`.
+Root cause: the new Supabase project is **empty**. None of the 13 migrations in `supabase/migrations/` (tables, RLS policies, `handle_new_user` trigger, `bootstrap_admin` RPC, etc.) have been applied to `nvnvyzxzjezlgzgpniyt`. The frontend code is fine — the database just has no schema, no policies, and no trigger to populate `user_roles` / `builder_profiles` / `startup_profiles` on signup.
 
-2. **Update `.env`** to your project (already correct values present — verify):
-   - `VITE_SUPABASE_PROJECT_ID="nvnvyzxzjezlgzgpniyt"`
-   - `VITE_SUPABASE_URL="https://nvnvyzxzjezlgzgpniyt.supabase.co"`
-   - `VITE_SUPABASE_PUBLISHABLE_KEY="sb_publishable_G2KqczM9cav-LGu6jClMlg_YGYksP6X"`
+Secondary issue: **Email confirmation is ON** in the new project's Auth settings, so even after the schema is applied, users can't sign in immediately after signup.
 
-3. **Update `supabase/config.toml`**
-   - Change `project_id` from `uexpsycmvlnpkvvommue` → `nvnvyzxzjezlgzgpniyt` so the Supabase CLI targets your project.
+## Fix Plan
 
-4. **Keep `src/integrations/supabase/client.ts` as-is**
-   - It already reads from `import.meta.env.VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY`, so once `.env` points at your project, the client connects to it. No code change needed.
+### Step 1 — Apply the existing schema to the new Supabase project
+The 13 migration files in `supabase/migrations/` already contain everything needed (tables, RLS policies, triggers, RPCs). They just need to run against `nvnvyzxzjezlgzgpniyt`.
 
-5. **Apply database schema to your Supabase project**
-   - The existing migrations in `supabase/migrations/` were authored against the Lovable Cloud project. They need to be run against `nvnvyzxzjezlgzgpniyt` so tables (`user_roles`, `startup_profiles`, RPCs `has_role`, `bootstrap_admin`, `get_or_create_direct_conversation`, `log_audit`, etc.) exist.
-   - You'll need to run `supabase db push` (or apply the SQL via the Supabase dashboard SQL editor) against your project. I cannot push migrations to an external Supabase project from here — that requires your Supabase access token locally, or you paste the SQL into the dashboard.
+I'll bundle them into a single consolidated `init.sql` (in execution order) that you can paste into the **Supabase Dashboard → SQL Editor** of your project and run once. This creates:
+- All tables (`user_roles`, `startup_profiles`, `builder_profiles`, projects, offers, contracts, payments, messaging, audit, etc.)
+- The `app_role` enum and `has_role()` security-definer function
+- RLS policies allowing authenticated users to insert their own `user_roles` row and their own profile rows (which is what's currently failing)
+- The `handle_new_user` trigger and `bootstrap_admin` RPC
+- Storage buckets if any
 
-6. **Regenerate `src/integrations/supabase/types.ts`** (optional but recommended)
-   - Once tables are in your project, regenerate types with `supabase gen types typescript --project-id nvnvyzxzjezlgzgpniyt` so the typed client matches your schema.
+### Step 2 — Disable email confirmation (or make signup auto-confirm)
+In **Supabase Dashboard → Authentication → Providers → Email**, turn OFF "Confirm email". This matches the current frontend flow which navigates straight to `/dashboard` after signup without waiting for an email click.
 
-## What I'll do vs. what you'll do
+(Alternative: keep confirmation on and add a "check your inbox" screen — but the existing UX assumes immediate login, so disabling is the smaller change.)
 
-**I will:**
-- Trigger the Supabase connector link flow.
-- Edit `supabase/config.toml` to your project_id.
-- Verify `.env` and `client.ts` are correct.
+### Step 3 — Configure Site URL & redirect URLs
+In **Supabase Dashboard → Authentication → URL Configuration**, set:
+- Site URL: `https://4ec37688-8c3e-4f3e-a1dd-7345b9b0bef1.lovableproject.com` (preview) and add the published URL
+- Redirect allow-list: same origins + `http://localhost:5173`
 
-**You will:**
-- Pick / authorize the Supabase connection in the popup.
-- Run `supabase db push` locally against `nvnvyzxzjezlgzgpniyt` OR paste the migration SQL into your Supabase dashboard's SQL editor to create the schema.
+### Step 4 — Regenerate `src/integrations/supabase/types.ts`
+Once the schema is applied, types should match the new project. I'll regenerate them from `nvnvyzxzjezlgzgpniyt`.
 
-## Open question
+### Step 5 — Verify
+- Sign up a new builder → row appears in `auth.users`, `user_roles`, `builder_profiles` (no 401s).
+- Sign in → 200, redirects to `/dashboard`.
+- Admin first-time-setup → `bootstrap_admin` RPC grants `super_admin`.
 
-Do you want me to also delete the existing migration files (since they were generated for the old project) and consolidate them into one fresh migration, or leave them as-is so you can replay them on your project?
+## What you'll need to do manually
+Supabase isn't in Lovable's connector list, so I can't run SQL against your project from here. After I generate the consolidated `init.sql`:
+1. Open https://supabase.com/dashboard/project/nvnvyzxzjezlgzgpniyt/sql/new
+2. Paste the SQL and click **Run**
+3. Toggle off email confirmation in Auth → Providers → Email
+4. Set Site URL / redirects in Auth → URL Configuration
+
+Then signup and login will work.
+
+## Question before I proceed
+Do you want me to:
+- **(A)** Generate one consolidated `supabase/init.sql` from the 13 existing migrations (easiest — single copy/paste), or
+- **(B)** Keep the 13 migration files as-is so you can run `supabase db push` from the CLI against your project?
