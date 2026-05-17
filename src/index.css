@@ -1,0 +1,127 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Core palette — warm ink on bone */
+    --background: 38 30% 96%;
+    --foreground: 220 25% 10%;
+
+    --card: 38 30% 98%;
+    --card-foreground: 220 25% 10%;
+
+    --popover: 38 30% 98%;
+    --popover-foreground: 220 25% 10%;
+
+    --primary: 220 25% 10%;
+    --primary-foreground: 38 30% 96%;
+
+    --secondary: 38 20% 90%;
+    --secondary-foreground: 220 25% 10%;
+
+    --muted: 38 18% 92%;
+    --muted-foreground: 220 10% 38%;
+
+    --accent: 14 90% 55%;
+    --accent-foreground: 38 30% 98%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 38 30% 98%;
+
+    --border: 220 15% 88%;
+    --input: 220 15% 88%;
+    --ring: 14 90% 55%;
+
+    --sidebar-background: 38 30% 98%;
+    --sidebar-foreground: 220 25% 10%;
+    --sidebar-primary: 220 25% 10%;
+    --sidebar-primary-foreground: 38 30% 96%;
+    --sidebar-accent: 38 20% 90%;
+    --sidebar-accent-foreground: 220 25% 10%;
+    --sidebar-border: 220 15% 88%;
+    --sidebar-ring: 14 90% 55%;
+
+    --radius: 0.75rem;
+
+    /* Brand surfaces */
+    --ink: 220 30% 8%;
+    --ink-foreground: 38 30% 96%;
+    --bone: 38 30% 96%;
+    --signal: 14 90% 55%;
+    --signal-glow: 14 95% 65%;
+
+    /* Gradients */
+    --gradient-hero: radial-gradient(ellipse 80% 60% at 50% 0%, hsl(14 90% 55% / 0.18), transparent 60%);
+    --gradient-signal: linear-gradient(135deg, hsl(var(--signal)), hsl(var(--signal-glow)));
+    --gradient-ink: linear-gradient(180deg, hsl(220 30% 8%), hsl(220 35% 5%));
+
+    /* Shadows */
+    --shadow-soft: 0 1px 2px hsl(220 25% 10% / 0.04), 0 8px 24px -8px hsl(220 25% 10% / 0.08);
+    --shadow-card: 0 1px 0 hsl(220 25% 10% / 0.04), 0 12px 40px -12px hsl(220 25% 10% / 0.12);
+    --shadow-glow: 0 0 0 1px hsl(var(--signal) / 0.2), 0 20px 60px -20px hsl(var(--signal) / 0.4);
+
+    /* Motion */
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .dark {
+    --background: 220 30% 7%;
+    --foreground: 38 30% 96%;
+    --card: 220 28% 9%;
+    --card-foreground: 38 30% 96%;
+    --popover: 220 28% 9%;
+    --popover-foreground: 38 30% 96%;
+    --primary: 38 30% 96%;
+    --primary-foreground: 220 25% 10%;
+    --secondary: 220 20% 14%;
+    --secondary-foreground: 38 30% 96%;
+    --muted: 220 20% 14%;
+    --muted-foreground: 220 10% 60%;
+    --accent: 14 90% 58%;
+    --accent-foreground: 38 30% 98%;
+    --border: 220 15% 18%;
+    --input: 220 15% 18%;
+    --ring: 14 90% 58%;
+
+    --sidebar-background: 220 28% 9%;
+    --sidebar-foreground: 38 30% 96%;
+    --sidebar-primary: 38 30% 96%;
+    --sidebar-primary-foreground: 220 25% 10%;
+    --sidebar-accent: 220 20% 14%;
+    --sidebar-accent-foreground: 38 30% 96%;
+    --sidebar-border: 220 15% 18%;
+    --sidebar-ring: 14 90% 58%;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  html { -webkit-font-smoothing: antialiased; }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter Tight', system-ui, sans-serif;
+    font-feature-settings: "ss01", "cv11";
+  }
+  h1, h2, h3, .font-display {
+    font-family: 'Fraunces', serif;
+    font-optical-sizing: auto;
+    letter-spacing: -0.02em;
+  }
+  .font-mono { font-family: 'JetBrains Mono', monospace; }
+}
+
+@layer utilities {
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, hsl(var(--foreground) / 0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--foreground) / 0.04) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+  .bg-noise {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  }
+  .text-balance { text-wrap: balance; }
+}
