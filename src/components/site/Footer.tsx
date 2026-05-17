@@ -1,3 +1,6 @@
+import { Link } from "react-router-dom";
+import { ShieldCheck } from "lucide-react";
+
 export const Footer = () => (
   <footer className="border-t border-border">
     <div className="container py-12 flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
@@ -6,11 +9,15 @@ export const Footer = () => (
         <span className="font-display text-lg">proof_of_Build</span>
         <span className="text-muted-foreground text-sm ml-2">— Build before you hire.</span>
       </div>
-      <div className="flex gap-6 text-sm text-muted-foreground font-mono">
+      <div className="flex gap-6 text-sm text-muted-foreground font-mono items-center">
         <a href="#" className="hover:text-foreground">Twitter</a>
         <a href="#" className="hover:text-foreground">GitHub</a>
         <a href="#" className="hover:text-foreground">Privacy</a>
         <a href="#" className="hover:text-foreground">Terms</a>
+        <Link to="/admin/login" className="hover:text-foreground inline-flex items-center gap-1">
+          <ShieldCheck className="h-3.5 w-3.5" />
+          Admin
+        </Link>
       </div>
     </div>
   </footer>
