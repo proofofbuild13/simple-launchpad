@@ -166,9 +166,15 @@ export default function SubmissionReview() {
                     <Button variant="outline" className="bg-background" onClick={() => navigate(`/interviews/new?submission=${sub.id}`)}>
                       <Calendar className="h-4 w-4 mr-2" />Schedule interview
                     </Button>
-                    <Button onClick={() => navigate(`/offers/new?submission=${sub.id}`)}>
-                      <HandCoins className="h-4 w-4 mr-2" />Send offer
-                    </Button>
+                    {isHireToBuild(project) ? (
+                      <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => navigate(`/job-offers/new?submission=${sub.id}`)}>
+                        <Briefcase className="h-4 w-4 mr-2" />Make job offer
+                      </Button>
+                    ) : (
+                      <Button onClick={() => navigate(`/offers/new?submission=${sub.id}`)}>
+                        <HandCoins className="h-4 w-4 mr-2" />Send offer
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               )}
