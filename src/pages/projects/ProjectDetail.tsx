@@ -5,7 +5,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, Send, Building2, CheckCircle2 } from "lucide-react";
+import { Loader2, Send, Building2, CheckCircle2, Briefcase, MapPin, DollarSign } from "lucide-react";
+import { engagementBadgeClass, engagementLabel, formatCtcRange, submissionCta, isHireToBuild } from "@/lib/engagement";
 
 export default function ProjectDetail() {
   const { id } = useParams();
