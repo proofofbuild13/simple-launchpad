@@ -37,14 +37,15 @@ export default function MakeJobOffer() {
     supabase.from("submissions").select("*, projects(*)").eq("id", submissionId).maybeSingle()
       .then(({ data }) => {
         setSubmission(data);
-        if (data?.projects) {
+        const proj = (data as any)?.projects;
+        if (proj) {
           setForm((p) => ({
             ...p,
-            job_title: data.projects.job_title || "",
-            work_location: data.projects.location_type || "Remote",
-            office_location: data.projects.office_location || "",
-            probation_months: String(data.projects.probation_months ?? 3),
-            annual_ctc: data.projects.ctc_max || data.projects.ctc_min || "",
+            job_title: proj.job_title || "",
+            work_location: proj.location_type || "Remote",
+            office_location: proj.office_location || "",
+            probation_months: String(proj.probation_months ?? 3),
+            annual_ctc: String(proj.ctc_max ?? proj.ctc_min ?? ""),
           }));
         }
       });
