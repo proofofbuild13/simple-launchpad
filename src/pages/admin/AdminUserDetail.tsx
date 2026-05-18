@@ -72,7 +72,7 @@ export default function AdminUserDetail() {
           <CardContent className="space-y-1.5">
             {(data.payments ?? []).map((p: any) => (
               <div key={p.id} className="text-sm p-2 rounded-md bg-muted/30 flex justify-between">
-                <span>₹{Number(p.declared_amount).toLocaleString()}</span><Badge variant="outline">{p.status}</Badge>
+                <span>${Number(p.declared_amount).toLocaleString()}</span><Badge variant="outline">{p.status}</Badge>
               </div>
             ))}
             {!data.payments?.length && <p className="text-xs text-muted-foreground">None</p>}

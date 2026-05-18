@@ -48,6 +48,7 @@ import StartupProfile from "./pages/marketplace/StartupProfile";
 import StartupPayments from "./pages/payments/StartupPayments";
 import Profile from "./pages/profile/Profile";
 import SavedProjects from "./pages/saved/SavedProjects";
+import SavedBuilders from "./pages/saved/SavedBuilders";
 import EditProject from "./pages/projects/EditProject";
 import BuilderPayments from "./pages/payments/BuilderPayments";
 import AdminCommissions from "./pages/dashboard/AdminCommissions";
@@ -127,6 +128,7 @@ const App = () => (
               <Route path="/settings" element={<Settings />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/saved-projects" element={<SavedProjects />} />
+              <Route path="/saved-builders" element={<SavedBuilders />} />
 
               <Route path="/marketplace" element={<Marketplace />} />
               <Route path="/builders/:id" element={<BuilderProfile />} />

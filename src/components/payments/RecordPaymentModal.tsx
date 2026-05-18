@@ -96,7 +96,7 @@ export function RecordPaymentModal({ open, onOpenChange, milestone, contract, on
         user_id: contract.builder_id,
         type: "payment_declared",
         title: "Payment recorded — please confirm",
-        body: `Founder declared ₹${amount} via ${method.toUpperCase()}.`,
+        body: `Founder declared $${amount} via ${method.toUpperCase()}.`,
         link: `/workspace/${contract.id}`,
       });
       toast.success("Payment recorded");
@@ -120,7 +120,7 @@ export function RecordPaymentModal({ open, onOpenChange, milestone, contract, on
         <div className="space-y-4">
           <div className="rounded-md bg-muted p-3 text-xs space-y-1">
             <div className="flex justify-between"><span>Milestone</span><span className="font-medium">{milestone.title}</span></div>
-            <div className="flex justify-between"><span>Platform commission ({(COMMISSION_RATE * 100).toFixed(0)}%)</span><span className="font-mono">₹{commission}</span></div>
+            <div className="flex justify-between"><span>Platform commission ({(COMMISSION_RATE * 100).toFixed(0)}%)</span><span className="font-mono">${commission}</span></div>
           </div>
 
           <div className="space-y-2">
@@ -181,7 +181,7 @@ export function RecordPaymentModal({ open, onOpenChange, milestone, contract, on
             </Select>
           </div>
           <div>
-            <Label>Amount paid (₹)</Label>
+            <Label>Amount paid ($)</Label>
             <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
           </div>
           <div>

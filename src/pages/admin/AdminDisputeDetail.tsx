@@ -86,7 +86,7 @@ export default function AdminDisputeDetail() {
           <CardHeader><CardTitle className="text-base">Milestone</CardTitle></CardHeader>
           <CardContent className="text-sm space-y-1">
             <div className="flex justify-between"><span className="text-muted-foreground">Title</span><span>{milestone.title}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Amount</span><span>₹{Number(milestone.amount).toLocaleString()}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Amount</span><span>${Number(milestone.amount).toLocaleString()}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Status</span><Badge variant="outline">{milestone.status}</Badge></div>
           </CardContent>
         </Card>
@@ -99,8 +99,8 @@ export default function AdminDisputeDetail() {
             {payments.length === 0 && <p className="text-xs text-muted-foreground">No payments recorded.</p>}
             {payments.map((p) => (
               <div key={p.id} className="text-sm p-2 rounded-md bg-muted/40 space-y-1">
-                <div className="flex justify-between"><span>Declared</span><span>₹{Number(p.declared_amount).toLocaleString()}</span></div>
-                <div className="flex justify-between"><span>Confirmed</span><span>{p.confirmed_amount ? `₹${Number(p.confirmed_amount).toLocaleString()}` : "—"}</span></div>
+                <div className="flex justify-between"><span>Declared</span><span>${Number(p.declared_amount).toLocaleString()}</span></div>
+                <div className="flex justify-between"><span>Confirmed</span><span>{p.confirmed_amount ? `$${Number(p.confirmed_amount).toLocaleString()}` : "—"}</span></div>
                 <div className="flex justify-between"><span>Method</span><span className="uppercase text-xs">{p.payment_method}</span></div>
                 <div className="flex justify-between"><span>UTR</span><span className="font-mono text-xs">{p.transaction_ref}</span></div>
                 <div className="flex justify-between items-center"><span>Status</span><Badge variant={p.status === "disputed" ? "destructive" : "outline"}>{p.status}</Badge></div>

@@ -1191,6 +1191,47 @@ export type Database = {
         }
         Relationships: []
       }
+      project_invitations: {
+        Row: {
+          id: string
+          project_id: string
+          founder_id: string
+          builder_id: string
+          message: string | null
+          status: string
+          created_at: string
+          responded_at: string | null
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          founder_id: string
+          builder_id: string
+          message?: string | null
+          status?: string
+          created_at?: string
+          responded_at?: string | null
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          founder_id?: string
+          builder_id?: string
+          message?: string | null
+          status?: string
+          created_at?: string
+          responded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_invitations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       saved_builders: {
         Row: {
           builder_id: string

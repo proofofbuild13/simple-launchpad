@@ -62,7 +62,7 @@ export function PayCommissionModal({ open, onOpenChange, invoice, contractId, on
         </DialogHeader>
         <div className="space-y-3">
           <div className="rounded-md border p-3 text-xs space-y-1">
-            <div className="flex justify-between"><span>Amount due</span><span className="font-mono font-semibold">₹{invoice.commission_amount}</span></div>
+            <div className="flex justify-between"><span>Amount due</span><span className="font-mono font-semibold">${invoice.commission_amount}</span></div>
             <div className="flex justify-between"><span>Due date</span><span>{new Date(invoice.due_date).toLocaleDateString()}</span></div>
           </div>
           <div className="rounded-md bg-muted p-3 text-xs space-y-1">

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,7 @@ interface Stats { projects: number; submissions: number; contracts: number; }
 
 export default function StartupDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<Stats>({ projects: 0, submissions: 0, contracts: 0 });
   const [recentProjects, setRecentProjects] = useState<any[]>([]);
   const [recentSubs, setRecentSubs] = useState<any[]>([]);
@@ -46,10 +47,10 @@ export default function StartupDashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <StatCard icon={FolderKanban} label="Active projects" value={stats.projects} />
-        <StatCard icon={FileCheck2} label="Total submissions" value={stats.submissions} />
-        <StatCard icon={Users} label="Shortlisted" value={shortlisted} />
-        <StatCard icon={FileSignature} label="Active contracts" value={stats.contracts} />
+        <StatCard icon={FolderKanban} label="Active projects" value={stats.projects} href="/projects" />
+        <StatCard icon={FileCheck2} label="Total submissions" value={stats.submissions} href="/submissions" />
+        <StatCard icon={Users} label="Shortlisted" value={shortlisted} href="/submissions" />
+        <StatCard icon={FileSignature} label="Active contracts" value={stats.contracts} href="/contracts" />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -88,16 +89,25 @@ export default function StartupDashboard() {
   );
 }
 
-function StatCard({ icon: Icon, label, value }: { icon: any; label: string; value: number }) {
+function StatCard({ icon: Icon, label, value, href }: { icon: any; label: string; value: number; href: string }) {
+  const navigate = useNavigate();
   return (
-    <Card>
+    <Card
+      className="cursor-pointer hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 active:scale-95"
+      onClick={() => navigate(href)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === "Enter" && navigate(href)}
+    >
       <CardContent className="pt-6">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-muted-foreground">{label}</p>
             <p className="text-2xl font-semibold mt-1">{value}</p>
           </div>
-          <Icon className="h-5 w-5 text-primary" />
+          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Icon className="h-5 w-5 text-primary" />
+          </div>
         </div>
       </CardContent>
     </Card>

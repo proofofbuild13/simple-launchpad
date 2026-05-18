@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Send, FileSignature, DollarSign, Search } from "lucide-react";
 
 export default function BuilderDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({ submissions: 0, contracts: 0 });
   const [recommended, setRecommended] = useState<any[]>([]);
   const [mySubs, setMySubs] = useState<any[]>([]);
@@ -39,10 +40,10 @@ export default function BuilderDashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <StatCard icon={Send} label="My submissions" value={stats.submissions} />
-        <StatCard icon={FileSignature} label="Active contracts" value={stats.contracts} />
-        <StatCard icon={DollarSign} label="Earnings" value={0} prefix="$" />
-        <StatCard icon={Search} label="Open projects" value={recommended.length} />
+        <StatCard icon={Send} label="My submissions" value={stats.submissions} href="/submissions" />
+        <StatCard icon={FileSignature} label="Active contracts" value={stats.contracts} href="/contracts" />
+        <StatCard icon={DollarSign} label="Earnings" value={0} prefix="$" href="/payments/builder" />
+        <StatCard icon={Search} label="Open projects" value={recommended.length} href="/browse" />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -66,13 +67,13 @@ export default function BuilderDashboard() {
           <CardContent className="space-y-2">
             {mySubs.length === 0 && <p className="text-sm text-muted-foreground">No submissions yet.</p>}
             {mySubs.map((s: any) => (
-              <div key={s.id} className="p-3 rounded-md border">
+              <Link key={s.id} to={`/submissions/${s.id}`} className="block p-3 rounded-md border hover:bg-muted/40">
                 <div className="flex items-center justify-between">
                   <div className="font-medium text-sm">{s.title}</div>
                   <Badge variant="outline">{s.status}</Badge>
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">on {s.projects?.title}</div>
-              </div>
+              </Link>
             ))}
           </CardContent>
         </Card>
@@ -81,16 +82,25 @@ export default function BuilderDashboard() {
   );
 }
 
-function StatCard({ icon: Icon, label, value, prefix = "" }: { icon: any; label: string; value: number; prefix?: string }) {
+function StatCard({ icon: Icon, label, value, href, prefix = "" }: { icon: any; label: string; value: number; href: string; prefix?: string }) {
+  const navigate = useNavigate();
   return (
-    <Card>
+    <Card
+      className="cursor-pointer hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 active:scale-95"
+      onClick={() => navigate(href)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === "Enter" && navigate(href)}
+    >
       <CardContent className="pt-6">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-muted-foreground">{label}</p>
             <p className="text-2xl font-semibold mt-1">{prefix}{value}</p>
           </div>
-          <Icon className="h-5 w-5 text-primary" />
+          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Icon className="h-5 w-5 text-primary" />
+          </div>
         </div>
       </CardContent>
     </Card>

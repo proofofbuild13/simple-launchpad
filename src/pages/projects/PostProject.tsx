@@ -111,7 +111,7 @@ export default function PostProject() {
 
           {step === 1 && (
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">How do you want to engage the winner?</p>
+              <p className="text-sm text-muted-foreground">How do you want to engage the builder?</p>
               <EngagementCard
                 selected={form.engagement_type === "project_hire"}
                 onClick={() => set("engagement_type", "project_hire")}

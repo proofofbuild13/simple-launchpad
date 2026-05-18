@@ -1,8 +1,8 @@
 const steps = [
-  { n: "01", title: "Post the challenge", body: "Describe the problem, deliverables, timeline and prize. Choose public, unlisted, or invite-only." },
+  { n: "01", title: "Post the challenge", body: "Describe the problem, deliverables, timeline and earn. Choose public, unlisted, or invite-only." },
   { n: "02", title: "Builders ship demos", body: "Individuals and teams submit working prototypes — repo, live URL, video walkthrough." },
-  { n: "03", title: "Review side-by-side", body: "Score on quality, UX, feasibility and speed. Shortlist, interview, choose winners." },
-  { n: "04", title: "Hire with escrow", body: "Release prize, sign contract, and convert top builders into 3, 6, or 12-month engagements." },
+  { n: "03", title: "Review side-by-side", body: "Score on quality, UX, feasibility and speed. Shortlist, interview, work with Builder." },
+  { n: "04", title: "Hire with escrow", body: "Release payment, sign contract, and convert top builders into 3, 6, or 12-month engagements." },
 ];
 
 export const HowItWorks = () => (

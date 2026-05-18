@@ -20,27 +20,32 @@ export default function Profile() {
   if (!user) return null;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="w-full max-w-4xl mx-auto space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Profile</h1>
+          <h1 className="text-xl sm:text-2xl font-semibold">Profile</h1>
           <p className="text-sm text-muted-foreground">
             Manage your public profile, work history and payment details.
           </p>
         </div>
-        <Button variant="outline" onClick={() => navigate(role === "startup" ? `/startups/${user.id}` : `/builders/${user.id}`)}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full sm:w-auto"
+          onClick={() => navigate(role === "startup" ? `/startups/${user.id}` : `/builders/${user.id}`)}
+        >
           <ExternalLink className="h-4 w-4 mr-2" />
           View Public Profile
         </Button>
       </div>
 
       <Tabs defaultValue="personal">
-        <TabsList className="w-full justify-start overflow-x-auto">
-          <TabsTrigger value="personal">Personal Details</TabsTrigger>
-          {role === "builder" && <TabsTrigger value="experience">Experience</TabsTrigger>}
-          {role === "builder" && <TabsTrigger value="education">Education</TabsTrigger>}
-          {role === "builder" && <TabsTrigger value="skills">Skills & Portfolio</TabsTrigger>}
-          {role === "builder" && <TabsTrigger value="payments">Payment methods</TabsTrigger>}
+        <TabsList className="w-full flex overflow-x-auto scrollbar-none h-auto flex-wrap gap-1 justify-start bg-muted/50 p-1">
+          <TabsTrigger value="personal" className="text-xs sm:text-sm whitespace-nowrap">Personal Details</TabsTrigger>
+          {role === "builder" && <TabsTrigger value="experience" className="text-xs sm:text-sm whitespace-nowrap">Experience</TabsTrigger>}
+          {role === "builder" && <TabsTrigger value="education" className="text-xs sm:text-sm whitespace-nowrap">Education</TabsTrigger>}
+          {role === "builder" && <TabsTrigger value="skills" className="text-xs sm:text-sm whitespace-nowrap">Skills & Portfolio</TabsTrigger>}
+          {role === "builder" && <TabsTrigger value="payments" className="text-xs sm:text-sm whitespace-nowrap">Payment methods</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="personal" className="mt-4"><PersonalTab /></TabsContent>

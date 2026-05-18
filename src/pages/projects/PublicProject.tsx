@@ -26,19 +26,7 @@ export default function PublicProject() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto py-10 px-4">
-      {/* Banner CTA for unauthenticated users */}
-      <Card className="bg-primary/5 border-primary/20 shadow-sm mb-8">
-        <CardContent className="flex flex-col sm:flex-row items-center justify-between py-6 gap-4">
-          <div>
-            <h2 className="text-lg font-semibold">Join Simple Launchpad to participate</h2>
-            <p className="text-sm text-muted-foreground mt-1">Create an account to submit your solution and get hired by founders.</p>
-          </div>
-          <div className="flex gap-3 w-full sm:w-auto shrink-0">
-            <Link to="/login" className="w-full sm:w-auto"><Button variant="outline" className="w-full">Log in</Button></Link>
-            <Link to="/register" className="w-full sm:w-auto"><Button className="w-full">Sign up <ArrowRight className="h-4 w-4 ml-2" /></Button></Link>
-          </div>
-        </CardContent>
-      </Card>
+
 
       <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
         <div className="flex-1">
@@ -75,6 +63,31 @@ export default function PublicProject() {
       <Section title="Problem statement">{project.description}</Section>
       <Section title="Requirements">{project.requirements}</Section>
       <Section title="Deliverables">{project.deliverables}</Section>
+
+      {/* Banner CTA for unauthenticated users */}
+      <Card className="mt-12 bg-gradient-to-r from-primary/10 via-primary/5 to-accent/10 border-primary/20 shadow-md hover:shadow-lg transition-all duration-300 relative overflow-hidden">
+        <div className="absolute inset-0 bg-white/5 opacity-10 mix-blend-overlay"></div>
+        <CardContent className="flex flex-col sm:flex-row items-center justify-between py-8 gap-6 relative z-10">
+          <div className="flex-1">
+            <h2 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Join proof_of_build to innovate future</h2>
+            <p className="text-sm text-muted-foreground mt-2 max-w-lg leading-relaxed">
+              Create an account find business problem make an idea, submit and get hired by founders, make an solution and solve it. Earn and Enjoy
+            </p>
+          </div>
+          <div className="flex gap-3 w-full sm:w-auto shrink-0">
+            <Link to="/login" className="w-full sm:w-auto">
+              <Button variant="outline" className="w-full hover:bg-background/80 backdrop-blur-sm transition-all duration-300">
+                Log in
+              </Button>
+            </Link>
+            <Link to="/register" className="w-full sm:w-auto">
+              <Button className="w-full shadow-lg hover:shadow-primary/25 hover:-translate-y-0.5 transition-all duration-300">
+                Sign up <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

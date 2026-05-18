@@ -45,7 +45,7 @@ export default function AdminCommissions() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card><CardContent className="pt-6">
           <div className="flex items-center gap-2 text-muted-foreground text-xs"><DollarSign className="h-4 w-4" />Platform revenue</div>
-          <div className="text-2xl font-semibold mt-1">₹{totalRevenue.toLocaleString()}</div>
+          <div className="text-2xl font-semibold mt-1">${totalRevenue.toLocaleString()}</div>
         </CardContent></Card>
         <Card><CardContent className="pt-6">
           <div className="flex items-center gap-2 text-muted-foreground text-xs"><ShieldCheck className="h-4 w-4" />Pending verifications</div>
@@ -67,7 +67,7 @@ export default function AdminCommissions() {
               <div key={p.id} className="border rounded-md p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-medium text-sm">{inv?.invoice_number} · ₹{p.amount}</div>
+                    <div className="font-medium text-sm">{inv?.invoice_number} · ${p.amount}</div>
                     <div className="text-xs text-muted-foreground font-mono">Ref {p.transaction_ref} · submitted {new Date(p.submitted_at).toLocaleString()}</div>
                   </div>
                   <Badge variant="outline">submitted</Badge>

@@ -48,6 +48,7 @@ const startupItems: Item[] = [
   { title: "Job Offers", url: "/job-offers", icon: Briefcase },
   { title: "Contracts", url: "/contracts", icon: FileSignature },
   { title: "Workspaces", url: "/workspaces", icon: Briefcase },
+  { title: "Saved Builders", url: "/saved-builders", icon: Bookmark },
   { title: "Payments", url: "/payments/startup", icon: Wallet },
 ];
 

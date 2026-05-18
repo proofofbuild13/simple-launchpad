@@ -8,9 +8,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
-
-const fmtINR = (n: number) =>
-  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n || 0);
+import { fmtUSD } from "@/lib/currency";
 
 export default function AdminDashboard() {
   const [kpis, setKpis] = useState<any>({});
@@ -75,9 +73,9 @@ export default function AdminDashboard() {
     { label: "Active builders", value: kpis.builders, icon: Users },
     { label: "Total projects", value: kpis.projects, icon: Briefcase },
     { label: "Active contracts", value: kpis.activeContracts, icon: FileSignature },
-    { label: "Monthly GMV (30d)", value: fmtINR(kpis.gmv ?? 0), icon: TrendingUp },
-    { label: "Platform revenue", value: fmtINR(kpis.revenue ?? 0), icon: Wallet },
-    { label: "Pending commissions", value: fmtINR(kpis.pending ?? 0), icon: Clock },
+    { label: "Monthly GMV (30d)", value: fmtUSD(kpis.gmv ?? 0), icon: TrendingUp },
+    { label: "Platform revenue", value: fmtUSD(kpis.revenue ?? 0), icon: Wallet },
+    { label: "Pending commissions", value: fmtUSD(kpis.pending ?? 0), icon: Clock },
     { label: "Open disputes", value: kpis.openDisputes, icon: AlertTriangle },
   ];
 

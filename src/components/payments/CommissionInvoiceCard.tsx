@@ -31,9 +31,9 @@ export function CommissionInvoiceCard({ invoice, founderName, builderName, proje
           <div><div className="text-muted-foreground">Due date</div><div>{new Date(invoice.due_date).toLocaleDateString()}</div></div>
         </div>
         <div className="rounded-md border-t pt-2 space-y-1 text-xs">
-          <div className="flex justify-between"><span>Base amount</span><span className="font-mono">₹{Number(invoice.base_amount).toFixed(2)}</span></div>
-          <div className="flex justify-between"><span>Commission ({(Number(invoice.commission_rate) * 100).toFixed(0)}%)</span><span className="font-mono">₹{Number(invoice.commission_amount).toFixed(2)}</span></div>
-          <div className="flex justify-between text-base font-semibold pt-1 border-t"><span>Total due</span><span className="font-mono">₹{Number(invoice.commission_amount).toFixed(2)}</span></div>
+          <div className="flex justify-between"><span>Base amount</span><span className="font-mono">${Number(invoice.base_amount).toFixed(2)}</span></div>
+          <div className="flex justify-between"><span>Commission ({(Number(invoice.commission_rate) * 100).toFixed(0)}%)</span><span className="font-mono">${Number(invoice.commission_amount).toFixed(2)}</span></div>
+          <div className="flex justify-between text-base font-semibold pt-1 border-t"><span>Total due</span><span className="font-mono">${Number(invoice.commission_amount).toFixed(2)}</span></div>
         </div>
       </CardContent>
     </Card>

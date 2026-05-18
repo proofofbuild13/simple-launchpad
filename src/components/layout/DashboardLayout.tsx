@@ -2,7 +2,7 @@ import { Outlet, useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { Button } from "@/components/ui/button";
-import { Bell, LogOut, Compass, MessageSquare } from "lucide-react";
+import { LogOut, Compass, MessageSquare } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { NotificationBell } from "./NotificationBell";
 
 export default function DashboardLayout() {
   const { user, role, signOut } = useAuth();
@@ -27,22 +28,23 @@ export default function DashboardLayout() {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="min-h-screen flex w-full bg-background overflow-x-hidden">
         <AppSidebar />
-        <div className="flex-1 flex flex-col">
-          <header className="h-14 border-b flex items-center justify-between px-4 bg-card/50 backdrop-blur">
-            <div className="flex items-center gap-3">
+        <div className="flex-1 flex flex-col min-w-0">
+          <header className="h-14 border-b flex items-center justify-between px-3 sm:px-4 bg-card/50 backdrop-blur shrink-0">
+            <div className="flex items-center gap-2">
               <SidebarTrigger />
               <span className="text-xs uppercase tracking-wider text-muted-foreground hidden sm:inline">
                 {role}
               </span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => navigate("/marketplace")}
                 title="Marketplace"
+                className="h-8 w-8"
               >
                 <Compass className="h-4 w-4" />
               </Button>
@@ -51,20 +53,15 @@ export default function DashboardLayout() {
                 size="icon"
                 onClick={() => navigate("/messages")}
                 title="Messages"
+                className="h-8 w-8"
               >
                 <MessageSquare className="h-4 w-4" />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate("/notifications")}
-              >
-                <Bell className="h-4 w-4" />
-              </Button>
+              <NotificationBell />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full">
-                    <Avatar className="h-8 w-8">
+                  <Button variant="ghost" size="icon" className="rounded-full h-8 w-8">
+                    <Avatar className="h-7 w-7">
                       <AvatarFallback className="text-xs bg-primary/10">
                         {initial}
                       </AvatarFallback>
@@ -89,8 +86,8 @@ export default function DashboardLayout() {
               </DropdownMenu>
             </div>
           </header>
-          <main className="flex-1 overflow-auto">
-            <div className="container mx-auto p-6 max-w-7xl">
+          <main className="flex-1 overflow-auto min-w-0">
+            <div className="w-full max-w-7xl mx-auto px-3 py-4 sm:px-4 sm:py-5 md:px-6 md:py-6">
               <Outlet />
             </div>
           </main>

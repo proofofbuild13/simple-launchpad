@@ -30,7 +30,7 @@ export default function BuilderPayments() {
     <div className="max-w-6xl mx-auto space-y-6">
       <h1 className="text-2xl font-semibold">Earnings</h1>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Stat icon={<Wallet className="h-4 w-4" />} label="Total received" value={`₹${totalReceived.toLocaleString()}`} />
+        <Stat icon={<Wallet className="h-4 w-4" />} label="Total received" value={`$${totalReceived.toLocaleString()}`} />
         <Stat icon={<Clock className="h-4 w-4" />} label="Pending confirmations" value={String(pending.length)} />
         <Stat icon={<CheckCircle2 className="h-4 w-4" />} label="Settled" value={String(records.filter((r) => r.status === "settled").length)} />
       </div>
@@ -45,7 +45,7 @@ export default function BuilderPayments() {
               {records.map((r) => (
                 <div key={r.id} className="flex items-center justify-between border rounded-md p-3 text-sm">
                   <div>
-                    <div className="font-medium">₹{r.declared_amount} · <span className="uppercase text-xs">{r.payment_method}</span></div>
+                    <div className="font-medium">${r.declared_amount} · <span className="uppercase text-xs">{r.payment_method}</span></div>
                     <div className="text-xs text-muted-foreground font-mono">{r.transaction_ref} · {new Date(r.declared_at).toLocaleDateString()}</div>
                   </div>
                   <div className="flex items-center gap-2">

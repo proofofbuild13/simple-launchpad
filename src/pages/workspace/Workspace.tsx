@@ -166,43 +166,46 @@ export default function Workspace() {
     .reduce((a, b) => a + Number(b.amount || 0), 0);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="w-full max-w-7xl mx-auto space-y-4 sm:space-y-6">
       <div>
         <p className="text-xs text-muted-foreground">Workspace</p>
-        <div className="flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-semibold">{contract.projects?.title}</h1>
-          <div className="flex items-center gap-2 text-sm">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-xl sm:text-2xl font-semibold truncate">{contract.projects?.title}</h1>
+          <div className="flex items-center gap-2 text-sm shrink-0">
             <DollarSign className="h-4 w-4 text-muted-foreground" />
-            <span className="font-mono">₹{totalPaid}</span>
-            <span className="text-muted-foreground">/ ₹{contract.escrow_amount}</span>
+            <span className="font-mono">${totalPaid}</span>
+            <span className="text-muted-foreground">/ ${contract.escrow_amount}</span>
           </div>
         </div>
       </div>
 
       <Card><CardContent className="pt-6"><WorkflowStepper current={4} /></CardContent></Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
-        {COLUMNS.map(([key, label]) => (
-          <div key={key} className="space-y-2">
-            <div className="flex items-center justify-between px-2">
-              <h3 className="text-xs font-semibold uppercase text-muted-foreground">{label}</h3>
-              <Badge variant="outline" className="text-[10px]">{milestones.filter((m) => m.status === key).length}</Badge>
+      {/* Kanban board — horizontally scrollable on mobile */}
+      <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0 pb-2">
+        <div className="flex gap-2 sm:grid sm:grid-cols-5 sm:gap-3" style={{ minWidth: "max-content" }}>
+          {COLUMNS.map(([key, label]) => (
+            <div key={key} className="space-y-2 w-[160px] sm:w-auto flex-shrink-0">
+              <div className="flex items-center justify-between px-2">
+                <h3 className="text-xs font-semibold uppercase text-muted-foreground">{label}</h3>
+                <Badge variant="outline" className="text-[10px]">{milestones.filter((m) => m.status === key).length}</Badge>
+              </div>
+              <div className="space-y-2 min-h-[120px] bg-muted/20 rounded-md p-2">
+                {milestones.filter((m) => m.status === key).map((m) => (
+                  <button key={m.id} onClick={() => setActive(m)} className="w-full text-left">
+                    <Card className="hover:border-primary transition-colors">
+                      <CardContent className="p-3 space-y-1">
+                        <div className="text-sm font-medium">{m.title}</div>
+                        <div className="text-xs text-muted-foreground">${m.amount}</div>
+                        <Badge className={`${STATUS_COLOR[m.status]} text-[10px]`} variant="outline">{m.status?.replace(/_/g, " ")}</Badge>
+                      </CardContent>
+                    </Card>
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="space-y-2 min-h-[120px] bg-muted/20 rounded-md p-2">
-              {milestones.filter((m) => m.status === key).map((m) => (
-                <button key={m.id} onClick={() => setActive(m)} className="w-full text-left">
-                  <Card className="hover:border-primary transition-colors">
-                    <CardContent className="p-3 space-y-1">
-                      <div className="text-sm font-medium">{m.title}</div>
-                      <div className="text-xs text-muted-foreground">₹{m.amount}</div>
-                      <Badge className={`${STATUS_COLOR[m.status]} text-[10px]`} variant="outline">{m.status?.replace(/_/g, " ")}</Badge>
-                    </CardContent>
-                  </Card>
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {active && (
@@ -294,7 +297,7 @@ export default function Workspace() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <CardTitle className="text-base">{m.title}</CardTitle>
-                    <p className="text-xs text-muted-foreground">₹{m.amount}</p>
+                    <p className="text-xs text-muted-foreground">${m.amount}</p>
                   </div>
                   {pr?.status === "settled" && <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30" variant="outline">Fully settled</Badge>}
                   {pr?.status === "disputed" && <Badge variant="destructive">Disputed</Badge>}
@@ -318,10 +321,10 @@ export default function Workspace() {
                       <Badge variant="outline" className="capitalize">{pr.status}</Badge>
                     </div>
                     <div className="grid grid-cols-2 gap-1 text-muted-foreground">
-                      <div>Declared: <span className="text-foreground font-mono">₹{pr.declared_amount}</span></div>
+                      <div>Declared: <span className="text-foreground font-mono">${pr.declared_amount}</span></div>
                       <div>Method: <span className="text-foreground uppercase">{pr.payment_method}</span></div>
                       <div>Ref: <span className="text-foreground font-mono">{pr.transaction_ref}</span></div>
-                      {pr.confirmed_amount != null && <div>Confirmed: <span className="text-foreground font-mono">₹{pr.confirmed_amount}</span></div>}
+                      {pr.confirmed_amount != null && <div>Confirmed: <span className="text-foreground font-mono">${pr.confirmed_amount}</span></div>}
                     </div>
                     {isBuilder && pr.status === "declared" && (
                       <Button size="sm" className="mt-2" onClick={() => { setConfirmRecord(pr); setConfirmOpen(true); }}>
@@ -356,7 +359,7 @@ export default function Workspace() {
                       <span className="font-medium">Commission payment</span>
                       <Badge variant="outline" className="capitalize">{cp.status.replace(/_/g, " ")}</Badge>
                     </div>
-                    <div className="text-muted-foreground">Ref <span className="text-foreground font-mono">{cp.transaction_ref}</span> · ₹{cp.amount}</div>
+                    <div className="text-muted-foreground">Ref <span className="text-foreground font-mono">{cp.transaction_ref}</span> · ${cp.amount}</div>
                     {cp.status === "submitted" && <p className="text-muted-foreground">Awaiting admin verification.</p>}
                     {cp.status === "rejected" && cp.admin_notes && <p className="text-destructive">{cp.admin_notes}</p>}
                   </div>

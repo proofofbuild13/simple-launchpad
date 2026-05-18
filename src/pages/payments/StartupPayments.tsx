@@ -38,7 +38,7 @@ export default function StartupPayments() {
     <div className="max-w-6xl mx-auto space-y-6">
       <h1 className="text-2xl font-semibold">Payments</h1>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Stat icon={<Wallet className="h-4 w-4" />} label="Total paid to builders" value={`₹${totalPaid.toLocaleString()}`} />
+        <Stat icon={<Wallet className="h-4 w-4" />} label="Total paid to builders" value={`$${totalPaid.toLocaleString()}`} />
         <Stat icon={<FileText className="h-4 w-4" />} label="Invoices due" value={String(pendingInvoices.length)} />
         <Stat icon={<AlertCircle className="h-4 w-4 text-destructive" />} label="Overdue" value={String(overdue.length)} accent={overdue.length > 0} />
       </div>
@@ -55,7 +55,7 @@ export default function StartupPayments() {
                 return (
                   <div key={r.id} className="flex items-center justify-between border rounded-md p-3 text-sm">
                     <div>
-                      <div className="font-medium">₹{r.declared_amount} · <span className="uppercase text-xs">{r.payment_method}</span></div>
+                      <div className="font-medium">${r.declared_amount} · <span className="uppercase text-xs">{r.payment_method}</span></div>
                       <div className="text-xs text-muted-foreground font-mono">{r.transaction_ref} · {new Date(r.declared_at).toLocaleDateString()}</div>
                     </div>
                     <div className="flex items-center gap-2">

@@ -61,12 +61,12 @@ export function ConfirmReceiptModal({ open, onOpenChange, paymentRecord, onDone 
         </DialogHeader>
         <div className="space-y-3">
           <div className="rounded-md bg-muted p-3 text-xs">
-            Founder declared <span className="font-mono">₹{paymentRecord.declared_amount}</span> via{" "}
+            Founder declared <span className="font-mono">${paymentRecord.declared_amount}</span> via{" "}
             <span className="uppercase">{paymentRecord.payment_method}</span> · ref{" "}
             <span className="font-mono">{paymentRecord.transaction_ref}</span>
           </div>
           <div>
-            <Label>Amount you received (₹)</Label>
+            <Label>Amount you received ($)</Label>
             <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
             <p className="text-[11px] text-muted-foreground mt-1">
               Mismatch will auto-open a dispute.

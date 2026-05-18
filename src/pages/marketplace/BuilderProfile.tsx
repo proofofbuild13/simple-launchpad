@@ -15,14 +15,17 @@ import {
   ExternalLink,
   MessageSquare,
   Bookmark,
+  BookmarkCheck,
   CheckCircle2,
   Briefcase,
   Clock,
   Target,
+  Send,
 } from "lucide-react";
 import { toast } from "sonner";
 import { MessageButton } from "@/components/messaging/MessageButton";
 import { PublicExperience } from "@/components/profile/PublicExperience";
+import { InviteToProjectModal } from "@/components/workflow/InviteToProjectModal";
 
 export default function BuilderProfile() {
   const { id } = useParams();
@@ -33,6 +36,7 @@ export default function BuilderProfile() {
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -68,7 +72,7 @@ export default function BuilderProfile() {
     } else {
       await supabase.from("saved_builders").insert({ founder_id: user.id, builder_id: id });
       setSaved(true);
-      toast.success("Builder saved");
+      toast.success("Builder saved ✓");
     }
   };
 
@@ -109,12 +113,15 @@ export default function BuilderProfile() {
                 {role === "startup" && (
                   <>
                     <Button variant="outline" size="sm" onClick={toggleSave}>
-                      <Bookmark className={`h-4 w-4 mr-2 ${saved ? "fill-current" : ""}`} />
-                      {saved ? "Saved" : "Save"}
+                      {saved ? (
+                        <><BookmarkCheck className="h-4 w-4 mr-2 fill-current" />Saved ✓</>
+                      ) : (
+                        <><Bookmark className="h-4 w-4 mr-2" />Save Profile</>
+                      )}
                     </Button>
-                    <Link to={`/offers/new?builder=${b.id}`}>
-                      <Button size="sm">Invite to Project</Button>
-                    </Link>
+                    <Button size="sm" onClick={() => setInviteOpen(true)}>
+                      <Send className="h-4 w-4 mr-2" />Invite to Project
+                    </Button>
                   </>
                 )}
               </div>
@@ -196,6 +203,14 @@ export default function BuilderProfile() {
           </Section>
         </div>
       </div>
+
+      {/* Invite to Project Modal */}
+      <InviteToProjectModal
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        builderId={b.id}
+        builderName={b.full_name}
+      />
     </div>
   );
 }
