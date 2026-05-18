@@ -5,13 +5,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Clock } from "lucide-react";
+import { Users, Clock, Briefcase } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { Bookmark, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { engagementBadgeClass, engagementLabel, formatCtcRange } from "@/lib/engagement";
 
 const OPEN_STATUSES = ["open", "open_for_submissions", "reviewing_submissions", "hiring_in_progress"];
 
@@ -22,6 +23,7 @@ export default function BrowseProjects() {
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
+  const [eng, setEng] = useState("all");
 
   useEffect(() => {
     (async () => {
@@ -76,6 +78,7 @@ export default function BrowseProjects() {
 
   const filtered = projects.filter((p) =>
     (cat === "all" || p.category === cat) &&
+    (eng === "all" || (p.engagement_type ?? "project_hire") === eng) &&
     (q === "" || p.title?.toLowerCase().includes(q.toLowerCase()))
   );
 
@@ -83,7 +86,7 @@ export default function BrowseProjects() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Browse projects</h1>
-        <p className="text-sm text-muted-foreground">Pick a challenge. Submit your build. Get hired.</p>
+        <p className="text-sm text-muted-foreground">Pick a challenge. Submit your build. Get hired — for a project or a full-time role.</p>
       </div>
       <div className="flex gap-3 flex-wrap">
         <Input placeholder="Search projects..." value={q} onChange={(e) => setQ(e.target.value)} className="max-w-sm" />
@@ -94,6 +97,14 @@ export default function BrowseProjects() {
             {["AI", "SaaS", "Mobile", "Web", "No-code", "Marketing", "Data"].map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={eng} onValueChange={setEng}>
+          <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All engagement types</SelectItem>
+            <SelectItem value="project_hire">Project Hire</SelectItem>
+            <SelectItem value="hire_to_build">Hire to Build (Full-time)</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       {filtered.length === 0 ? (
         <Card><CardContent className="py-12 text-center text-muted-foreground">No matching projects.</CardContent></Card>
@@ -101,14 +112,21 @@ export default function BrowseProjects() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filtered.map((p) => {
             const closed = p.deadline && new Date(p.deadline) < new Date();
+            const h2b = p.engagement_type === "hire_to_build";
             return (
               <Link key={p.id} to={`/projects/${p.id}`}>
-                <Card className="hover:border-primary/50 transition h-full">
+                <Card className={`hover:border-primary/50 transition h-full ${h2b ? "border-l-4 border-l-emerald-500" : ""}`}>
                   <CardContent className="pt-5 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <h3 className="font-semibold text-sm">{p.title}</h3>
                       <div className="flex items-center gap-1">
-                        {p.budget && <Badge variant="secondary">${p.budget}</Badge>}
+                        {h2b ? (
+                          <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30">
+                            <Briefcase className="h-3 w-3 mr-1" />{formatCtcRange(p)}
+                          </Badge>
+                        ) : (
+                          p.budget && <Badge variant="secondary">${p.budget}</Badge>
+                        )}
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => handleShare(e, p.id)}>
                           <Share2 className="h-4 w-4 text-muted-foreground" />
                         </Button>
@@ -119,16 +137,17 @@ export default function BrowseProjects() {
                     </div>
                     <p className="text-xs text-muted-foreground line-clamp-2">{p.short_description}</p>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 flex-wrap">
+                      <Badge variant="outline" className={engagementBadgeClass(p.engagement_type)}>
+                        {engagementLabel(p.engagement_type)}
+                      </Badge>
                       {p.category && <Badge variant="outline">{p.category}</Badge>}
-                      {p.difficulty && <Badge variant="outline">{p.difficulty}</Badge>}
-                      <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {counts[p.id] ?? 0} submissions</span>
-                      {p.deadline && (
+                      {h2b && p.location_type && <Badge variant="outline">{p.location_type}</Badge>}
+                      {!h2b && p.difficulty && <Badge variant="outline">{p.difficulty}</Badge>}
+                      <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {counts[p.id] ?? 0} {h2b ? "applicants" : "submissions"}</span>
+                      {!h2b && p.deadline && (
                         <span className={`flex items-center gap-1 ${closed ? "text-destructive" : ""}`}>
                           <Clock className="h-3 w-3" /> {closed ? "Closed" : formatDistanceToNow(new Date(p.deadline), { addSuffix: true })}
                         </span>
-                      )}
-                      {p.status && p.status !== "open" && (
-                        <Badge variant="outline" className="text-[10px]">{p.status.replace(/_/g, " ")}</Badge>
                       )}
                     </div>
                   </CardContent>

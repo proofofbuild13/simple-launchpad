@@ -5,7 +5,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, Send, Building2, CheckCircle2 } from "lucide-react";
+import { Loader2, Send, Building2, CheckCircle2, Briefcase, MapPin, DollarSign } from "lucide-react";
+import { engagementBadgeClass, engagementLabel, formatCtcRange, submissionCta, isHireToBuild } from "@/lib/engagement";
 
 export default function ProjectDetail() {
   const { id } = useParams();
@@ -37,7 +38,13 @@ export default function ProjectDetail() {
     <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
         <div className="flex-1">
-          <Badge variant="outline" className="mb-2 bg-background border-border">{project.category}</Badge>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <Badge variant="outline" className={engagementBadgeClass(project.engagement_type)}>
+              {isHireToBuild(project) && <Briefcase className="h-3 w-3 mr-1" />}
+              {engagementLabel(project.engagement_type)}
+            </Badge>
+            {project.category && <Badge variant="outline" className="bg-background border-border">{project.category}</Badge>}
+          </div>
           <h1 className="text-3xl font-semibold tracking-tight text-balance">{project.title}</h1>
           <p className="text-base text-muted-foreground mt-2 text-balance leading-relaxed">{project.short_description}</p>
           <div className="mt-4">
@@ -51,26 +58,48 @@ export default function ProjectDetail() {
         </div>
         <div className="flex flex-col items-start sm:items-end gap-3 shrink-0">
           <div className="flex items-center gap-2">
-            {project.budget && <div className="text-lg font-semibold bg-primary/5 text-primary px-3 py-1 rounded-full">${project.budget}</div>}
+            {isHireToBuild(project) ? (
+              <div className="text-lg font-semibold bg-emerald-500/10 text-emerald-700 px-3 py-1 rounded-full">
+                {formatCtcRange(project)}
+              </div>
+            ) : (
+              project.budget && <div className="text-lg font-semibold bg-primary/5 text-primary px-3 py-1 rounded-full">${project.budget}</div>
+            )}
             <Badge variant="secondary" className="px-3 py-1 text-sm font-medium">{project.status}</Badge>
           </div>
-          
+
           {role === "builder" && !isFounder && (
             <div className="mt-2 w-full sm:w-auto">
               {!closed ? (
                 <Link to={`/projects/${project.id}/submit`} className="w-full">
-                  <Button size="lg" className="w-full sm:w-auto shadow-md hover:shadow-lg transition-shadow">
-                    <Send className="h-4 w-4 mr-2" />
-                    {mySubmission ? "Submit another solution" : "Submit your solution"}
+                  <Button size="lg" className={`w-full sm:w-auto shadow-md hover:shadow-lg transition-shadow ${isHireToBuild(project) ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}>
+                    {isHireToBuild(project) ? <Briefcase className="h-4 w-4 mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                    {mySubmission ? (isHireToBuild(project) ? "Apply again" : "Submit another solution") : submissionCta(project.engagement_type)}
                   </Button>
                 </Link>
               ) : (
-                <Badge variant="outline" className="px-3 py-1 text-xs bg-muted/50 text-muted-foreground border-dashed">Submissions Closed</Badge>
+                <Badge variant="outline" className="px-3 py-1 text-xs bg-muted/50 text-muted-foreground border-dashed">
+                  {isHireToBuild(project) ? "Role Closed" : "Submissions Closed"}
+                </Badge>
               )}
             </div>
           )}
         </div>
       </div>
+
+      {isHireToBuild(project) && (
+        <div className="grid sm:grid-cols-3 gap-3">
+          {project.job_title && (
+            <Card><CardContent className="py-3 text-sm flex items-center gap-2"><Briefcase className="h-4 w-4 text-emerald-600" /><div><div className="text-[10px] uppercase text-muted-foreground">Role</div><div className="font-medium">{project.job_title}</div></div></CardContent></Card>
+          )}
+          {project.location_type && (
+            <Card><CardContent className="py-3 text-sm flex items-center gap-2"><MapPin className="h-4 w-4 text-emerald-600" /><div><div className="text-[10px] uppercase text-muted-foreground">Work mode</div><div className="font-medium">{project.location_type}{project.office_location ? ` · ${project.office_location}` : ""}</div></div></CardContent></Card>
+          )}
+          {project.seniority_level && (
+            <Card><CardContent className="py-3 text-sm flex items-center gap-2"><DollarSign className="h-4 w-4 text-emerald-600" /><div><div className="text-[10px] uppercase text-muted-foreground">Seniority</div><div className="font-medium capitalize">{project.seniority_level}</div></div></CardContent></Card>
+          )}
+        </div>
+      )}
 
       {role === "builder" && !isFounder && mySubmission && (
         <Card className="border-primary/30 bg-primary/5 shadow-sm">

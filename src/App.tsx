@@ -29,6 +29,9 @@ import EditSubmission from "./pages/submissions/EditSubmission";
 import Offers from "./pages/contracts/Offers";
 import OfferDetail from "./pages/offers/OfferDetail";
 import MakeOffer from "./pages/offers/MakeOffer";
+import MakeJobOffer from "./pages/offers/MakeJobOffer";
+import JobOffers from "./pages/offers/JobOffers";
+import JobOfferDetail from "./pages/offers/JobOfferDetail";
 import Contracts from "./pages/contracts/Contracts";
 import ContractDetail from "./pages/contracts/ContractDetail";
 import Interviews from "./pages/interviews/Interviews";
@@ -107,6 +110,10 @@ const App = () => (
               <Route path="/offers" element={<Offers />} />
               <Route path="/offers/new" element={<MakeOffer />} />
               <Route path="/offers/:id" element={<OfferDetail />} />
+
+              <Route path="/job-offers" element={<JobOffers />} />
+              <Route path="/job-offers/new" element={<MakeJobOffer />} />
+              <Route path="/job-offers/:id" element={<JobOfferDetail />} />
 
               <Route path="/contracts" element={<Contracts />} />
               <Route path="/contracts/:id" element={<ContractDetail />} />

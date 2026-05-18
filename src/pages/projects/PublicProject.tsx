@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowRight } from "lucide-react";
+import { Loader2, ArrowRight, Briefcase, MapPin } from "lucide-react";
+import { engagementBadgeClass, engagementLabel, formatCtcRange, isHireToBuild } from "@/lib/engagement";
 
 export default function PublicProject() {
   const { id } = useParams();
@@ -41,13 +42,26 @@ export default function PublicProject() {
 
       <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
         <div className="flex-1">
-          <Badge variant="outline" className="mb-2 bg-background border-border">{project.category}</Badge>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <Badge variant="outline" className={engagementBadgeClass(project.engagement_type)}>
+              {isHireToBuild(project) && <Briefcase className="h-3 w-3 mr-1" />}
+              {engagementLabel(project.engagement_type)}
+            </Badge>
+            {project.category && <Badge variant="outline" className="bg-background border-border">{project.category}</Badge>}
+            {isHireToBuild(project) && project.location_type && (
+              <Badge variant="outline"><MapPin className="h-3 w-3 mr-1" />{project.location_type}</Badge>
+            )}
+          </div>
           <h1 className="text-3xl font-semibold tracking-tight text-balance">{project.title}</h1>
           <p className="text-base text-muted-foreground mt-2 text-balance leading-relaxed">{project.short_description}</p>
         </div>
         <div className="flex flex-col items-start sm:items-end gap-3 shrink-0">
           <div className="flex items-center gap-2">
-            {project.budget && <div className="text-lg font-semibold bg-primary/5 text-primary px-3 py-1 rounded-full">${project.budget}</div>}
+            {isHireToBuild(project) ? (
+              <div className="text-lg font-semibold bg-emerald-500/10 text-emerald-700 px-3 py-1 rounded-full">{formatCtcRange(project)}</div>
+            ) : (
+              project.budget && <div className="text-lg font-semibold bg-primary/5 text-primary px-3 py-1 rounded-full">${project.budget}</div>
+            )}
             <Badge variant="secondary" className="px-3 py-1 text-sm font-medium">{project.status}</Badge>
           </div>
         </div>

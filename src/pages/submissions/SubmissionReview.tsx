@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, ExternalLink, Calendar, HandCoins } from "lucide-react";
+import { Loader2, ExternalLink, Calendar, HandCoins, Briefcase } from "lucide-react";
+import { isHireToBuild } from "@/lib/engagement";
 import { toast } from "sonner";
 import { StarRating } from "@/components/workflow/StarRating";
 import { WorkflowStatusTracker } from "@/components/workflow/WorkflowStatusTracker";
@@ -165,9 +166,15 @@ export default function SubmissionReview() {
                     <Button variant="outline" className="bg-background" onClick={() => navigate(`/interviews/new?submission=${sub.id}`)}>
                       <Calendar className="h-4 w-4 mr-2" />Schedule interview
                     </Button>
-                    <Button onClick={() => navigate(`/offers/new?submission=${sub.id}`)}>
-                      <HandCoins className="h-4 w-4 mr-2" />Send offer
-                    </Button>
+                    {isHireToBuild(project) ? (
+                      <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => navigate(`/job-offers/new?submission=${sub.id}`)}>
+                        <Briefcase className="h-4 w-4 mr-2" />Make job offer
+                      </Button>
+                    ) : (
+                      <Button onClick={() => navigate(`/offers/new?submission=${sub.id}`)}>
+                        <HandCoins className="h-4 w-4 mr-2" />Send offer
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               )}

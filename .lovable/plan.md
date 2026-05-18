@@ -1,57 +1,104 @@
+# Hire to Build — Second Engagement Model
 
-## Diagnosis
+Add a parallel full-time hiring flow alongside the existing Project Hire (contract + milestone) flow. Both coexist; `projects.engagement_type` switches behavior end-to-end.
 
-Looking at the live network traffic on your new Supabase project `nvnvyzxzjezlgzgpniyt`:
+## 1. Database (one migration)
 
-1. **Signup succeeds** (`POST /auth/v1/signup` → 200) — auth works.
-2. **`POST /rest/v1/user_roles` → 401, `42501: new row violates row-level security policy`**
-3. **`POST /rest/v1/builder_profiles` → 401, same RLS error**
-4. **`POST /auth/v1/token` → 400, `email_not_confirmed`** — login is blocked because Supabase is set to require email confirmation.
+New enum + columns + tables exactly per your SQL spec:
 
-Root cause: the new Supabase project is **empty**. None of the 13 migrations in `supabase/migrations/` (tables, RLS policies, `handle_new_user` trigger, `bootstrap_admin` RPC, etc.) have been applied to `nvnvyzxzjezlgzgpniyt`. The frontend code is fine — the database just has no schema, no policies, and no trigger to populate `user_roles` / `builder_profiles` / `startup_profiles` on signup.
+- `engagement_type` enum: `project_hire`, `hire_to_build`
+- `projects`: add `engagement_type` (default `project_hire`), `job_title`, `seniority_level`, `location_type`, `office_location`, `ctc_min`, `ctc_max`, `ctc_confidential`, `probation_months`
+- `employment_offers` table (FK → projects, submissions, auth.users)
+- `placement_fees` table (FK → employment_offers)
+- `builder_profiles`: add `open_to_full_time boolean default false`
+- RLS: startup/builder see own offers; admin policies via `has_role('admin')`; insert policies (startup creates offers for own projects; builder updates own offer status to accepted/declined)
+- Trigger: on `employment_offers.status = 'accepted'` → auto-create `placement_fees` row (fixed fee, e.g. 8.33% of annual CTC or flat amount — confirm in Q below) and set project status to `closed`
+- Indexes per spec
+- Note: FKs reference `auth.users(id)` (project standard), not a `users` table
 
-Secondary issue: **Email confirmation is ON** in the new project's Auth settings, so even after the schema is applied, users can't sign in immediately after signup.
+## 2. Post Project — Step 3 (Engagement)
 
-## Fix Plan
+Refactor `PostProject.tsx` to add an engagement-type step matching the uploaded HTML reference:
 
-### Step 1 — Apply the existing schema to the new Supabase project
-The 13 migration files in `supabase/migrations/` already contain everything needed (tables, RLS policies, triggers, RPCs). They just need to run against `nvnvyzxzjezlgzgpniyt`.
+- Two cards: **Project Hire** (blue/info) vs **Hire to Build** (green/success)
+- If `project_hire` → existing fields (budget, deadline, milestones config)
+- If `hire_to_build` → new fields: job_title, seniority_level (Junior/Mid/Senior/Lead), location_type (Remote/Hybrid/On-site), office_location (conditional), ctc_min/ctc_max + confidential toggle, probation_months (none/1/3/6), employment_type fixed to full-time
 
-I'll bundle them into a single consolidated `init.sql` (in execution order) that you can paste into the **Supabase Dashboard → SQL Editor** of your project and run once. This creates:
-- All tables (`user_roles`, `startup_profiles`, `builder_profiles`, projects, offers, contracts, payments, messaging, audit, etc.)
-- The `app_role` enum and `has_role()` security-definer function
-- RLS policies allowing authenticated users to insert their own `user_roles` row and their own profile rows (which is what's currently failing)
-- The `handle_new_user` trigger and `bootstrap_admin` RPC
-- Storage buckets if any
+## 3. Browse Feed (`BrowseProjects.tsx`)
 
-### Step 2 — Disable email confirmation (or make signup auto-confirm)
-In **Supabase Dashboard → Authentication → Providers → Email**, turn OFF "Confirm email". This matches the current frontend flow which navigates straight to `/dashboard` after signup without waiting for an email click.
+- Add `Engagement Type` filter (All / Project Hire / Hire to Build)
+- Card badge: blue "Project Hire" vs green "Full-time Role"
+- CTA label: "Submit Solution" vs "Apply for Role"
+- Show CTC range (or "Competitive Salary") + location on hire_to_build cards instead of budget/deadline
 
-(Alternative: keep confirmation on and add a "check your inbox" screen — but the existing UX assumes immediate login, so disabling is the smaller change.)
+## 4. Public Project Page (`PublicProject.tsx`)
 
-### Step 3 — Configure Site URL & redirect URLs
-In **Supabase Dashboard → Authentication → URL Configuration**, set:
-- Site URL: `https://4ec37688-8c3e-4f3e-a1dd-7345b9b0bef1.lovableproject.com` (preview) and add the published URL
-- Redirect allow-list: same origins + `http://localhost:5173`
+Conditional layout per engagement type — hide budget/timeline blocks, show role/CTC/location/probation blocks for hire_to_build.
 
-### Step 4 — Regenerate `src/integrations/supabase/types.ts`
-Once the schema is applied, types should match the new project. I'll regenerate them from `nvnvyzxzjezlgzgpniyt`.
+## 5. Submission Flow
 
-### Step 5 — Verify
-- Sign up a new builder → row appears in `auth.users`, `user_roles`, `builder_profiles` (no 401s).
-- Sign in → 200, redirects to `/dashboard`.
-- Admin first-time-setup → `bootstrap_admin` RPC grants `super_admin`.
+Identical until shortlist. Add optional `resume_url` + `portfolio_url` fields on submissions when project is hire_to_build (reuse existing submission table; columns are nullable for project_hire).
 
-## What you'll need to do manually
-Supabase isn't in Lovable's connector list, so I can't run SQL against your project from here. After I generate the consolidated `init.sql`:
-1. Open https://supabase.com/dashboard/project/nvnvyzxzjezlgzgpniyt/sql/new
-2. Paste the SQL and click **Run**
-3. Toggle off email confirmation in Auth → Providers → Email
-4. Set Site URL / redirects in Auth → URL Configuration
+## 6. Offer Divergence
 
-Then signup and login will work.
+Branch in offer creation UI:
 
-## Question before I proceed
-Do you want me to:
-- **(A)** Generate one consolidated `supabase/init.sql` from the 13 existing migrations (easiest — single copy/paste), or
-- **(B)** Keep the 13 migration files as-is so you can run `supabase db push` from the CLI against your project?
+- **Project Hire** → existing `MakeOffer.tsx` (contract + milestones) — unchanged
+- **Hire to Build** → new `MakeJobOffer.tsx` page: job_title, annual CTC, joining_date, work_location, office_location, probation, reporting_manager (notes), offer_letter_url upload, expires_at (default +72h)
+
+New routes:
+- `/projects/:id/make-job-offer/:submissionId`
+- `/job-offers/:id` (builder view: download letter, Accept / Decline, countdown)
+- Builder accept → status `accepted`, trigger fires placement fee
+- Builder decline → status `declined`
+
+## 7. Dashboards
+
+- **Builder Dashboard**: add "Job Offers" + "Placement History" sections
+- **Startup Dashboard**: add "Active Hiring Roles" + "Placements Completed"
+- **Admin**: add Placement Fees list (verify payment, mark paid, similar to commission invoices)
+
+## 8. Builder Profile
+
+- Settings toggle: "Open to Full-Time Roles"
+- "Open to Full-Time" badge on `BuilderProfile.tsx` and marketplace cards when on
+
+## 9. Notifications
+
+Extend existing notification system: when new `hire_to_build` project posted, prioritize notify builders with `open_to_full_time = true`.
+
+## 10. Types & Cleanup
+
+- Regenerate `src/integrations/supabase/types.ts` after migration
+- Add `src/lib/engagement.ts` helpers (badge variant, label, CTA copy)
+- Sidebar: add "Job Offers" link (builders) and "Hiring" link (startups)
+
+## Files (high-level)
+
+```
+supabase/migrations/<ts>_hire_to_build.sql           NEW
+src/pages/projects/PostProject.tsx                   EDIT (engagement step)
+src/pages/projects/BrowseProjects.tsx                EDIT (filter, badges, CTA)
+src/pages/projects/PublicProject.tsx                 EDIT (conditional)
+src/pages/projects/ProjectDetail.tsx                 EDIT (conditional)
+src/pages/offers/MakeJobOffer.tsx                    NEW
+src/pages/offers/JobOfferDetail.tsx                  NEW
+src/pages/offers/JobOffers.tsx                       NEW (list)
+src/pages/dashboard/StartupDashboard.tsx             EDIT
+src/pages/dashboard/BuilderDashboard.tsx             EDIT
+src/pages/dashboard/AdminPlacementFees.tsx           NEW
+src/pages/settings/Settings.tsx                      EDIT (open_to_full_time)
+src/pages/marketplace/BuilderProfile.tsx             EDIT (badge)
+src/components/layout/AppSidebar.tsx                 EDIT
+src/lib/engagement.ts                                NEW
+src/App.tsx                                          EDIT (routes)
+src/integrations/supabase/types.ts                   REGEN
+```
+
+## Open Questions
+
+1. **Placement fee structure** — flat amount (e.g. ₹50,000) or % of annual CTC (e.g. 8.33% = one month)? Your spec lists both `fee_type` values; need the default.
+2. **Resume/portfolio uploads** — required or optional on hire_to_build submissions?
+3. **Should existing `MakeOffer` / `OfferDetail` / `Contracts` pages be hidden for hire_to_build projects** (they will, but confirming no shared use).
+
+I'll proceed with sensible defaults (8.33% of annual CTC; resume optional; full hide) unless you say otherwise.

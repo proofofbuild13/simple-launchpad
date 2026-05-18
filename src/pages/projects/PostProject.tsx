@@ -10,39 +10,73 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Briefcase, Hammer, Check } from "lucide-react";
 
-const steps = ["Basics", "Problem", "Settings", "Privacy", "Review"];
+const steps = ["Basics", "Engagement", "Problem", "Settings", "Privacy", "Review"];
+
+type EngagementType = "project_hire" | "hire_to_build";
 
 export default function PostProject() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<any>({
     title: "", category: "", short_description: "",
     description: "", requirements: "", deliverables: "",
+    engagement_type: "project_hire" as EngagementType,
     budget: "", timeline: "", contract_type: "fixed", difficulty: "mid",
+    // hire_to_build fields
+    job_title: "", seniority_level: "mid",
+    location_type: "Remote", office_location: "",
+    ctc_min: "", ctc_max: "", ctc_confidential: false, probation_months: "3",
     visibility: "public", nda_required: false, ip_agreement: false,
   });
-  const set = (k: string, v: any) => setForm((p) => ({ ...p, [k]: v }));
+  const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const isH2B = form.engagement_type === "hire_to_build";
 
   const submit = async () => {
     if (!user) return;
     setLoading(true);
-    const { data, error } = await supabase.from("projects").insert({
+    const payload: any = {
       founder_id: user.id,
       title: form.title, category: form.category, short_description: form.short_description,
       description: form.description, requirements: form.requirements, deliverables: form.deliverables,
-      budget: form.budget ? Number(form.budget) : null,
-      timeline: form.timeline, contract_type: form.contract_type, difficulty: form.difficulty,
+      engagement_type: form.engagement_type,
+      difficulty: form.difficulty,
       visibility: form.visibility, nda_required: form.nda_required, ip_agreement: form.ip_agreement,
       status: "open",
-    }).select().single();
+    };
+    if (isH2B) {
+      Object.assign(payload, {
+        job_title: form.job_title || form.title,
+        seniority_level: form.seniority_level,
+        location_type: form.location_type,
+        office_location: form.location_type !== "Remote" ? (form.office_location || null) : null,
+        ctc_min: form.ctc_min ? Number(form.ctc_min) : null,
+        ctc_max: form.ctc_max ? Number(form.ctc_max) : null,
+        ctc_confidential: form.ctc_confidential,
+        probation_months: Number(form.probation_months) || 0,
+        contract_type: "full-time",
+      });
+    } else {
+      Object.assign(payload, {
+        budget: form.budget ? Number(form.budget) : null,
+        timeline: form.timeline,
+        contract_type: form.contract_type,
+      });
+    }
+    const { data, error } = await (supabase as any).from("projects").insert(payload).select().single();
     setLoading(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Project published");
     navigate(`/projects/${data.id}`);
+  };
+
+  const canContinue = () => {
+    if (step === 0) return !!form.title && !!form.category;
+    if (step === 1) return !!form.engagement_type;
+    return true;
   };
 
   return (
@@ -74,14 +108,40 @@ export default function PostProject() {
               <Field label="Short description"><Textarea rows={3} value={form.short_description} onChange={(e) => set("short_description", e.target.value)} /></Field>
             </>
           )}
+
           {step === 1 && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">How do you want to engage the winner?</p>
+              <EngagementCard
+                selected={form.engagement_type === "project_hire"}
+                onClick={() => set("engagement_type", "project_hire")}
+                accent="blue"
+                icon={<Hammer className="h-5 w-5" />}
+                title="Project Hire"
+                subtitle="Fixed contract with milestones and escrow/direct payments."
+                features={["Budget + deadline", "Milestone contracts", "3 / 6 / 12 month engagement", "Platform fee: 15% per milestone"]}
+              />
+              <EngagementCard
+                selected={form.engagement_type === "hire_to_build"}
+                onClick={() => set("engagement_type", "hire_to_build")}
+                accent="emerald"
+                icon={<Briefcase className="h-5 w-5" />}
+                title="Hire to Build"
+                subtitle="Full-time permanent role — hire the builder who solves your challenge."
+                features={["No upfront financial commitment", "Permanent employment", "Challenge-based hiring", "One-time placement fee"]}
+              />
+            </div>
+          )}
+
+          {step === 2 && (
             <>
-              <Field label="Detailed description"><Textarea rows={5} value={form.description} onChange={(e) => set("description", e.target.value)} /></Field>
+              <Field label="Detailed description / challenge"><Textarea rows={5} value={form.description} onChange={(e) => set("description", e.target.value)} /></Field>
               <Field label="Requirements"><Textarea rows={3} value={form.requirements} onChange={(e) => set("requirements", e.target.value)} /></Field>
               <Field label="Deliverables"><Textarea rows={3} value={form.deliverables} onChange={(e) => set("deliverables", e.target.value)} /></Field>
             </>
           )}
-          {step === 2 && (
+
+          {step === 3 && !isH2B && (
             <>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Budget (USD)"><Input type="number" value={form.budget} onChange={(e) => set("budget", e.target.value)} /></Field>
@@ -111,7 +171,80 @@ export default function PostProject() {
               </div>
             </>
           )}
-          {step === 3 && (
+
+          {step === 3 && isH2B && (
+            <>
+              <Field label="Job title"><Input value={form.job_title} onChange={(e) => set("job_title", e.target.value)} placeholder="Full Stack Developer" /></Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Seniority level">
+                  <Select value={form.seniority_level} onValueChange={(v) => set("seniority_level", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="junior">Junior</SelectItem>
+                      <SelectItem value="mid">Mid-level</SelectItem>
+                      <SelectItem value="senior">Senior</SelectItem>
+                      <SelectItem value="lead">Lead</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Work location">
+                  <Select value={form.location_type} onValueChange={(v) => set("location_type", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Remote">Remote</SelectItem>
+                      <SelectItem value="Hybrid">Hybrid</SelectItem>
+                      <SelectItem value="On-site">On-site</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+              {(form.location_type === "Hybrid" || form.location_type === "On-site") && (
+                <Field label="Office location">
+                  <Input value={form.office_location} onChange={(e) => set("office_location", e.target.value)} placeholder="Bangalore, India" />
+                </Field>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="CTC min (USD/yr)">
+                  <Input type="number" disabled={form.ctc_confidential} value={form.ctc_min} onChange={(e) => set("ctc_min", e.target.value)} placeholder="60000" />
+                </Field>
+                <Field label="CTC max (USD/yr)">
+                  <Input type="number" disabled={form.ctc_confidential} value={form.ctc_max} onChange={(e) => set("ctc_max", e.target.value)} placeholder="90000" />
+                </Field>
+              </div>
+              <div className="flex items-center justify-between p-3 border rounded-md">
+                <div>
+                  <div className="font-medium text-sm">Keep salary confidential</div>
+                  <div className="text-xs text-muted-foreground">Show "Competitive Salary" instead of range</div>
+                </div>
+                <Switch checked={form.ctc_confidential} onCheckedChange={(v) => set("ctc_confidential", v)} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Probation">
+                  <Select value={form.probation_months} onValueChange={(v) => set("probation_months", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">None</SelectItem>
+                      <SelectItem value="1">1 month</SelectItem>
+                      <SelectItem value="3">3 months</SelectItem>
+                      <SelectItem value="6">6 months</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Difficulty">
+                  <Select value={form.difficulty} onValueChange={(v) => set("difficulty", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="easy">Easy</SelectItem>
+                      <SelectItem value="mid">Mid</SelectItem>
+                      <SelectItem value="hard">Hard</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+            </>
+          )}
+
+          {step === 4 && (
             <>
               <Field label="Visibility">
                 <Select value={form.visibility} onValueChange={(v) => set("visibility", v)}>
@@ -127,19 +260,35 @@ export default function PostProject() {
                 <div><div className="font-medium text-sm">NDA required</div><div className="text-xs text-muted-foreground">Builders must sign an NDA to view full brief</div></div>
                 <Switch checked={form.nda_required} onCheckedChange={(v) => set("nda_required", v)} />
               </div>
-              <div className="flex items-center justify-between p-3 border rounded-md">
-                <div><div className="font-medium text-sm">IP ownership agreement</div><div className="text-xs text-muted-foreground">Winner assigns IP on contract</div></div>
-                <Switch checked={form.ip_agreement} onCheckedChange={(v) => set("ip_agreement", v)} />
-              </div>
+              {!isH2B && (
+                <div className="flex items-center justify-between p-3 border rounded-md">
+                  <div><div className="font-medium text-sm">IP ownership agreement</div><div className="text-xs text-muted-foreground">Winner assigns IP on contract</div></div>
+                  <Switch checked={form.ip_agreement} onCheckedChange={(v) => set("ip_agreement", v)} />
+                </div>
+              )}
             </>
           )}
-          {step === 4 && (
+
+          {step === 5 && (
             <div className="space-y-3 text-sm">
               <Row k="Title" v={form.title} />
               <Row k="Category" v={form.category} />
-              <Row k="Budget" v={form.budget ? `$${form.budget}` : "—"} />
-              <Row k="Timeline" v={form.timeline || "—"} />
-              <Row k="Contract" v={form.contract_type} />
+              <Row k="Engagement" v={isH2B ? "Hire to Build (full-time)" : "Project Hire (contract)"} />
+              {isH2B ? (
+                <>
+                  <Row k="Job title" v={form.job_title || form.title} />
+                  <Row k="Seniority" v={form.seniority_level} />
+                  <Row k="Work mode" v={form.location_type + (form.office_location ? ` · ${form.office_location}` : "")} />
+                  <Row k="CTC" v={form.ctc_confidential ? "Competitive Salary" : `${form.ctc_min || "?"} – ${form.ctc_max || "?"}`} />
+                  <Row k="Probation" v={form.probation_months === "0" ? "None" : `${form.probation_months} months`} />
+                </>
+              ) : (
+                <>
+                  <Row k="Budget" v={form.budget ? `$${form.budget}` : "—"} />
+                  <Row k="Timeline" v={form.timeline || "—"} />
+                  <Row k="Contract" v={form.contract_type} />
+                </>
+              )}
               <Row k="Visibility" v={form.visibility} />
               <Row k="NDA" v={form.nda_required ? "Yes" : "No"} />
             </div>
@@ -150,7 +299,7 @@ export default function PostProject() {
       <div className="flex justify-between">
         <Button variant="outline" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>Back</Button>
         {step < steps.length - 1 ? (
-          <Button onClick={() => setStep((s) => s + 1)} disabled={step === 0 && !form.title}>Continue</Button>
+          <Button onClick={() => setStep((s) => s + 1)} disabled={!canContinue()}>Continue</Button>
         ) : (
           <Button onClick={submit} disabled={loading}>{loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Publish project</Button>
         )}
@@ -164,4 +313,49 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 function Row({ k, v }: { k: string; v: string }) {
   return <div className="flex justify-between border-b py-2"><span className="text-muted-foreground">{k}</span><span className="font-medium">{v}</span></div>;
+}
+
+function EngagementCard({
+  selected, onClick, accent, icon, title, subtitle, features,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  accent: "blue" | "emerald";
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  features: string[];
+}) {
+  const ring = selected
+    ? accent === "emerald"
+      ? "border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/20 ring-2 ring-emerald-500/30"
+      : "border-blue-500 bg-blue-50/60 dark:bg-blue-950/20 ring-2 ring-blue-500/30"
+    : "border-border hover:border-muted-foreground/40";
+  const iconColor = accent === "emerald" ? "text-emerald-600" : "text-blue-600";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`text-left w-full rounded-lg border-2 transition-all p-4 ${ring}`}
+    >
+      <div className="flex items-start gap-3">
+        <div className={`p-2 rounded-md bg-background ${iconColor}`}>{icon}</div>
+        <div className="flex-1">
+          <div className="flex items-center justify-between">
+            <div className="font-semibold">{title}</div>
+            {selected && <Check className={`h-4 w-4 ${iconColor}`} />}
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+          <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs text-foreground/80">
+            {features.map((f) => (
+              <li key={f} className="flex items-center gap-1.5">
+                <span className={`h-1 w-1 rounded-full ${accent === "emerald" ? "bg-emerald-500" : "bg-blue-500"}`} />
+                {f}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </button>
+  );
 }
