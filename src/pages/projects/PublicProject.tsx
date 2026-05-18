@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowRight } from "lucide-react";
+import { Loader2, ArrowRight, Briefcase, MapPin } from "lucide-react";
+import { engagementBadgeClass, engagementLabel, formatCtcRange, isHireToBuild } from "@/lib/engagement";
 
 export default function PublicProject() {
   const { id } = useParams();
