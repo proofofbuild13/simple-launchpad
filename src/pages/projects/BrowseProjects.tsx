@@ -23,6 +23,7 @@ export default function BrowseProjects() {
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
+  const [eng, setEng] = useState("all");
 
   useEffect(() => {
     (async () => {
