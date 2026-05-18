@@ -111,6 +111,10 @@ const App = () => (
               <Route path="/offers/new" element={<MakeOffer />} />
               <Route path="/offers/:id" element={<OfferDetail />} />
 
+              <Route path="/job-offers" element={<JobOffers />} />
+              <Route path="/job-offers/new" element={<MakeJobOffer />} />
+              <Route path="/job-offers/:id" element={<JobOfferDetail />} />
+
               <Route path="/contracts" element={<Contracts />} />
               <Route path="/contracts/:id" element={<ContractDetail />} />
 
