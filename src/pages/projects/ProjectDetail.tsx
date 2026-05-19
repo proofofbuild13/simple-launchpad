@@ -74,7 +74,7 @@ export default function ProjectDetail() {
                 <Link to={`/projects/${project.id}/submit`} className="w-full">
                   <Button size="lg" className={`w-full sm:w-auto shadow-md hover:shadow-lg transition-shadow ${isHireToBuild(project) ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}>
                     {isHireToBuild(project) ? <Briefcase className="h-4 w-4 mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                    {mySubmission ? (isHireToBuild(project) ? "Apply again" : "Submit another solution") : submissionCta(project.engagement_type)}
+                    {mySubmission ? (isHireToBuild(project) ? "Apply again" : "Submit another idea") : submissionCta(project.engagement_type)}
                   </Button>
                 </Link>
               ) : (
@@ -106,7 +106,7 @@ export default function ProjectDetail() {
           <CardContent className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm">
             <div className="flex items-center gap-2 text-primary">
               <CheckCircle2 className="h-4 w-4" />
-              <span className="font-medium">You have already submitted a solution for this project.</span>
+              <span className="font-medium">You have already submitted an idea for this project.</span>
             </div>
             <Link to={`/submissions/${mySubmission.id}`}>
               <Button size="sm" variant="outline" className="bg-background">View your submission</Button>

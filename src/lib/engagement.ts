@@ -15,7 +15,7 @@ export const engagementBadgeClass = (t?: string) =>
     : "bg-blue-500/15 text-blue-700 border-blue-500/30";
 
 export const submissionCta = (t?: string) =>
-  t === "hire_to_build" ? "Apply for Role" : "Submit Solution";
+  t === "hire_to_build" ? "Apply for Role" : "Submit your idea";
 
 export const offerCta = (t?: string) =>
   t === "hire_to_build" ? "Send job offer" : "Send offer";

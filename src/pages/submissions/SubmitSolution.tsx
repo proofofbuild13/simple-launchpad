@@ -119,16 +119,21 @@ export default function SubmitSolution() {
       <Card>
         <CardHeader><CardTitle className="text-base">Your Idea</CardTitle></CardHeader>
         <CardContent>
-          <form onSubmit={submit} className="space-y-3">
-            <Field label="Title"><Input required value={form.title} onChange={(e) => set("title", e.target.value)} /></Field>
-            <Field label="Description"><Textarea rows={4} required value={form.description} onChange={(e) => set("description", e.target.value)} /></Field>
+          <form onSubmit={submit} className="space-y-4">
+            <Field label="Idea Title"><Input required value={form.title} onChange={(e) => set("title", e.target.value)} /></Field>
+            <Field label="Describe your idea"><Textarea rows={4} required value={form.description} onChange={(e) => set("description", e.target.value)} /></Field>
+            
+            <div className="text-xs text-muted-foreground bg-muted/65 border border-border rounded-md p-3 leading-relaxed">
+              "Add your idea prototype link so founders can quickly understand your concept and increase your chances of getting hired"
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <Field label="Demo URL"><Input value={form.demo_url} onChange={(e) => set("demo_url", e.target.value)} placeholder="https://" /></Field>
               <Field label="Live URL"><Input value={form.live_url} onChange={(e) => set("live_url", e.target.value)} placeholder="https://" /></Field>
               <Field label="GitHub URL"><Input value={form.github_url} onChange={(e) => set("github_url", e.target.value)} placeholder="https://github.com/" /></Field>
               <Field label="Video walkthrough"><Input value={form.video_url} onChange={(e) => set("video_url", e.target.value)} placeholder="https://" /></Field>
             </div>
-            <Field label="Tech stack (comma separated)"><Input value={form.tech_stack} onChange={(e) => set("tech_stack", e.target.value)} placeholder="React, Postgres, ..." /></Field>
+            <Field label="Tech stack & tools  (comma separated)"><Input value={form.tech_stack} onChange={(e) => set("tech_stack", e.target.value)} placeholder="React, Postgres, ..." /></Field>
             <Field label="Notes"><Textarea rows={3} value={form.notes} onChange={(e) => set("notes", e.target.value)} /></Field>
             <Button
               type="submit"

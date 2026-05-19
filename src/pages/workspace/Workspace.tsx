@@ -348,7 +348,7 @@ export default function Workspace() {
                 {/* Step 5: founder pays commission */}
                 {isFounder && inv && inv.status !== "paid" && !cp && (
                   <Button size="sm" onClick={() => { setPayInvoice(inv); setPayCommissionOpen(true); }}>
-                    <FileText className="h-4 w-4 mr-1" />Pay platform commission
+                    <FileText className="h-4 w-4 mr-1" />Pay platform fee
                   </Button>
                 )}
 
@@ -356,7 +356,7 @@ export default function Workspace() {
                 {cp && (
                   <div className="rounded-md border p-3 text-xs space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="font-medium">Commission payment</span>
+                      <span className="font-medium">Platform fee payment</span>
                       <Badge variant="outline" className="capitalize">{cp.status.replace(/_/g, " ")}</Badge>
                     </div>
                     <div className="text-muted-foreground">Ref <span className="text-foreground font-mono">{cp.transaction_ref}</span> · ${cp.amount}</div>

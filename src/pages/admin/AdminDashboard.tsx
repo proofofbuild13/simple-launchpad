@@ -75,7 +75,7 @@ export default function AdminDashboard() {
     { label: "Active contracts", value: kpis.activeContracts, icon: FileSignature },
     { label: "Monthly GMV (30d)", value: fmtUSD(kpis.gmv ?? 0), icon: TrendingUp },
     { label: "Platform revenue", value: fmtUSD(kpis.revenue ?? 0), icon: Wallet },
-    { label: "Pending commissions", value: fmtUSD(kpis.pending ?? 0), icon: Clock },
+    { label: "Pending platform fees", value: fmtUSD(kpis.pending ?? 0), icon: Clock },
     { label: "Open disputes", value: kpis.openDisputes, icon: AlertTriangle },
   ];
 
@@ -157,7 +157,7 @@ export default function AdminDashboard() {
             </Link>
             <Link to="/admin/commissions" className="block p-3 rounded-md border hover:bg-muted/50">
               <div className="flex justify-between items-center">
-                <span className="text-sm">Overdue commissions</span>
+                <span className="text-sm">Overdue platform fees</span>
                 <Badge variant={alerts.overdue > 0 ? "destructive" : "outline"}>{alerts.overdue}</Badge>
               </div>
             </Link>

@@ -41,7 +41,7 @@ export default function AdminCommissions() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <h1 className="text-2xl font-semibold">Commission verification</h1>
+      <h1 className="text-2xl font-semibold">Platform fee verification</h1>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card><CardContent className="pt-6">
           <div className="flex items-center gap-2 text-muted-foreground text-xs"><DollarSign className="h-4 w-4" />Platform revenue</div>

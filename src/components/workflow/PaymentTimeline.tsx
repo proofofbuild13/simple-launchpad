@@ -6,7 +6,7 @@ const STAGES = [
   "Startup Paying",
   "Builder Confirming",
   "Invoice",
-  "Commission Paying",
+  "Platform Fee Paying",
   "Admin Verifying",
   "Settled",
 ];

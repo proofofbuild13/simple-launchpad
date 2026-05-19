@@ -68,7 +68,7 @@ const builderItems: Item[] = [
 const adminItems: Item[] = [
   { title: "Dashboard", url: "/admin", icon: Shield },
   { title: "Disputes", url: "/admin/disputes", icon: AlertTriangle },
-  { title: "Commissions", url: "/admin/commissions", icon: Wallet },
+  { title: "Platform fees", url: "/admin/commissions", icon: Wallet },
   { title: "Users", url: "/admin/users", icon: UsersIcon },
   { title: "Audit logs", url: "/admin/audit-logs", icon: ScrollText },
 ];

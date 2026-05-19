@@ -58,7 +58,7 @@ export function PayCommissionModal({ open, onOpenChange, invoice, contractId, on
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Pay platform commission · {invoice.invoice_number}</DialogTitle>
+          <DialogTitle>Pay platform fee · {invoice.invoice_number}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div className="rounded-md border p-3 text-xs space-y-1">

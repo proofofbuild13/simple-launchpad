@@ -55,14 +55,17 @@ CREATE INDEX IF NOT EXISTS idx_project_invitations_project ON project_invitation
 -- RLS
 ALTER TABLE project_invitations ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view their own invitations" ON project_invitations;
 CREATE POLICY "Users can view their own invitations"
   ON project_invitations FOR SELECT
   USING (auth.uid() = founder_id OR auth.uid() = builder_id);
 
+DROP POLICY IF EXISTS "Founders can create invitations" ON project_invitations;
 CREATE POLICY "Founders can create invitations"
   ON project_invitations FOR INSERT
   WITH CHECK (auth.uid() = founder_id);
 
+DROP POLICY IF EXISTS "Builders can update invitation status" ON project_invitations;
 CREATE POLICY "Builders can update invitation status"
   ON project_invitations FOR UPDATE
   USING (auth.uid() = builder_id)
@@ -105,4 +108,12 @@ UPDATE notifications SET notification_type = type WHERE notification_type IS NUL
 CREATE INDEX IF NOT EXISTS idx_notifications_unread ON notifications(user_id, is_read) WHERE is_read = false;
 
 -- Enable realtime for notifications
-ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'notifications'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
+  END IF;
+END $$;
