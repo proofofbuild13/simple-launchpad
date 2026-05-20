@@ -1,8 +1,10 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Building2, Code2 } from "lucide-react";
 
 export default function Register() {
+  const [sp] = useSearchParams();
+  const qs = sp.get("redirect") ? `?redirect=${encodeURIComponent(sp.get("redirect")!)}` : "";
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
       <div className="w-full max-w-3xl space-y-6">
