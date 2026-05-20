@@ -55,7 +55,7 @@ export default function PublicProject() {
             )}
             <Badge variant="secondary" className="px-3 py-1 text-sm font-medium">{project.status}</Badge>
           </div>
-          <Link to="/register" className="mt-2 sm:mt-0">
+          <Link to={registerHref} className="mt-2 sm:mt-0">
             <Button className="shadow-lg hover:shadow-primary/25 hover:-translate-y-0.5 transition-all duration-300">
               Apply
             </Button>
@@ -83,12 +83,12 @@ export default function PublicProject() {
             </p>
           </div>
           <div className="flex gap-3 w-full sm:w-auto shrink-0">
-            <Link to="/login" className="w-full sm:w-auto">
+            <Link to={loginHref} className="w-full sm:w-auto">
               <Button variant="outline" className="w-full hover:bg-background/80 backdrop-blur-sm transition-all duration-300">
                 Log in
               </Button>
             </Link>
-            <Link to="/register" className="w-full sm:w-auto">
+            <Link to={registerHref} className="w-full sm:w-auto">
               <Button className="w-full shadow-lg hover:shadow-primary/25 hover:-translate-y-0.5 transition-all duration-300">
                 Sign up <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
