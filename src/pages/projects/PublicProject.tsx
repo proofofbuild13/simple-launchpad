@@ -52,6 +52,11 @@ export default function PublicProject() {
             )}
             <Badge variant="secondary" className="px-3 py-1 text-sm font-medium">{project.status}</Badge>
           </div>
+          <Link to="/register" className="mt-2 sm:mt-0">
+            <Button className="shadow-lg hover:shadow-primary/25 hover:-translate-y-0.5 transition-all duration-300">
+              Apply
+            </Button>
+          </Link>
         </div>
       </div>
 
