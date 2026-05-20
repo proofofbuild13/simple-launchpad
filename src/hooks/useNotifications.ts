@@ -41,9 +41,9 @@ export function useNotifications() {
     if (!user) return;
     await supabase
       .from("notifications")
-      .update({ is_read: true, read_at: new Date().toISOString(), read: true } as any)
+      .update({ read: true, read_at: new Date().toISOString() } as any)
       .eq("user_id", user.id)
-      .eq("is_read", false);
+      .eq("read", false);
     setNotifications((prev) =>
       prev.map((n) => ({ ...n, is_read: true, read: true, read_at: new Date().toISOString() }))
     );
