@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,8 @@ export default function RegisterStartup() {
   });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [sp] = useSearchParams();
+  const redirect = sp.get("redirect") || "/dashboard";
 
   const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
 
@@ -37,7 +39,7 @@ export default function RegisterStartup() {
       email: form.email,
       password: form.password,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
+        emailRedirectTo: `${window.location.origin}${redirect}`,
         data: { full_name: form.founder_name },
       },
     });
@@ -58,7 +60,7 @@ export default function RegisterStartup() {
     });
     setLoading(false);
     toast.success("Account created");
-    navigate("/dashboard");
+    navigate(redirect);
   };
 
   return (
