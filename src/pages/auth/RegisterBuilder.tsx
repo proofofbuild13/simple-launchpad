@@ -40,7 +40,7 @@ export default function RegisterBuilder() {
       email: form.email,
       password: form.password,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
+        emailRedirectTo: `${window.location.origin}${redirect}`,
         data: { full_name: form.full_name },
       },
     });
@@ -62,7 +62,7 @@ export default function RegisterBuilder() {
     });
     setLoading(false);
     toast.success("Builder profile created");
-    navigate("/dashboard");
+    navigate(redirect);
   };
 
   return (

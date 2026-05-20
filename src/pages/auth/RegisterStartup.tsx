@@ -39,7 +39,7 @@ export default function RegisterStartup() {
       email: form.email,
       password: form.password,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
+        emailRedirectTo: `${window.location.origin}${redirect}`,
         data: { full_name: form.founder_name },
       },
     });
@@ -60,7 +60,7 @@ export default function RegisterStartup() {
     });
     setLoading(false);
     toast.success("Account created");
-    navigate("/dashboard");
+    navigate(redirect);
   };
 
   return (
