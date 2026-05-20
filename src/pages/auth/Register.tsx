@@ -17,7 +17,7 @@ export default function Register() {
           <p className="text-muted-foreground">Build before you hire — pick your side.</p>
         </div>
         <div className="grid md:grid-cols-2 gap-4">
-          <Link to="/register/startup">
+          <Link to={`/register/startup${qs}`}>
             <Card className="hover:border-primary transition cursor-pointer h-full">
               <CardHeader>
                 <Building2 className="h-8 w-8 text-primary" />
@@ -28,7 +28,7 @@ export default function Register() {
               </CardContent>
             </Card>
           </Link>
-          <Link to="/register/builder">
+          <Link to={`/register/builder${qs}`}>
             <Card className="hover:border-primary transition cursor-pointer h-full">
               <CardHeader>
                 <Code2 className="h-8 w-8 text-primary" />
@@ -42,7 +42,7 @@ export default function Register() {
         </div>
         <p className="text-xs text-center text-muted-foreground">
           Already have an account?{" "}
-          <Link to="/login" className="text-primary hover:underline">Sign in</Link>
+          <Link to={`/login${qs}`} className="text-primary hover:underline">Sign in</Link>
         </p>
       </div>
     </div>
