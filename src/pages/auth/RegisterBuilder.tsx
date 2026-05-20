@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,8 @@ export default function RegisterBuilder() {
   });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [sp] = useSearchParams();
+  const redirect = sp.get("redirect") || "/dashboard";
 
   const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
 
