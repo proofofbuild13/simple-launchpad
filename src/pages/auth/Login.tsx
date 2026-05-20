@@ -13,6 +13,9 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [sp] = useSearchParams();
+  const redirect = sp.get("redirect") || "/dashboard";
+  const qs = sp.get("redirect") ? `?redirect=${encodeURIComponent(sp.get("redirect")!)}` : "";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
