@@ -27,7 +27,7 @@ export default function Login() {
       return;
     }
     toast.success("Welcome back");
-    navigate("/dashboard");
+    navigate(redirect);
   };
 
   return (
@@ -57,7 +57,7 @@ export default function Login() {
             </Button>
             <p className="text-xs text-center text-muted-foreground">
               No account?{" "}
-              <Link to="/register" className="text-primary hover:underline">
+              <Link to={`/register${qs}`} className="text-primary hover:underline">
                 Create one
               </Link>
             </p>
