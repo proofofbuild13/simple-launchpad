@@ -9,6 +9,9 @@ import { engagementBadgeClass, engagementLabel, formatCtcRange, isHireToBuild } 
 
 export default function PublicProject() {
   const { id } = useParams();
+  const redirectTo = id ? `/projects/${id}` : "/dashboard";
+  const registerHref = `/register?redirect=${encodeURIComponent(redirectTo)}`;
+  const loginHref = `/login?redirect=${encodeURIComponent(redirectTo)}`;
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
