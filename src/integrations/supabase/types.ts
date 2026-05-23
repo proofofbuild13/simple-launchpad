@@ -58,6 +58,7 @@ export type Database = {
           bio: string | null
           completion_rate: number | null
           created_at: string
+          domain: string | null
           experience_level: string | null
           featured_projects: Json | null
           full_name: string
@@ -85,6 +86,7 @@ export type Database = {
           bio?: string | null
           completion_rate?: number | null
           created_at?: string
+          domain?: string | null
           experience_level?: string | null
           featured_projects?: Json | null
           full_name: string
@@ -112,6 +114,7 @@ export type Database = {
           bio?: string | null
           completion_rate?: number | null
           created_at?: string
+          domain?: string | null
           experience_level?: string | null
           featured_projects?: Json | null
           full_name?: string

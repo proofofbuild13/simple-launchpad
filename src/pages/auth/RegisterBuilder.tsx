@@ -25,6 +25,7 @@ export default function RegisterBuilder() {
     portfolio: "",
     linkedin: "",
     experience_level: "",
+    domain: "",
   });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -59,6 +60,7 @@ export default function RegisterBuilder() {
       portfolio: form.portfolio || null,
       linkedin: form.linkedin || null,
       experience_level: form.experience_level || null,
+      domain: form.domain || null,
     });
     setLoading(false);
     toast.success("Builder profile created");
@@ -77,6 +79,25 @@ export default function RegisterBuilder() {
             <div className="space-y-1.5">
               <Label>Full name</Label>
               <Input required value={form.full_name} onChange={(e) => set("full_name", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Domain</Label>
+              <Select value={form.domain} onValueChange={(v) => set("domain", v)}>
+                <SelectTrigger><SelectValue placeholder="Select your primary domain" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Frontend Development">Frontend Development</SelectItem>
+                  <SelectItem value="Backend Development">Backend Development</SelectItem>
+                  <SelectItem value="Full-stack Development">Full-stack Development</SelectItem>
+                  <SelectItem value="Mobile Development">Mobile Development</SelectItem>
+                  <SelectItem value="AI / Machine Learning">AI / Machine Learning</SelectItem>
+                  <SelectItem value="Data Science & Engineering">Data Science & Engineering</SelectItem>
+                  <SelectItem value="Data/Business Analyst">Data/Business Analyst</SelectItem>
+                  <SelectItem value="DevOps & Cloud">DevOps & Cloud</SelectItem>
+                  <SelectItem value="UI/UX Design">UI/UX Design</SelectItem>
+                  <SelectItem value="Blockchain / Web3">Blockchain / Web3</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label>Email</Label>
