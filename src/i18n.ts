@@ -165,6 +165,50 @@ const resources = {
           typeError: "Pick a method type",
           saved: "Saved. Founders on your active contracts have been notified.",
           defaultUpdated: "Default updated"
+        },
+        projects: {
+          post: {
+            title: "Post a project",
+            step: "Step ",
+            of: " of ",
+            engageBuilder: "How do you want to engage the builder?",
+            contractTypes: {
+              fixed: "Fixed price",
+              milestone: "Milestone",
+              hourly: "Hourly"
+            },
+            difficulties: {
+              immediate: "Immediate"
+            },
+            seniorities: {
+              junior: "Junior",
+              mid: "Mid-level",
+              senior: "Senior",
+              lead: "Lead"
+            },
+            locations: {
+              remote: "Remote",
+              hybrid: "Hybrid"
+            },
+            salary: {
+              confidential: "Keep salary confidential",
+              confidentialDesc: "Show \"Competitive Salary\" instead of range"
+            },
+            probation: {
+              none: "None"
+            },
+            visibility: {
+              public: "Public",
+              private: "Private",
+              invite: "Invite only"
+            },
+            nda: "NDA required",
+            ip: "IP ownership agreement",
+            actions: {
+              back: "Back",
+              continue: "Continue"
+            }
+          }
         }
       }
     }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, ExternalLink, Calendar, HandCoins, Briefcase } from "lucide-react";
 import { isHireToBuild } from "@/lib/engagement";
 import { toast } from "sonner";
@@ -22,22 +23,66 @@ const CRITERIA = [
 
 type ScoreState = Record<string, number>;
 
+interface Project {
+  id: string;
+  title: string;
+  founder_id: string;
+}
+
+interface Submission {
+  id: string;
+  title: string;
+  description?: string;
+  demo_url?: string;
+  live_url?: string;
+  github_url?: string;
+  video_url?: string;
+  tech_stack?: string[];
+  status: string;
+  builder_id: string;
+  score?: number | null;
+  projects?: Project;
+}
+
+interface SubmissionReviewData {
+  id: string;
+  notes?: string | null;
+  [key: string]: string | number | null | undefined;
+}
+
+interface BuilderProfile {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+}
+
 export default function SubmissionReview() {
   const { id } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [sub, setSub] = useState<any>(null);
-  const [project, setProject] = useState<any>(null);
-  const [review, setReview] = useState<any>(null);
+  const [sub, setSub] = useState<Submission | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
+  const [review, setReview] = useState<SubmissionReviewData | null>(null);
+  const [builderProfile, setBuilderProfile] = useState<BuilderProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [scores, setScores] = useState<ScoreState>({});
   const [notes, setNotes] = useState("");
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!id || !user) return;
     const { data } = await supabase.from("submissions").select("*, projects(*)").eq("id", id).maybeSingle();
     setSub(data);
     setProject(data?.projects);
+
+    if (data?.builder_id) {
+      const { data: bp } = await supabase
+        .from("builder_profiles")
+        .select("*")
+        .eq("id", data.builder_id)
+        .maybeSingle();
+      setBuilderProfile(bp);
+    }
+
     const { data: r } = await supabase
       .from("submission_reviews")
       .select("*")
@@ -45,9 +90,9 @@ export default function SubmissionReview() {
       .eq("reviewer_id", user.id)
       .maybeSingle();
     if (r) {
-      setReview(r);
+      setReview(r as SubmissionReviewData);
       const s: ScoreState = {};
-      CRITERIA.forEach((c) => { s[c.key] = (r as any)[c.key] ?? 0; });
+      CRITERIA.forEach((c) => { s[c.key] = (r as Record<string, unknown>)[c.key] as number ?? 0; });
       setScores(s);
       setNotes(r.notes ?? "");
     }
@@ -56,8 +101,9 @@ export default function SubmissionReview() {
       await supabase.from("submissions").update({ status: "under_review" }).eq("id", id);
     }
     setLoading(false);
-  };
-  useEffect(() => { load(); }, [id, user]);
+  }, [id, user]);
+
+  useEffect(() => { load(); }, [load]);
 
   const setScore = (k: string, v: number) => setScores((s) => ({ ...s, [k]: v }));
 
@@ -106,15 +152,45 @@ export default function SubmissionReview() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <Link to={`/projects/${project?.id}/leaderboard`} className="text-xs text-muted-foreground hover:text-foreground">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-5">
+          <div className="space-y-1">
+            <Link to={`/projects/${project?.id}/leaderboard`} className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 transition-colors">
               ← Back to leaderboard
             </Link>
-            <h1 className="text-2xl font-semibold mt-1">{sub.title}</h1>
-            <p className="text-sm text-muted-foreground">For project: {project?.title}</p>
+            <h1 className="text-2xl font-bold tracking-tight mt-1">{sub.title}</h1>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-sm text-muted-foreground">
+              <span>For project:</span>
+              <span className="font-medium text-foreground">{project?.title}</span>
+              {project && (
+                <Link to={`/projects/${project.id}`}>
+                  <Button variant="outline" size="sm" className="h-6 text-xs px-2.5 hover:bg-primary hover:text-primary-foreground transition-all duration-200">
+                    View Project Details
+                  </Button>
+                </Link>
+              )}
+            </div>
           </div>
-          <Badge className="capitalize">{sub.status}</Badge>
+          
+          <div className="flex items-center gap-3">
+            {builderProfile && (
+              <Link 
+                to={`/builders/${builderProfile.id}`} 
+                className="flex items-center gap-3 p-2 px-3 rounded-lg border bg-card hover:bg-muted/50 hover:border-primary/30 hover:shadow-sm transition-all duration-200 cursor-pointer"
+              >
+                <Avatar className="h-9 w-9 border border-border">
+                  <AvatarImage src={builderProfile.avatar_url} />
+                  <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
+                    {(builderProfile.full_name ?? "B").slice(0, 1).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="text-left">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Submitted By</p>
+                  <p className="text-sm font-semibold hover:underline text-foreground leading-tight">{builderProfile.full_name}</p>
+                </div>
+              </Link>
+            )}
+            <Badge className="capitalize text-xs font-semibold px-3 py-1">{sub.status}</Badge>
+          </div>
         </div>
         <Card><CardContent className="pt-6"><WorkflowStatusTracker submissionId={sub.id} /></CardContent></Card>
       </div>

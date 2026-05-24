@@ -72,6 +72,46 @@ const JOURNEY_STEPS = [
   },
 ];
 
+interface ResumeApplication {
+  id: string;
+  project_id: string;
+  builder_id: string;
+  resume_url: string;
+  file_name: string;
+  extracted_text: string | null;
+  created_at: string;
+}
+
+interface ResumeApplicationsTable {
+  select: (columns?: string) => {
+    eq: (column: string, value: string) => {
+      eq: (column: string, value: string) => {
+        order: (column: string, options?: { ascending?: boolean }) => {
+          limit: (count: number) => {
+            maybeSingle: () => Promise<{ data: ResumeApplication | null; error: { message: string } | null }>;
+          };
+        };
+      };
+      maybeSingle: () => Promise<{ data: ResumeApplication | null; error: { message: string } | null }>;
+    };
+  };
+  insert: (values: {
+    project_id: string;
+    builder_id: string;
+    resume_url: string;
+    file_name: string;
+    extracted_text: string | null;
+  }) => {
+    select: () => {
+      single: () => Promise<{ data: ResumeApplication; error: { message: string } | null }>;
+    };
+  };
+}
+
+interface SupabaseBypass {
+  from: (table: "resume_applications") => ResumeApplicationsTable;
+}
+
 export default function SubmitSolution() {
   const { id: projectId } = useParams();
   const { user } = useAuth();
@@ -80,20 +120,21 @@ export default function SubmitSolution() {
   const [journeyOpen, setJourneyOpen] = useState(false);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [resumeLoading, setResumeLoading] = useState(false);
-  const [existingResume, setExistingResume] = useState<any | null>(null);
+  const [existingResume, setExistingResume] = useState<ResumeApplication | null>(null);
 
   useEffect(() => {
     if (!user || !projectId) return;
     (async () => {
-      const { data } = await supabase
-        .from("resume_applications" as any)
+      const db = supabase as unknown as SupabaseBypass;
+      const { data } = await db
+        .from("resume_applications")
         .select("*")
         .eq("project_id", projectId)
         .eq("builder_id", user.id)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      setExistingResume(data ?? null);
+      setExistingResume(data);
     })();
   }, [user, projectId]);
   const [form, setForm] = useState({
@@ -113,8 +154,9 @@ export default function SubmitSolution() {
         .upload(path, resumeFile, { upsert: false, contentType: resumeFile.type });
       if (upErr) throw upErr;
       const extracted = await extractResumeText(resumeFile);
-      const { data: inserted, error: insErr } = await supabase
-        .from("resume_applications" as any)
+      const db = supabase as unknown as SupabaseBypass;
+      const { data: inserted, error: insErr } = await db
+        .from("resume_applications")
         .insert({
           project_id: projectId,
           builder_id: user.id,
@@ -128,8 +170,9 @@ export default function SubmitSolution() {
       toast.success("Resume submitted! You can also share your idea below.");
       setExistingResume(inserted);
       setResumeFile(null);
-    } catch (e: any) {
-      toast.error(e.message || "Failed to submit resume");
+    } catch (e: unknown) {
+      const err = e as Error;
+      toast.error(err.message || "Failed to submit resume");
     } finally {
       setResumeLoading(false);
     }
@@ -232,12 +275,6 @@ export default function SubmitSolution() {
           </CardContent>
         </Card>
       )}
-
-      <div className="flex items-center gap-3">
-        <div className="flex-1 h-px bg-border" />
-        <span className="text-xs uppercase tracking-wider text-muted-foreground">or</span>
-        <div className="flex-1 h-px bg-border" />
-      </div>
 
       <Card>
         <CardHeader><CardTitle className="text-base">Your Idea</CardTitle></CardHeader>

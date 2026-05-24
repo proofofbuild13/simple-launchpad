@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +20,7 @@ type EngagementType = "project_hire" | "hire_to_build";
 export default function PostProject() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<any>({
@@ -82,8 +84,8 @@ export default function PostProject() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Post a project</h1>
-        <p className="text-sm text-muted-foreground">Step {step + 1} of {steps.length}: {steps[step]}</p>
+        <h1 className="text-2xl font-semibold">{t('profile.projects.post.title')}</h1>
+        <p className="text-sm text-muted-foreground">{t('profile.projects.post.step')}{step + 1}{t('profile.projects.post.of')}{steps.length}: {steps.at(step)}</p>
       </div>
       <div className="flex gap-2">
         {steps.map((s, i) => (
@@ -92,7 +94,7 @@ export default function PostProject() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">{steps[step]}</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">{steps.at(step)}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {step === 0 && (
             <>
@@ -111,7 +113,7 @@ export default function PostProject() {
 
           {step === 1 && (
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">How do you want to engage the builder?</p>
+              <p className="text-sm text-muted-foreground">{t('profile.projects.post.engageBuilder')}</p>
               <EngagementCard
                 selected={form.engagement_type === "project_hire"}
                 onClick={() => set("engagement_type", "project_hire")}
@@ -152,9 +154,9 @@ export default function PostProject() {
                   <Select value={form.contract_type} onValueChange={(v) => set("contract_type", v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="fixed">Fixed price</SelectItem>
-                      <SelectItem value="milestone">Milestone</SelectItem>
-                      <SelectItem value="hourly">Hourly</SelectItem>
+                      <SelectItem value="fixed">{t('profile.projects.post.contractTypes.fixed')}</SelectItem>
+                      <SelectItem value="milestone">{t('profile.projects.post.contractTypes.milestone')}</SelectItem>
+                      <SelectItem value="hourly">{t('profile.projects.post.contractTypes.hourly')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </Field>
@@ -162,7 +164,7 @@ export default function PostProject() {
                   <Select value={form.difficulty} onValueChange={(v) => set("difficulty", v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="immediate">Immediate</SelectItem>
+                      <SelectItem value="immediate">{t('profile.projects.post.difficulties.immediate')}</SelectItem>
                       <SelectItem value="1_month">1 month</SelectItem>
                       <SelectItem value="3_month">3 months</SelectItem>
                     </SelectContent>
@@ -180,10 +182,10 @@ export default function PostProject() {
                   <Select value={form.seniority_level} onValueChange={(v) => set("seniority_level", v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="junior">Junior</SelectItem>
-                      <SelectItem value="mid">Mid-level</SelectItem>
-                      <SelectItem value="senior">Senior</SelectItem>
-                      <SelectItem value="lead">Lead</SelectItem>
+                      <SelectItem value="junior">{t('profile.projects.post.seniorities.junior')}</SelectItem>
+                      <SelectItem value="mid">{t('profile.projects.post.seniorities.mid')}</SelectItem>
+                      <SelectItem value="senior">{t('profile.projects.post.seniorities.senior')}</SelectItem>
+                      <SelectItem value="lead">{t('profile.projects.post.seniorities.lead')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </Field>
@@ -191,8 +193,8 @@ export default function PostProject() {
                   <Select value={form.location_type} onValueChange={(v) => set("location_type", v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Remote">Remote</SelectItem>
-                      <SelectItem value="Hybrid">Hybrid</SelectItem>
+                      <SelectItem value="Remote">{t('profile.projects.post.locations.remote')}</SelectItem>
+                      <SelectItem value="Hybrid">{t('profile.projects.post.locations.hybrid')}</SelectItem>
                       <SelectItem value="On-site">On-site</SelectItem>
                     </SelectContent>
                   </Select>
@@ -213,8 +215,8 @@ export default function PostProject() {
               </div>
               <div className="flex items-center justify-between p-3 border rounded-md">
                 <div>
-                  <div className="font-medium text-sm">Keep salary confidential</div>
-                  <div className="text-xs text-muted-foreground">Show "Competitive Salary" instead of range</div>
+                  <div className="font-medium text-sm">{t('profile.projects.post.salary.confidential')}</div>
+                  <div className="text-xs text-muted-foreground">{t('profile.projects.post.salary.confidentialDesc')}</div>
                 </div>
                 <Switch checked={form.ctc_confidential} onCheckedChange={(v) => set("ctc_confidential", v)} />
               </div>
@@ -223,7 +225,7 @@ export default function PostProject() {
                   <Select value={form.probation_months} onValueChange={(v) => set("probation_months", v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="0">None</SelectItem>
+                      <SelectItem value="0">{t('profile.projects.post.probation.none')}</SelectItem>
                       <SelectItem value="1">1 month</SelectItem>
                       <SelectItem value="3">3 months</SelectItem>
                       <SelectItem value="6">6 months</SelectItem>
@@ -234,7 +236,7 @@ export default function PostProject() {
                   <Select value={form.difficulty} onValueChange={(v) => set("difficulty", v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="immediate">Immediate</SelectItem>
+                      <SelectItem value="immediate">{t('profile.projects.post.difficulties.immediate')}</SelectItem>
                       <SelectItem value="1_month">1 month</SelectItem>
                       <SelectItem value="3_month">3 months</SelectItem>
                     </SelectContent>
@@ -250,19 +252,19 @@ export default function PostProject() {
                 <Select value={form.visibility} onValueChange={(v) => set("visibility", v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="public">Public</SelectItem>
-                    <SelectItem value="private">Private</SelectItem>
-                    <SelectItem value="invite">Invite only</SelectItem>
+                    <SelectItem value="public">{t('profile.projects.post.visibility.public')}</SelectItem>
+                    <SelectItem value="private">{t('profile.projects.post.visibility.private')}</SelectItem>
+                    <SelectItem value="invite">{t('profile.projects.post.visibility.invite')}</SelectItem>
                   </SelectContent>
                 </Select>
               </Field>
               <div className="flex items-center justify-between p-3 border rounded-md">
-                <div><div className="font-medium text-sm">NDA required</div><div className="text-xs text-muted-foreground">Builders must sign an NDA to view full brief</div></div>
+                <div><div className="font-medium text-sm">{t('profile.projects.post.nda')}</div><div className="text-xs text-muted-foreground">Builders must sign an NDA to view full brief</div></div>
                 <Switch checked={form.nda_required} onCheckedChange={(v) => set("nda_required", v)} />
               </div>
               {!isH2B && (
                 <div className="flex items-center justify-between p-3 border rounded-md">
-                  <div><div className="font-medium text-sm">IP ownership agreement</div><div className="text-xs text-muted-foreground">Winner assigns IP on contract</div></div>
+                  <div><div className="font-medium text-sm">{t('profile.projects.post.ip')}</div><div className="text-xs text-muted-foreground">Winner assigns IP on contract</div></div>
                   <Switch checked={form.ip_agreement} onCheckedChange={(v) => set("ip_agreement", v)} />
                 </div>
               )}
@@ -297,9 +299,9 @@ export default function PostProject() {
       </Card>
 
       <div className="flex justify-between">
-        <Button variant="outline" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>Back</Button>
+        <Button variant="outline" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>{t('profile.projects.post.actions.back')}</Button>
         {step < steps.length - 1 ? (
-          <Button onClick={() => setStep((s) => s + 1)} disabled={!canContinue()}>Continue</Button>
+          <Button onClick={() => setStep((s) => s + 1)} disabled={!canContinue()}>{t('profile.projects.post.actions.continue')}</Button>
         ) : (
           <Button onClick={submit} disabled={loading}>{loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Publish project</Button>
         )}
