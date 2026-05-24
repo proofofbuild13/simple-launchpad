@@ -1457,6 +1457,42 @@ export type Database = {
         }
         Relationships: []
       }
+      resume_applications: {
+        Row: {
+          builder_id: string
+          created_at: string
+          extracted_text: string | null
+          file_name: string | null
+          id: string
+          project_id: string
+          resume_url: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          builder_id: string
+          created_at?: string
+          extracted_text?: string | null
+          file_name?: string | null
+          id?: string
+          project_id: string
+          resume_url: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          builder_id?: string
+          created_at?: string
+          extracted_text?: string | null
+          file_name?: string | null
+          id?: string
+          project_id?: string
+          resume_url?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       saved_builders: {
         Row: {
           builder_id: string
