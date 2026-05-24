@@ -78,11 +78,41 @@ export default function SubmitSolution() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [journeyOpen, setJourneyOpen] = useState(false);
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [resumeLoading, setResumeLoading] = useState(false);
   const [form, setForm] = useState({
     title: "", description: "", demo_url: "", live_url: "",
     github_url: "", video_url: "", tech_stack: "", notes: "",
   });
   const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
+
+  const submitResume = async () => {
+    if (!user || !projectId || !resumeFile) return;
+    setResumeLoading(true);
+    try {
+      const ext = resumeFile.name.split(".").pop() || "pdf";
+      const path = `${user.id}/${projectId}-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("resumes")
+        .upload(path, resumeFile, { upsert: false, contentType: resumeFile.type });
+      if (upErr) throw upErr;
+      const extracted = await extractResumeText(resumeFile);
+      const { error: insErr } = await supabase.from("resume_applications" as any).insert({
+        project_id: projectId,
+        builder_id: user.id,
+        resume_url: path,
+        file_name: resumeFile.name,
+        extracted_text: extracted || null,
+      });
+      if (insErr) throw insErr;
+      toast.success("Resume application submitted!");
+      navigate(`/projects/${projectId}`);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to submit resume");
+    } finally {
+      setResumeLoading(false);
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
