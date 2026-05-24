@@ -283,8 +283,9 @@ export default function SubmitSolution() {
             <Field label="Idea Title"><Input required value={form.title} onChange={(e) => set("title", e.target.value)} /></Field>
             <Field label="Describe your idea"><Textarea rows={4} required value={form.description} onChange={(e) => set("description", e.target.value)} /></Field>
             
-            <div className="text-xs text-muted-foreground bg-muted/65 border border-border rounded-md p-3 leading-relaxed">
-              "Add your idea prototype link so founders can quickly understand your concept and increase your chances of getting hired"
+            <div className="text-xs text-muted-foreground bg-muted/65 border border-border rounded-md p-3 leading-relaxed space-y-1">
+              <p>"Add your idea prototype link so founders can quickly understand your concept and increase your chances of getting hired"</p>
+              <p>"add atleast any one link for proof_of_work"</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">

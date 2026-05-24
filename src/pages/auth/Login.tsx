@@ -20,13 +20,20 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
       toast.error(error.message);
       return;
     }
     toast.success("Welcome back");
+    if (!sp.get("redirect")) {
+      const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id).single();
+      if (roleData?.role === "builder") {
+        navigate("/browse");
+        return;
+      }
+    }
     navigate(redirect);
   };
 

@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { MessageButton } from "@/components/messaging/MessageButton";
 import { PublicExperience } from "@/components/profile/PublicExperience";
 import { InviteToProjectModal } from "@/components/workflow/InviteToProjectModal";
+import { ResumeViewModal } from "@/components/profile/ResumeViewModal";
 
 export default function BuilderProfile() {
   const { id } = useParams();
@@ -37,6 +38,7 @@ export default function BuilderProfile() {
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [latestResume, setLatestResume] = useState<any>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -45,14 +47,18 @@ export default function BuilderProfile() {
         .from("builder_profiles").select("*").eq("id", id).maybeSingle();
       setB(profile);
 
-      const [{ data: rev }, { data: contr }, { data: subs }] = await Promise.all([
+      const [{ data: rev }, { data: contr }, { data: subs }, { data: res }] = await Promise.all([
         supabase.from("contract_reviews").select("*").eq("reviewee_id", id).order("created_at", { ascending: false }),
         supabase.from("contracts").select("id,project_id,status,created_at").eq("builder_id", id),
         supabase.from("submissions").select("id,title,project_id,status,created_at").eq("builder_id", id).limit(6),
+        supabase.from("resume_applications").select("*").eq("builder_id", id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
       ]);
       setReviews(rev ?? []);
       setContracts(contr ?? []);
       setSubmissions(subs ?? []);
+      if (res) {
+        setLatestResume(res);
+      }
 
       if (user && role === "startup") {
         const { data: sv } = await supabase
@@ -112,6 +118,7 @@ export default function BuilderProfile() {
                 <MessageButton recipientId={b.id} variant="outline" size="sm" />
                 {role === "startup" && (
                   <>
+                    {latestResume && <ResumeViewModal resumeApp={latestResume} />}
                     <Button variant="outline" size="sm" onClick={toggleSave}>
                       {saved ? (
                         <><BookmarkCheck className="h-4 w-4 mr-2 fill-current" />Saved ✓</>

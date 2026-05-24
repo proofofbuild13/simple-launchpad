@@ -12,6 +12,7 @@ import { isHireToBuild } from "@/lib/engagement";
 import { toast } from "sonner";
 import { StarRating } from "@/components/workflow/StarRating";
 import { WorkflowStatusTracker } from "@/components/workflow/WorkflowStatusTracker";
+import { ResumeViewModal } from "@/components/profile/ResumeViewModal";
 
 const CRITERIA = [
   { key: "problem_fit", label: "Problem fit" },
@@ -64,6 +65,7 @@ export default function SubmissionReview() {
   const [project, setProject] = useState<Project | null>(null);
   const [review, setReview] = useState<SubmissionReviewData | null>(null);
   const [builderProfile, setBuilderProfile] = useState<BuilderProfile | null>(null);
+  const [resumeApp, setResumeApp] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [scores, setScores] = useState<ScoreState>({});
   const [notes, setNotes] = useState("");
@@ -81,6 +83,18 @@ export default function SubmissionReview() {
         .eq("id", data.builder_id)
         .maybeSingle();
       setBuilderProfile(bp);
+
+      if (data.project_id) {
+        const { data: res } = await supabase
+          .from("resume_applications")
+          .select("*")
+          .eq("builder_id", data.builder_id)
+          .eq("project_id", data.project_id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        setResumeApp(res);
+      }
     }
 
     const { data: r } = await supabase
@@ -211,6 +225,16 @@ export default function SubmissionReview() {
                     <span className="font-medium">{l}</span><ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
                   </a>
                 ) : null
+              )}
+              {resumeApp && (
+                <ResumeViewModal 
+                  resumeApp={resumeApp} 
+                  trigger={
+                    <button className="flex items-center justify-between p-3 border rounded-md hover:bg-muted/40 transition-colors w-full text-left">
+                      <span className="font-medium">Resume</span><ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                  } 
+                />
               )}
             </CardContent>
           </Card>

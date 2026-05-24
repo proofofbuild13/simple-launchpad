@@ -53,8 +53,8 @@ const startupItems: Item[] = [
 ];
 
 const builderItems: Item[] = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Browse Projects", url: "/browse", icon: Search },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Saved Projects", url: "/saved-projects", icon: Bookmark },
   { title: "My Submissions", url: "/submissions", icon: Send },
   { title: "Interviews", url: "/interviews", icon: Calendar },

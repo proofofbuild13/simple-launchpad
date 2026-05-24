@@ -30,7 +30,7 @@ export default function RegisterBuilder() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const [sp] = useSearchParams();
-  const redirect = sp.get("redirect") || "/dashboard";
+  const redirect = sp.get("redirect") || "/browse";
 
   const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
 
