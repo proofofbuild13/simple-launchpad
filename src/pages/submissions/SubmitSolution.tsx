@@ -178,40 +178,60 @@ export default function SubmitSolution() {
         </p>
       </div>
 
-      <Card className="border-emerald-500/30">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileText className="h-4 w-4 text-emerald-600" />
-            Apply with Resume
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Upload your resume (PDF or TXT) — we'll extract the content and share it with the founder.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <label className="flex items-center justify-center gap-2 w-full rounded-md border border-dashed border-input bg-background hover:bg-accent/40 transition-colors cursor-pointer px-4 py-6 text-sm">
-            <Upload className="h-4 w-4 text-muted-foreground" />
-            <span className="text-muted-foreground">
-              {resumeFile ? resumeFile.name : "Click to choose resume file"}
+      {existingResume ? (
+        <Card className="border-emerald-500/40 bg-emerald-500/5">
+          <CardContent className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm">
+            <div className="flex items-center gap-2 text-emerald-700">
+              <FileText className="h-4 w-4" />
+              <div>
+                <div className="font-medium">Resume already submitted</div>
+                <div className="text-xs text-emerald-700/80">
+                  {existingResume.file_name || "Your resume"} · submitted{" "}
+                  {new Date(existingResume.created_at).toLocaleDateString()}
+                </div>
+              </div>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              You can also share your idea below ↓
             </span>
-            <input
-              type="file"
-              accept=".pdf,.txt,application/pdf,text/plain"
-              className="hidden"
-              onChange={(e) => setResumeFile(e.target.files?.[0] ?? null)}
-            />
-          </label>
-          <Button
-            type="button"
-            onClick={submitResume}
-            disabled={!resumeFile || resumeLoading}
-            className="w-full bg-emerald-600 hover:bg-emerald-700"
-          >
-            {resumeLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Apply with Resume
-          </Button>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-emerald-500/30">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="h-4 w-4 text-emerald-600" />
+              Apply with Resume
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Upload your resume (PDF or TXT) — we'll extract the content and share it with the founder.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <label className="flex items-center justify-center gap-2 w-full rounded-md border border-dashed border-input bg-background hover:bg-accent/40 transition-colors cursor-pointer px-4 py-6 text-sm">
+              <Upload className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">
+                {resumeFile ? resumeFile.name : "Click to choose resume file"}
+              </span>
+              <input
+                type="file"
+                accept=".pdf,.txt,application/pdf,text/plain"
+                className="hidden"
+                onChange={(e) => setResumeFile(e.target.files?.[0] ?? null)}
+              />
+            </label>
+            <Button
+              type="button"
+              onClick={submitResume}
+              disabled={!resumeFile || resumeLoading}
+              className="w-full bg-emerald-600 hover:bg-emerald-700"
+            >
+              {resumeLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Apply with Resume
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="flex items-center gap-3">
         <div className="flex-1 h-px bg-border" />
