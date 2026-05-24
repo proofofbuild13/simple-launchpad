@@ -162,9 +162,9 @@ export default function PostProject() {
                   <Select value={form.difficulty} onValueChange={(v) => set("difficulty", v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="easy">Easy</SelectItem>
-                      <SelectItem value="mid">Mid</SelectItem>
-                      <SelectItem value="hard">Hard</SelectItem>
+                      <SelectItem value="immediate">Immediate</SelectItem>
+                      <SelectItem value="1_month">1 month</SelectItem>
+                      <SelectItem value="3_month">3 months</SelectItem>
                     </SelectContent>
                   </Select>
                 </Field>
