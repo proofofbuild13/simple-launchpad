@@ -23,7 +23,11 @@ import {
   PartyPopper,
   ArrowRight,
   Sparkles,
+  FileText,
+  Upload,
+  Quote,
 } from "lucide-react";
+import { extractResumeText } from "@/lib/resumeExtract";
 
 const JOURNEY_STEPS = [
   {
@@ -74,11 +78,41 @@ export default function SubmitSolution() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [journeyOpen, setJourneyOpen] = useState(false);
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [resumeLoading, setResumeLoading] = useState(false);
   const [form, setForm] = useState({
     title: "", description: "", demo_url: "", live_url: "",
     github_url: "", video_url: "", tech_stack: "", notes: "",
   });
   const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
+
+  const submitResume = async () => {
+    if (!user || !projectId || !resumeFile) return;
+    setResumeLoading(true);
+    try {
+      const ext = resumeFile.name.split(".").pop() || "pdf";
+      const path = `${user.id}/${projectId}-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("resumes")
+        .upload(path, resumeFile, { upsert: false, contentType: resumeFile.type });
+      if (upErr) throw upErr;
+      const extracted = await extractResumeText(resumeFile);
+      const { error: insErr } = await supabase.from("resume_applications" as any).insert({
+        project_id: projectId,
+        builder_id: user.id,
+        resume_url: path,
+        file_name: resumeFile.name,
+        extracted_text: extracted || null,
+      });
+      if (insErr) throw insErr;
+      toast.success("Resume application submitted!");
+      navigate(`/projects/${projectId}`);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to submit resume");
+    } finally {
+      setResumeLoading(false);
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,6 +148,54 @@ export default function SubmitSolution() {
           <Sparkles className="h-3.5 w-3.5" />
           See how it works
         </Button>
+      </div>
+
+      <div className="flex items-start gap-3 rounded-md border border-primary/20 bg-primary/5 px-4 py-3">
+        <Quote className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+        <p className="text-sm italic text-foreground/80">
+          "Show the idea or proof of work to get fast hiring."
+        </p>
+      </div>
+
+      <Card className="border-emerald-500/30">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileText className="h-4 w-4 text-emerald-600" />
+            Apply with Resume
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Upload your resume (PDF or TXT) — we'll extract the content and share it with the founder.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <label className="flex items-center justify-center gap-2 w-full rounded-md border border-dashed border-input bg-background hover:bg-accent/40 transition-colors cursor-pointer px-4 py-6 text-sm">
+            <Upload className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">
+              {resumeFile ? resumeFile.name : "Click to choose resume file"}
+            </span>
+            <input
+              type="file"
+              accept=".pdf,.txt,application/pdf,text/plain"
+              className="hidden"
+              onChange={(e) => setResumeFile(e.target.files?.[0] ?? null)}
+            />
+          </label>
+          <Button
+            type="button"
+            onClick={submitResume}
+            disabled={!resumeFile || resumeLoading}
+            className="w-full bg-emerald-600 hover:bg-emerald-700"
+          >
+            {resumeLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Apply with Resume
+          </Button>
+        </CardContent>
+      </Card>
+
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-px bg-border" />
+        <span className="text-xs uppercase tracking-wider text-muted-foreground">or</span>
+        <div className="flex-1 h-px bg-border" />
       </div>
 
       <Card>
