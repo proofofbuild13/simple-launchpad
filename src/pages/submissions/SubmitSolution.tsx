@@ -113,16 +113,21 @@ export default function SubmitSolution() {
         .upload(path, resumeFile, { upsert: false, contentType: resumeFile.type });
       if (upErr) throw upErr;
       const extracted = await extractResumeText(resumeFile);
-      const { error: insErr } = await supabase.from("resume_applications" as any).insert({
-        project_id: projectId,
-        builder_id: user.id,
-        resume_url: path,
-        file_name: resumeFile.name,
-        extracted_text: extracted || null,
-      });
+      const { data: inserted, error: insErr } = await supabase
+        .from("resume_applications" as any)
+        .insert({
+          project_id: projectId,
+          builder_id: user.id,
+          resume_url: path,
+          file_name: resumeFile.name,
+          extracted_text: extracted || null,
+        })
+        .select()
+        .single();
       if (insErr) throw insErr;
-      toast.success("Resume application submitted!");
-      navigate(`/projects/${projectId}`);
+      toast.success("Resume submitted! You can also share your idea below.");
+      setExistingResume(inserted);
+      setResumeFile(null);
     } catch (e: any) {
       toast.error(e.message || "Failed to submit resume");
     } finally {
