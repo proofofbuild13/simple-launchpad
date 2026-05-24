@@ -150,6 +150,54 @@ export default function SubmitSolution() {
         </Button>
       </div>
 
+      <div className="flex items-start gap-3 rounded-md border border-primary/20 bg-primary/5 px-4 py-3">
+        <Quote className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+        <p className="text-sm italic text-foreground/80">
+          "Show the idea or proof of work to get fast hiring."
+        </p>
+      </div>
+
+      <Card className="border-emerald-500/30">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileText className="h-4 w-4 text-emerald-600" />
+            Apply with Resume
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Upload your resume (PDF or TXT) — we'll extract the content and share it with the founder.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <label className="flex items-center justify-center gap-2 w-full rounded-md border border-dashed border-input bg-background hover:bg-accent/40 transition-colors cursor-pointer px-4 py-6 text-sm">
+            <Upload className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">
+              {resumeFile ? resumeFile.name : "Click to choose resume file"}
+            </span>
+            <input
+              type="file"
+              accept=".pdf,.txt,application/pdf,text/plain"
+              className="hidden"
+              onChange={(e) => setResumeFile(e.target.files?.[0] ?? null)}
+            />
+          </label>
+          <Button
+            type="button"
+            onClick={submitResume}
+            disabled={!resumeFile || resumeLoading}
+            className="w-full bg-emerald-600 hover:bg-emerald-700"
+          >
+            {resumeLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Apply with Resume
+          </Button>
+        </CardContent>
+      </Card>
+
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-px bg-border" />
+        <span className="text-xs uppercase tracking-wider text-muted-foreground">or</span>
+        <div className="flex-1 h-px bg-border" />
+      </div>
+
       <Card>
         <CardHeader><CardTitle className="text-base">Your Idea</CardTitle></CardHeader>
         <CardContent>
