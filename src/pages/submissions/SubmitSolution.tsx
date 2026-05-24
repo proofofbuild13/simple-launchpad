@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -80,6 +80,22 @@ export default function SubmitSolution() {
   const [journeyOpen, setJourneyOpen] = useState(false);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [resumeLoading, setResumeLoading] = useState(false);
+  const [existingResume, setExistingResume] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (!user || !projectId) return;
+    (async () => {
+      const { data } = await supabase
+        .from("resume_applications" as any)
+        .select("*")
+        .eq("project_id", projectId)
+        .eq("builder_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setExistingResume(data ?? null);
+    })();
+  }, [user, projectId]);
   const [form, setForm] = useState({
     title: "", description: "", demo_url: "", live_url: "",
     github_url: "", video_url: "", tech_stack: "", notes: "",
@@ -97,16 +113,21 @@ export default function SubmitSolution() {
         .upload(path, resumeFile, { upsert: false, contentType: resumeFile.type });
       if (upErr) throw upErr;
       const extracted = await extractResumeText(resumeFile);
-      const { error: insErr } = await supabase.from("resume_applications" as any).insert({
-        project_id: projectId,
-        builder_id: user.id,
-        resume_url: path,
-        file_name: resumeFile.name,
-        extracted_text: extracted || null,
-      });
+      const { data: inserted, error: insErr } = await supabase
+        .from("resume_applications" as any)
+        .insert({
+          project_id: projectId,
+          builder_id: user.id,
+          resume_url: path,
+          file_name: resumeFile.name,
+          extracted_text: extracted || null,
+        })
+        .select()
+        .single();
       if (insErr) throw insErr;
-      toast.success("Resume application submitted!");
-      navigate(`/projects/${projectId}`);
+      toast.success("Resume submitted! You can also share your idea below.");
+      setExistingResume(inserted);
+      setResumeFile(null);
     } catch (e: any) {
       toast.error(e.message || "Failed to submit resume");
     } finally {
@@ -157,40 +178,60 @@ export default function SubmitSolution() {
         </p>
       </div>
 
-      <Card className="border-emerald-500/30">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileText className="h-4 w-4 text-emerald-600" />
-            Apply with Resume
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Upload your resume (PDF or TXT) — we'll extract the content and share it with the founder.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <label className="flex items-center justify-center gap-2 w-full rounded-md border border-dashed border-input bg-background hover:bg-accent/40 transition-colors cursor-pointer px-4 py-6 text-sm">
-            <Upload className="h-4 w-4 text-muted-foreground" />
-            <span className="text-muted-foreground">
-              {resumeFile ? resumeFile.name : "Click to choose resume file"}
+      {existingResume ? (
+        <Card className="border-emerald-500/40 bg-emerald-500/5">
+          <CardContent className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm">
+            <div className="flex items-center gap-2 text-emerald-700">
+              <FileText className="h-4 w-4" />
+              <div>
+                <div className="font-medium">Resume already submitted</div>
+                <div className="text-xs text-emerald-700/80">
+                  {existingResume.file_name || "Your resume"} · submitted{" "}
+                  {new Date(existingResume.created_at).toLocaleDateString()}
+                </div>
+              </div>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              You can also share your idea below ↓
             </span>
-            <input
-              type="file"
-              accept=".pdf,.txt,application/pdf,text/plain"
-              className="hidden"
-              onChange={(e) => setResumeFile(e.target.files?.[0] ?? null)}
-            />
-          </label>
-          <Button
-            type="button"
-            onClick={submitResume}
-            disabled={!resumeFile || resumeLoading}
-            className="w-full bg-emerald-600 hover:bg-emerald-700"
-          >
-            {resumeLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Apply with Resume
-          </Button>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-emerald-500/30">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="h-4 w-4 text-emerald-600" />
+              Apply with Resume
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Upload your resume (PDF or TXT) — we'll extract the content and share it with the founder.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <label className="flex items-center justify-center gap-2 w-full rounded-md border border-dashed border-input bg-background hover:bg-accent/40 transition-colors cursor-pointer px-4 py-6 text-sm">
+              <Upload className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">
+                {resumeFile ? resumeFile.name : "Click to choose resume file"}
+              </span>
+              <input
+                type="file"
+                accept=".pdf,.txt,application/pdf,text/plain"
+                className="hidden"
+                onChange={(e) => setResumeFile(e.target.files?.[0] ?? null)}
+              />
+            </label>
+            <Button
+              type="button"
+              onClick={submitResume}
+              disabled={!resumeFile || resumeLoading}
+              className="w-full bg-emerald-600 hover:bg-emerald-700"
+            >
+              {resumeLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Apply with Resume
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="flex items-center gap-3">
         <div className="flex-1 h-px bg-border" />
