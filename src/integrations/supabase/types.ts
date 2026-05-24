@@ -67,6 +67,7 @@ export type Database = {
           id: string
           linkedin: string | null
           location: string | null
+          open_to_full_time: boolean
           phone: string | null
           portfolio: string | null
           rating: number | null
@@ -95,6 +96,7 @@ export type Database = {
           id: string
           linkedin?: string | null
           location?: string | null
+          open_to_full_time?: boolean
           phone?: string | null
           portfolio?: string | null
           rating?: number | null
@@ -123,6 +125,7 @@ export type Database = {
           id?: string
           linkedin?: string | null
           location?: string | null
+          open_to_full_time?: boolean
           phone?: string | null
           portfolio?: string | null
           rating?: number | null
@@ -173,6 +176,7 @@ export type Database = {
           commission_amount: number
           commission_rate: number
           created_at: string
+          currency: string
           due_date: string
           id: string
           invoice_number: string
@@ -185,6 +189,7 @@ export type Database = {
           commission_amount: number
           commission_rate?: number
           created_at?: string
+          currency?: string
           due_date: string
           id?: string
           invoice_number: string
@@ -197,6 +202,7 @@ export type Database = {
           commission_amount?: number
           commission_rate?: number
           created_at?: string
+          currency?: string
           due_date?: string
           id?: string
           invoice_number?: string
@@ -211,6 +217,7 @@ export type Database = {
           admin_notes: string | null
           amount: number
           created_at: string
+          currency: string
           id: string
           invoice_id: string
           payment_provider: string | null
@@ -228,6 +235,7 @@ export type Database = {
           admin_notes?: string | null
           amount: number
           created_at?: string
+          currency?: string
           id?: string
           invoice_id: string
           payment_provider?: string | null
@@ -245,6 +253,7 @@ export type Database = {
           admin_notes?: string | null
           amount?: number
           created_at?: string
+          currency?: string
           id?: string
           invoice_id?: string
           payment_provider?: string | null
@@ -265,6 +274,7 @@ export type Database = {
           amount: number
           contract_id: string
           created_at: string
+          currency: string
           description: string | null
           due_date: string | null
           id: string
@@ -277,6 +287,7 @@ export type Database = {
           amount?: number
           contract_id: string
           created_at?: string
+          currency?: string
           description?: string | null
           due_date?: string | null
           id?: string
@@ -289,6 +300,7 @@ export type Database = {
           amount?: number
           contract_id?: string
           created_at?: string
+          currency?: string
           description?: string | null
           due_date?: string | null
           id?: string
@@ -360,6 +372,7 @@ export type Database = {
         Row: {
           builder_id: string
           created_at: string
+          currency: string
           document_url: string | null
           end_date: string | null
           escrow_amount: number | null
@@ -380,6 +393,7 @@ export type Database = {
         Insert: {
           builder_id: string
           created_at?: string
+          currency?: string
           document_url?: string | null
           end_date?: string | null
           escrow_amount?: number | null
@@ -400,6 +414,7 @@ export type Database = {
         Update: {
           builder_id?: string
           created_at?: string
+          currency?: string
           document_url?: string | null
           end_date?: string | null
           escrow_amount?: number | null
@@ -608,6 +623,87 @@ export type Database = {
         }
         Relationships: []
       }
+      employment_offers: {
+        Row: {
+          annual_ctc: number
+          builder_id: string
+          created_at: string
+          custom_notes: string | null
+          expires_at: string
+          id: string
+          job_title: string
+          offer_letter_url: string | null
+          office_location: string | null
+          probation_months: number | null
+          project_id: string
+          reporting_manager: string | null
+          responded_at: string | null
+          sent_at: string | null
+          start_date: string
+          startup_id: string
+          status: string
+          submission_id: string
+          work_location: string
+        }
+        Insert: {
+          annual_ctc: number
+          builder_id: string
+          created_at?: string
+          custom_notes?: string | null
+          expires_at?: string
+          id?: string
+          job_title: string
+          offer_letter_url?: string | null
+          office_location?: string | null
+          probation_months?: number | null
+          project_id: string
+          reporting_manager?: string | null
+          responded_at?: string | null
+          sent_at?: string | null
+          start_date: string
+          startup_id: string
+          status?: string
+          submission_id: string
+          work_location: string
+        }
+        Update: {
+          annual_ctc?: number
+          builder_id?: string
+          created_at?: string
+          custom_notes?: string | null
+          expires_at?: string
+          id?: string
+          job_title?: string
+          offer_letter_url?: string | null
+          office_location?: string | null
+          probation_months?: number | null
+          project_id?: string
+          reporting_manager?: string | null
+          responded_at?: string | null
+          sent_at?: string | null
+          start_date?: string
+          startup_id?: string
+          status?: string
+          submission_id?: string
+          work_location?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employment_offers_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employment_offers_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       experiences: {
         Row: {
           achievements: string | null
@@ -737,6 +833,13 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "interviews_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "submissions"
+            referencedColumns: ["id"]
+          },
         ]
       }
       messages: {
@@ -815,8 +918,13 @@ export type Database = {
           body: string | null
           created_at: string
           id: string
+          is_read: boolean
           link: string | null
+          notification_type: string | null
           read: boolean | null
+          read_at: string | null
+          related_entity_id: string | null
+          related_entity_type: string | null
           title: string
           type: string
           user_id: string
@@ -825,8 +933,13 @@ export type Database = {
           body?: string | null
           created_at?: string
           id?: string
+          is_read?: boolean
           link?: string | null
+          notification_type?: string | null
           read?: boolean | null
+          read_at?: string | null
+          related_entity_id?: string | null
+          related_entity_type?: string | null
           title: string
           type: string
           user_id: string
@@ -835,8 +948,13 @@ export type Database = {
           body?: string | null
           created_at?: string
           id?: string
+          is_read?: boolean
           link?: string | null
+          notification_type?: string | null
           read?: boolean | null
+          read_at?: string | null
+          related_entity_id?: string | null
+          related_entity_type?: string | null
           title?: string
           type?: string
           user_id?: string
@@ -884,6 +1002,7 @@ export type Database = {
           builder_id: string
           compensation: number | null
           created_at: string
+          currency: string
           custom_terms: string | null
           duration: string | null
           expires_at: string | null
@@ -903,6 +1022,7 @@ export type Database = {
           builder_id: string
           compensation?: number | null
           created_at?: string
+          currency?: string
           custom_terms?: string | null
           duration?: string | null
           expires_at?: string | null
@@ -922,6 +1042,7 @@ export type Database = {
           builder_id?: string
           compensation?: number | null
           created_at?: string
+          currency?: string
           custom_terms?: string | null
           duration?: string | null
           expires_at?: string | null
@@ -1006,6 +1127,7 @@ export type Database = {
           confirmed_at: string | null
           contract_id: string
           created_at: string
+          currency: string
           declared_amount: number
           declared_at: string
           id: string
@@ -1026,6 +1148,7 @@ export type Database = {
           confirmed_at?: string | null
           contract_id: string
           created_at?: string
+          currency?: string
           declared_amount: number
           declared_at?: string
           id?: string
@@ -1046,6 +1169,7 @@ export type Database = {
           confirmed_at?: string | null
           contract_id?: string
           created_at?: string
+          currency?: string
           declared_amount?: number
           declared_at?: string
           id?: string
@@ -1066,6 +1190,7 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
+          currency: string
           id: string
           milestone_id: string
           payment_provider_id: string | null
@@ -1075,6 +1200,7 @@ export type Database = {
         Insert: {
           amount: number
           created_at?: string
+          currency?: string
           id?: string
           milestone_id: string
           payment_provider_id?: string | null
@@ -1084,6 +1210,7 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string
+          currency?: string
           id?: string
           milestone_id?: string
           payment_provider_id?: string | null
@@ -1091,6 +1218,71 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      placement_fees: {
+        Row: {
+          admin_verified_at: string | null
+          annual_ctc: number
+          builder_id: string
+          created_at: string
+          due_date: string
+          employment_offer_id: string
+          fee_amount: number
+          fee_percent: number | null
+          fee_type: string
+          id: string
+          invoice_number: string
+          paid_at: string | null
+          screenshot_url: string | null
+          startup_id: string
+          status: string
+          transaction_ref: string | null
+        }
+        Insert: {
+          admin_verified_at?: string | null
+          annual_ctc: number
+          builder_id: string
+          created_at?: string
+          due_date: string
+          employment_offer_id: string
+          fee_amount: number
+          fee_percent?: number | null
+          fee_type?: string
+          id?: string
+          invoice_number: string
+          paid_at?: string | null
+          screenshot_url?: string | null
+          startup_id: string
+          status?: string
+          transaction_ref?: string | null
+        }
+        Update: {
+          admin_verified_at?: string | null
+          annual_ctc?: number
+          builder_id?: string
+          created_at?: string
+          due_date?: string
+          employment_offer_id?: string
+          fee_amount?: number
+          fee_percent?: number | null
+          fee_type?: string
+          id?: string
+          invoice_number?: string
+          paid_at?: string | null
+          screenshot_url?: string | null
+          startup_id?: string
+          status?: string
+          transaction_ref?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "placement_fees_employment_offer_id_fkey"
+            columns: ["employment_offer_id"]
+            isOneToOne: false
+            referencedRelation: "employment_offers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -1116,6 +1308,47 @@ export type Database = {
         }
         Relationships: []
       }
+      project_invitations: {
+        Row: {
+          builder_id: string
+          created_at: string
+          founder_id: string
+          id: string
+          message: string | null
+          project_id: string
+          responded_at: string | null
+          status: string
+        }
+        Insert: {
+          builder_id: string
+          created_at?: string
+          founder_id: string
+          id?: string
+          message?: string | null
+          project_id: string
+          responded_at?: string | null
+          status?: string
+        }
+        Update: {
+          builder_id?: string
+          created_at?: string
+          founder_id?: string
+          id?: string
+          message?: string | null
+          project_id?: string
+          responded_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_invitations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           archived_at: string | null
@@ -1123,17 +1356,27 @@ export type Database = {
           category: string | null
           contract_type: string | null
           created_at: string
+          ctc_confidential: boolean | null
+          ctc_max: number | null
+          ctc_min: number | null
+          currency: string
           deadline: string | null
           deliverables: string | null
           description: string | null
           difficulty: string | null
+          engagement_type: Database["public"]["Enums"]["engagement_type"]
           founder_id: string
           hire_locked: boolean
           id: string
           ip_agreement: boolean | null
+          job_title: string | null
+          location_type: string | null
           max_hires: number | null
           nda_required: boolean | null
+          office_location: string | null
+          probation_months: number | null
           requirements: string | null
+          seniority_level: string | null
           short_description: string | null
           status: string
           tags: string[] | null
@@ -1148,17 +1391,27 @@ export type Database = {
           category?: string | null
           contract_type?: string | null
           created_at?: string
+          ctc_confidential?: boolean | null
+          ctc_max?: number | null
+          ctc_min?: number | null
+          currency?: string
           deadline?: string | null
           deliverables?: string | null
           description?: string | null
           difficulty?: string | null
+          engagement_type?: Database["public"]["Enums"]["engagement_type"]
           founder_id: string
           hire_locked?: boolean
           id?: string
           ip_agreement?: boolean | null
+          job_title?: string | null
+          location_type?: string | null
           max_hires?: number | null
           nda_required?: boolean | null
+          office_location?: string | null
+          probation_months?: number | null
           requirements?: string | null
+          seniority_level?: string | null
           short_description?: string | null
           status?: string
           tags?: string[] | null
@@ -1173,17 +1426,27 @@ export type Database = {
           category?: string | null
           contract_type?: string | null
           created_at?: string
+          ctc_confidential?: boolean | null
+          ctc_max?: number | null
+          ctc_min?: number | null
+          currency?: string
           deadline?: string | null
           deliverables?: string | null
           description?: string | null
           difficulty?: string | null
+          engagement_type?: Database["public"]["Enums"]["engagement_type"]
           founder_id?: string
           hire_locked?: boolean
           id?: string
           ip_agreement?: boolean | null
+          job_title?: string | null
+          location_type?: string | null
           max_hires?: number | null
           nda_required?: boolean | null
+          office_location?: string | null
+          probation_months?: number | null
           requirements?: string | null
+          seniority_level?: string | null
           short_description?: string | null
           status?: string
           tags?: string[] | null
@@ -1193,47 +1456,6 @@ export type Database = {
           visibility?: string
         }
         Relationships: []
-      }
-      project_invitations: {
-        Row: {
-          id: string
-          project_id: string
-          founder_id: string
-          builder_id: string
-          message: string | null
-          status: string
-          created_at: string
-          responded_at: string | null
-        }
-        Insert: {
-          id?: string
-          project_id: string
-          founder_id: string
-          builder_id: string
-          message?: string | null
-          status?: string
-          created_at?: string
-          responded_at?: string | null
-        }
-        Update: {
-          id?: string
-          project_id?: string
-          founder_id?: string
-          builder_id?: string
-          message?: string | null
-          status?: string
-          created_at?: string
-          responded_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_invitations_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       saved_builders: {
         Row: {
@@ -1409,7 +1631,9 @@ export type Database = {
           id: string
           live_url: string | null
           notes: string | null
+          portfolio_url: string | null
           project_id: string
+          resume_url: string | null
           score: number | null
           status: string
           tech_stack: string[] | null
@@ -1426,7 +1650,9 @@ export type Database = {
           id?: string
           live_url?: string | null
           notes?: string | null
+          portfolio_url?: string | null
           project_id: string
+          resume_url?: string | null
           score?: number | null
           status?: string
           tech_stack?: string[] | null
@@ -1443,7 +1669,9 @@ export type Database = {
           id?: string
           live_url?: string | null
           notes?: string | null
+          portfolio_url?: string | null
           project_id?: string
+          resume_url?: string | null
           score?: number | null
           status?: string
           tech_stack?: string[] | null
@@ -1569,6 +1797,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "startup" | "builder" | "super_admin"
+      engagement_type: "project_hire" | "hire_to_build"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1697,6 +1926,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "startup", "builder", "super_admin"],
+      engagement_type: ["project_hire", "hire_to_build"],
     },
   },
 } as const
