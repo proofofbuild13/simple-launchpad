@@ -23,7 +23,11 @@ import {
   PartyPopper,
   ArrowRight,
   Sparkles,
+  FileText,
+  Upload,
+  Quote,
 } from "lucide-react";
+import { extractResumeText } from "@/lib/resumeExtract";
 
 const JOURNEY_STEPS = [
   {
