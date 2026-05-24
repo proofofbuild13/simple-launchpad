@@ -80,6 +80,22 @@ export default function SubmitSolution() {
   const [journeyOpen, setJourneyOpen] = useState(false);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [resumeLoading, setResumeLoading] = useState(false);
+  const [existingResume, setExistingResume] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (!user || !projectId) return;
+    (async () => {
+      const { data } = await supabase
+        .from("resume_applications" as any)
+        .select("*")
+        .eq("project_id", projectId)
+        .eq("builder_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setExistingResume(data ?? null);
+    })();
+  }, [user, projectId]);
   const [form, setForm] = useState({
     title: "", description: "", demo_url: "", live_url: "",
     github_url: "", video_url: "", tech_stack: "", notes: "",
