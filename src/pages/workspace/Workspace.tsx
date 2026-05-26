@@ -108,6 +108,14 @@ export default function Workspace() {
   const isFounder = user?.id === contract?.founder_id;
   const isBuilder = user?.id === contract?.builder_id;
 
+  const notifyOther = async (type: string, title: string, body: string) => {
+    if (!contract || !user) return;
+    const otherId = user.id === contract.founder_id ? contract.builder_id : contract.founder_id;
+    await supabase.from("notifications").insert({
+      user_id: otherId, type, title, body, link: `/workspace/${contract.id}`,
+    });
+  };
+
   const submitDeliverable = async (m: any) => {
     if (!user) return;
     const revisions = (deliverables[m.id] ?? []).length + 1;
@@ -115,6 +123,7 @@ export default function Workspace() {
       toast.error("Max revisions reached — opening dispute");
       await supabase.from("disputes").insert({ contract_id: contract.id, milestone_id: m.id, raised_by: user.id, reason: "Max revisions exceeded" });
       await supabase.from("contract_milestones").update({ status: "dispute" }).eq("id", m.id);
+      await notifyOther("milestone_dispute", "Milestone in dispute", `Max revisions exceeded on "${m.title}".`);
       load(); return;
     }
     await supabase.from("deliverables").insert({
@@ -126,6 +135,7 @@ export default function Workspace() {
       revision_number: revisions,
     });
     await supabase.from("contract_milestones").update({ status: "submitted" }).eq("id", m.id);
+    await notifyOther("deliverable_submitted", "New deliverable submitted", `Builder submitted "${m.title}" (revision ${revisions}).`);
     setDelForm({ demo_url: "", write_up: "", file_urls: "" });
     setActive(null);
     toast.success("Deliverable submitted");
@@ -134,6 +144,7 @@ export default function Workspace() {
 
   const approve = async (m: any) => {
     await supabase.from("contract_milestones").update({ status: "approved" }).eq("id", m.id);
+    await notifyOther("milestone_approved", "Milestone approved", `"${m.title}" was approved. Awaiting payment.`);
     toast.success("Approved — record the payment");
     setRecordMilestone(m);
     setRecordOpen(true);
@@ -143,6 +154,7 @@ export default function Workspace() {
   const requestRevision = async (m: any) => {
     if (!revReason) return toast.error("Add a reason");
     await supabase.from("contract_milestones").update({ status: "revision_requested" }).eq("id", m.id);
+    await notifyOther("revision_requested", "Revision requested", `On "${m.title}": ${revReason}`);
     setRevReason(""); setActive(null);
     toast.success("Revision requested");
     load();
@@ -152,6 +164,7 @@ export default function Workspace() {
     if (!user || !disputeReason) return;
     await supabase.from("disputes").insert({ contract_id: contract.id, milestone_id: m.id, raised_by: user.id, reason: disputeReason });
     await supabase.from("contract_milestones").update({ status: "dispute" }).eq("id", m.id);
+    await notifyOther("milestone_dispute", "Dispute opened", `On "${m.title}": ${disputeReason}`);
     setDisputeReason(""); setActive(null);
     toast.success("Dispute opened");
     load();
@@ -179,7 +192,11 @@ export default function Workspace() {
         </div>
       </div>
 
-      <Card><CardContent className="pt-6"><WorkflowStepper current={4} /></CardContent></Card>
+      <Card><CardContent className="pt-6"><WorkflowStepper current={
+        contract.status === "contract_completed" ? 5
+        : (contract.status === "contract_active" || contract.status === "active") ? 4
+        : 3
+      } /></CardContent></Card>
 
       {/* Kanban board — horizontally scrollable on mobile */}
       <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0 pb-2">
@@ -198,6 +215,13 @@ export default function Workspace() {
                         <div className="text-sm font-medium">{m.title}</div>
                         <div className="text-xs text-muted-foreground">${m.amount}</div>
                         <Badge className={`${STATUS_COLOR[m.status]} text-[10px]`} variant="outline">{m.status?.replace(/_/g, " ")}</Badge>
+                        {m.status === "approved" && paymentRecords[m.id] && (
+                          <div className="text-[10px] text-muted-foreground pt-1">
+                            {paymentRecords[m.id].status === "declared" && "Awaiting builder confirmation"}
+                            {paymentRecords[m.id].status === "confirmed" && "Awaiting admin verification"}
+                            {paymentRecords[m.id].status === "disputed" && "Payment disputed"}
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   </button>

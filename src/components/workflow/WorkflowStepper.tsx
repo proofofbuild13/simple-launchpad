@@ -7,6 +7,7 @@ const STAGES = [
   "Offer",
   "Contract",
   "Active Work",
+  "Completed",
 ];
 
 export function WorkflowStepper({ current }: { current: number }) {

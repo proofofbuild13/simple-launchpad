@@ -20,7 +20,7 @@ export default function Workspaces() {
         .from("contracts")
         .select("*, projects(title)")
         .or(`founder_id.eq.${user.id},builder_id.eq.${user.id}`)
-        .in("status", ["contract_active", "active", "partially_signed", "contract_completed"])
+        .in("status", ["contract_active", "active", "contract_completed"])
         .order("updated_at", { ascending: false });
       setContracts(data ?? []);
       setLoading(false);

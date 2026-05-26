@@ -123,7 +123,12 @@ async function resolveStatus(opts: {
     if (data) {
       contractId = data.contract_id;
       if (data.status === "fully_settled") return "fully_settled";
-      if (data.status === "paid") return "payment_pending";
+      if (data.status === "approved") {
+        const { data: pr } = await supabase.from("payment_records")
+          .select("status").eq("milestone_id", milestoneId)
+          .order("created_at", { ascending: false }).limit(1).maybeSingle();
+        if (pr && ["declared", "confirmed", "disputed"].includes(pr.status)) return "payment_pending";
+      }
       if (data.status === "submitted") return "milestone_in_progress";
     }
   }
@@ -157,9 +162,15 @@ async function resolveStatus(opts: {
       if (c.status === "contract_active" || c.status === "active") {
         // Look at milestones for finer detail
         const { data: ms } = await supabase.from("contract_milestones")
-          .select("status").eq("contract_id", contractId);
-        if (ms?.some((m) => m.status === "fully_settled")) return "fully_settled";
-        if (ms?.some((m) => m.status === "paid")) return "payment_pending";
+          .select("id, status").eq("contract_id", contractId);
+        const allSettled = ms && ms.length > 0 && ms.every((m) => m.status === "fully_settled");
+        if (allSettled) return "fully_settled";
+        const approvedIds = (ms ?? []).filter((m) => m.status === "approved").map((m) => m.id);
+        if (approvedIds.length) {
+          const { data: prs } = await supabase.from("payment_records")
+            .select("status").in("milestone_id", approvedIds);
+          if (prs?.some((p) => ["declared", "confirmed", "disputed"].includes(p.status))) return "payment_pending";
+        }
         return "milestone_in_progress";
       }
       if (c.status === "partially_signed") return "partially_signed";
