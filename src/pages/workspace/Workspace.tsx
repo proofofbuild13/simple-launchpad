@@ -215,6 +215,13 @@ export default function Workspace() {
                         <div className="text-sm font-medium">{m.title}</div>
                         <div className="text-xs text-muted-foreground">${m.amount}</div>
                         <Badge className={`${STATUS_COLOR[m.status]} text-[10px]`} variant="outline">{m.status?.replace(/_/g, " ")}</Badge>
+                        {m.status === "approved" && paymentRecords[m.id] && (
+                          <div className="text-[10px] text-muted-foreground pt-1">
+                            {paymentRecords[m.id].status === "declared" && "Awaiting builder confirmation"}
+                            {paymentRecords[m.id].status === "confirmed" && "Awaiting admin verification"}
+                            {paymentRecords[m.id].status === "disputed" && "Payment disputed"}
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   </button>
