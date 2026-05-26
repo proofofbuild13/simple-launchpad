@@ -90,11 +90,14 @@ export default function ContractDetail() {
     await supabase.from("contract_signatures").insert({
       contract_id: id, signed_by: user.id, role,
     });
-    const willBeBoth = (role === "founder" ? builderSigned : founderSigned);
-    const fullySigned = willBeBoth;
+    const fullySigned = role === "founder" ? builderSigned : founderSigned;
+    // Re-fetch contract to read the freshest escrow_funded value
+    const { data: fresh } = await supabase.from("contracts")
+      .select("escrow_funded").eq("id", id).maybeSingle();
+    const funded = !!fresh?.escrow_funded;
     if (fullySigned) {
       await supabase.from("contracts")
-        .update({ status: c.escrow_funded ? "contract_active" : "partially_signed" })
+        .update({ status: funded ? "contract_active" : "partially_signed" })
         .eq("id", id);
     } else {
       await supabase.from("contracts").update({ status: "partially_signed" }).eq("id", id);
@@ -103,9 +106,9 @@ export default function ContractDetail() {
     const otherId = role === "founder" ? c.builder_id : c.founder_id;
     await supabase.from("notifications").insert({
       user_id: otherId,
-      type: fullySigned && c.escrow_funded ? "contract_active" : "contract_signed",
-      title: fullySigned && c.escrow_funded ? "Contract is now active" : `${role === "founder" ? "Founder" : "Builder"} signed the contract`,
-      body: fullySigned && c.escrow_funded ? "Open the workspace to start collaborating." : "Awaiting the other party's signature.",
+      type: fullySigned && funded ? "contract_active" : "contract_signed",
+      title: fullySigned && funded ? "Contract is now active" : `${role === "founder" ? "Founder" : "Builder"} signed the contract`,
+      body: fullySigned && funded ? "Open the workspace to start collaborating." : (fullySigned ? "Both parties signed — awaiting escrow funding." : "Awaiting the other party's signature."),
       link: `/contracts/${id}`,
     });
     toast.success("Signed");
