@@ -12,7 +12,9 @@ const STATUS_COLOR: Record<string, string> = {
   partially_signed: "bg-amber-500/15 text-amber-600",
   contract_active: "bg-emerald-500/15 text-emerald-600",
   active: "bg-emerald-500/15 text-emerald-600",
+  contract_completed: "bg-primary/15 text-primary",
   completed: "bg-primary/15 text-primary",
+  cancelled: "bg-muted text-muted-foreground",
 };
 
 export default function Contracts() {
