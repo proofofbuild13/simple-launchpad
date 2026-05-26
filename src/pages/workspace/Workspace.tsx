@@ -192,7 +192,11 @@ export default function Workspace() {
         </div>
       </div>
 
-      <Card><CardContent className="pt-6"><WorkflowStepper current={4} /></CardContent></Card>
+      <Card><CardContent className="pt-6"><WorkflowStepper current={
+        contract.status === "contract_completed" ? 5
+        : (contract.status === "contract_active" || contract.status === "active") ? 4
+        : 3
+      } /></CardContent></Card>
 
       {/* Kanban board — horizontally scrollable on mobile */}
       <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0 pb-2">
