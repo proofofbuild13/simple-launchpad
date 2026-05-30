@@ -1,3 +1,4 @@
+import { BUILDER_PROFILE_PUBLIC_COLUMNS } from "@/lib/builderProfileFields";
 import { useEffect, useState, useCallback } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -79,7 +80,7 @@ export default function SubmissionReview() {
     if (data?.builder_id) {
       const { data: bp } = await supabase
         .from("builder_profiles")
-        .select("*")
+        .select(BUILDER_PROFILE_PUBLIC_COLUMNS)
         .eq("id", data.builder_id)
         .maybeSingle();
       setBuilderProfile(bp);
@@ -87,7 +88,7 @@ export default function SubmissionReview() {
       if (data.project_id) {
         const { data: res } = await supabase
           .from("resume_applications")
-          .select("*")
+          .select(BUILDER_PROFILE_PUBLIC_COLUMNS)
           .eq("builder_id", data.builder_id)
           .eq("project_id", data.project_id)
           .order("created_at", { ascending: false })
@@ -99,7 +100,7 @@ export default function SubmissionReview() {
 
     const { data: r } = await supabase
       .from("submission_reviews")
-      .select("*")
+      .select(BUILDER_PROFILE_PUBLIC_COLUMNS)
       .eq("submission_id", id)
       .eq("reviewer_id", user.id)
       .maybeSingle();
