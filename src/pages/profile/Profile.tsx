@@ -367,7 +367,7 @@ function SkillsTab() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data: row } = await supabase.from("builder_profiles").select("*").eq("id", user.id).maybeSingle();
+      const { data: row } = await supabase.from("builder_profiles").select(BUILDER_PROFILE_PUBLIC_COLUMNS).eq("id", user.id).maybeSingle();
       setData(row ?? {});
       setLoading(false);
     })();

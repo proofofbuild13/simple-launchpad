@@ -41,7 +41,7 @@ export default function Marketplace() {
   useEffect(() => {
     (async () => {
       const [{ data: b }, { data: s }] = await Promise.all([
-        supabase.from("builder_profiles").select("*").order("rating", { ascending: false }),
+        supabase.from("builder_profiles").select(BUILDER_PROFILE_PUBLIC_COLUMNS).order("rating", { ascending: false }),
         supabase.from("startup_profiles").select("*").order("rating", { ascending: false }),
       ]);
       setBuilders(b ?? []);
