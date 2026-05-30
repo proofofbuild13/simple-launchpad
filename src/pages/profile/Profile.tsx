@@ -74,7 +74,9 @@ function PersonalTab() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data: row } = await supabase.from(table).select("*").eq("id", user.id).maybeSingle();
+      const builderCols = "id,full_name,username,title,domain,location,avatar_url,banner_image,bio,linkedin,github,portfolio,skills,experience_level,hourly_rate,work_preference,open_to_full_time,available,verified,featured_projects,rating,total_projects,completion_rate,response_time_hours";
+      const sel = role === "builder" ? builderCols : "*";
+      const { data: row } = await supabase.from(table).select(sel).eq("id", user.id).maybeSingle();
       let merged: any = row ?? {};
       if (role === "builder") {
         const { data: ph } = await supabase.rpc("get_my_builder_phone");
