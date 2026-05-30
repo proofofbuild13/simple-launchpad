@@ -1,3 +1,4 @@
+import { BUILDER_PROFILE_PUBLIC_COLUMNS } from "@/lib/builderProfileFields";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,7 +42,7 @@ export default function Marketplace() {
   useEffect(() => {
     (async () => {
       const [{ data: b }, { data: s }] = await Promise.all([
-        supabase.from("builder_profiles").select("*").order("rating", { ascending: false }),
+        supabase.from("builder_profiles").select(BUILDER_PROFILE_PUBLIC_COLUMNS).order("rating", { ascending: false }),
         supabase.from("startup_profiles").select("*").order("rating", { ascending: false }),
       ]);
       setBuilders(b ?? []);

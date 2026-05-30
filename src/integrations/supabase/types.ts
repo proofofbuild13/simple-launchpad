@@ -1797,6 +1797,7 @@ export type Database = {
           verified: boolean
         }[]
       }
+      get_my_builder_phone: { Args: never; Returns: string }
       get_or_create_direct_conversation: {
         Args: { _other_user: string }
         Returns: string
@@ -1826,6 +1827,8 @@ export type Database = {
         Returns: string
       }
       mask_account: { Args: { _acc: string }; Returns: string }
+      set_my_builder_phone: { Args: { _phone: string }; Returns: undefined }
+      user_has_any_role: { Args: { _uid: string }; Returns: boolean }
       verify_commission_payment: {
         Args: { _approve: boolean; _notes?: string; _payment_id: string }
         Returns: undefined

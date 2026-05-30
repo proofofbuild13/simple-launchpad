@@ -1,3 +1,4 @@
+import { BUILDER_PROFILE_PUBLIC_COLUMNS } from "@/lib/builderProfileFields";
 import { useEffect, useState, useCallback } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -79,7 +80,7 @@ export default function SubmissionReview() {
     if (data?.builder_id) {
       const { data: bp } = await supabase
         .from("builder_profiles")
-        .select("*")
+        .select(BUILDER_PROFILE_PUBLIC_COLUMNS)
         .eq("id", data.builder_id)
         .maybeSingle();
       setBuilderProfile(bp);

@@ -1,3 +1,4 @@
+import { BUILDER_PROFILE_PUBLIC_COLUMNS } from "@/lib/builderProfileFields";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,7 +45,7 @@ export default function BuilderProfile() {
     if (!id) return;
     (async () => {
       const { data: profile } = await supabase
-        .from("builder_profiles").select("*").eq("id", id).maybeSingle();
+        .from("builder_profiles").select(BUILDER_PROFILE_PUBLIC_COLUMNS).eq("id", id).maybeSingle();
       setB(profile);
 
       const [{ data: rev }, { data: contr }, { data: subs }, { data: res }] = await Promise.all([

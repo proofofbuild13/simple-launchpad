@@ -1,3 +1,4 @@
+import { BUILDER_PROFILE_PUBLIC_COLUMNS } from "@/lib/builderProfileFields";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -74,19 +75,30 @@ function PersonalTab() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data: row } = await supabase.from(table).select("*").eq("id", user.id).maybeSingle();
-      setData(row ?? {});
+      const builderCols = "id,full_name,username,title,domain,location,avatar_url,banner_image,bio,linkedin,github,portfolio,skills,experience_level,hourly_rate,work_preference,open_to_full_time,available,verified,featured_projects,rating,total_projects,completion_rate,response_time_hours";
+      const sel = role === "builder" ? builderCols : "*";
+      const { data: row } = await supabase.from(table).select(sel).eq("id", user.id).maybeSingle();
+      let merged: any = row ?? {};
+      if (role === "builder") {
+        const { data: ph } = await supabase.rpc("get_my_builder_phone");
+        merged = { ...merged, phone: ph ?? "" };
+      }
+      setData(merged);
       setLoading(false);
     })();
-  }, [user, table]);
+  }, [user, table, role]);
 
   const set = (k: string, v: any) => setData((d: any) => ({ ...d, [k]: v }));
 
   const save = async () => {
     if (!user) return;
     setSaving(true);
-    const payload: any = { ...data, id: user.id, updated_at: new Date().toISOString() };
+    const { phone, ...rest } = data ?? {};
+    const payload: any = { ...rest, id: user.id, updated_at: new Date().toISOString() };
     const { error } = await supabase.from(table).upsert(payload);
+    if (!error && role === "builder") {
+      await supabase.rpc("set_my_builder_phone", { _phone: phone ?? null });
+    }
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success(t("profile.personal.updated"));
@@ -356,7 +368,7 @@ function SkillsTab() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data: row } = await supabase.from("builder_profiles").select("*").eq("id", user.id).maybeSingle();
+      const { data: row } = await supabase.from("builder_profiles").select(BUILDER_PROFILE_PUBLIC_COLUMNS).eq("id", user.id).maybeSingle();
       setData(row ?? {});
       setLoading(false);
     })();

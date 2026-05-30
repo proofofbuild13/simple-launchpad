@@ -1,3 +1,4 @@
+import { BUILDER_PROFILE_PUBLIC_COLUMNS } from "@/lib/builderProfileFields";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,7 +41,7 @@ export default function SavedBuilders() {
       const builderIds = saved.map((s: any) => s.builder_id);
       const { data: profiles } = await supabase
         .from("builder_profiles")
-        .select("*")
+        .select(BUILDER_PROFILE_PUBLIC_COLUMNS)
         .in("id", builderIds);
 
       const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p]));
