@@ -71,6 +71,7 @@ function PersonalTab() {
   const [data, setData] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const table = role === "startup" ? "startup_profiles" : "builder_profiles";
 
   useEffect(() => {
@@ -81,8 +82,20 @@ function PersonalTab() {
       const { data: row } = await supabase.from(table).select(sel).eq("id", user.id).maybeSingle();
       let merged: any = row ?? {};
       if (role === "builder") {
-        const { data: ph } = await supabase.rpc("get_my_builder_phone");
-        merged = { ...merged, phone: ph ?? "" };
+        try {
+          const { data: ph, error: phoneErr } = await supabase.rpc("get_my_builder_phone");
+          if (phoneErr) {
+            console.warn("get_my_builder_phone denied:", phoneErr.message);
+            setPhoneError("Phone access is restricted. Contact support if you need to update your number.");
+            merged = { ...merged, phone: "" };
+          } else {
+            merged = { ...merged, phone: ph ?? "" };
+          }
+        } catch (e: any) {
+          console.warn("get_my_builder_phone exception:", e?.message);
+          setPhoneError("Phone access is restricted. Contact support if you need to update your number.");
+          merged = { ...merged, phone: "" };
+        }
       }
       setData(merged);
       setLoading(false);
@@ -98,7 +111,20 @@ function PersonalTab() {
     const payload: any = { ...rest, id: user.id, updated_at: new Date().toISOString() };
     const { error } = await supabase.from(table).upsert(payload);
     if (!error && role === "builder") {
-      await supabase.rpc("set_my_builder_phone", { _phone: phone ?? null });
+      try {
+        const { error: phoneSaveErr } = await supabase.rpc("set_my_builder_phone", { _phone: phone ?? null });
+        if (phoneSaveErr) {
+          console.warn("set_my_builder_phone denied:", phoneSaveErr.message);
+          toast.error("Profile saved, but phone could not be updated. Access denied.");
+          setSaving(false);
+          return;
+        }
+      } catch (e: any) {
+        console.warn("set_my_builder_phone exception:", e?.message);
+        toast.error("Profile saved, but phone could not be updated. Access denied.");
+        setSaving(false);
+        return;
+      }
     }
     setSaving(false);
     if (error) return toast.error(error.message);
