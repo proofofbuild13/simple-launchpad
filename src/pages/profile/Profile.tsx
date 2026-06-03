@@ -163,7 +163,17 @@ function PersonalTab() {
             </div>
             <div className="grid md:grid-cols-2 gap-3">
               <Field label={t("profile.personal.fields.location")}><Input value={data.location ?? ""} onChange={(e) => set("location", e.target.value)} /></Field>
-              <Field label={t("profile.personal.fields.phone")}><Input value={data.phone ?? ""} onChange={(e) => set("phone", e.target.value)} /></Field>
+              {phoneError ? (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">{t("profile.personal.fields.phone")}</Label>
+                  <Alert variant="destructive" className="py-2">
+                    <ShieldAlert className="h-4 w-4" />
+                    <AlertDescription className="text-xs">{phoneError}</AlertDescription>
+                  </Alert>
+                </div>
+              ) : (
+                <Field label={t("profile.personal.fields.phone")}><Input value={data.phone ?? ""} onChange={(e) => set("phone", e.target.value)} /></Field>
+              )}
             </div>
             <div className="grid md:grid-cols-2 gap-3">
               <Field label={t("profile.personal.fields.avatarUrl")}><Input value={data.avatar_url ?? ""} onChange={(e) => set("avatar_url", e.target.value)} /></Field>
