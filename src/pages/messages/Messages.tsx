@@ -190,7 +190,7 @@ export default function Messages() {
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col">
       <h1 className="text-2xl font-semibold mb-4">Messages</h1>
-      <Card className="flex-1 grid grid-cols-1 md:grid-cols-[300px_1fr] overflow-hidden">
+      <Card className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-[300px_1fr] overflow-hidden">
         {/* Sidebar */}
         <div className="border-r overflow-y-auto">
           {visible.length === 0 ? (
@@ -229,7 +229,7 @@ export default function Messages() {
         </div>
 
         {/* Chat pane */}
-        <div className="flex flex-col">
+        <div className="flex flex-col min-h-0 overflow-hidden">
           {!active ? (
             <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
               Select a conversation
@@ -248,7 +248,7 @@ export default function Messages() {
                   <Archive className="h-4 w-4 mr-1" />Archive
                 </Button>
               </div>
-              <div ref={scrollerRef} className="flex-1 overflow-y-auto p-4 space-y-2">
+              <div ref={scrollerRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-2">
                 {messages.map((m) => {
                   const mine = m.sender_id === user?.id;
                   return (
