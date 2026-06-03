@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Plus, Trash2, CheckCircle2, Star, ExternalLink, ShieldAlert } from "lucide-react";
+import { Loader2, Plus, Trash2, CheckCircle2, Star, ExternalLink, ShieldAlert, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -72,7 +72,25 @@ function PersonalTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [retryingPhone, setRetryingPhone] = useState(false);
   const table = role === "startup" ? "startup_profiles" : "builder_profiles";
+
+  const loadPhone = async (): Promise<string | null> => {
+    setPhoneError(null);
+    try {
+      const { data: ph, error: phoneErr } = await supabase.rpc("get_my_builder_phone");
+      if (phoneErr) {
+        console.warn("get_my_builder_phone denied:", phoneErr.message);
+        setPhoneError("Phone access is restricted. Contact support if you need to update your number.");
+        return "";
+      }
+      return ph ?? "";
+    } catch (e: any) {
+      console.warn("get_my_builder_phone exception:", e?.message);
+      setPhoneError("Phone access is restricted. Contact support if you need to update your number.");
+      return "";
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -82,20 +100,8 @@ function PersonalTab() {
       const { data: row } = await supabase.from(table).select(sel).eq("id", user.id).maybeSingle();
       let merged: any = row ?? {};
       if (role === "builder") {
-        try {
-          const { data: ph, error: phoneErr } = await supabase.rpc("get_my_builder_phone");
-          if (phoneErr) {
-            console.warn("get_my_builder_phone denied:", phoneErr.message);
-            setPhoneError("Phone access is restricted. Contact support if you need to update your number.");
-            merged = { ...merged, phone: "" };
-          } else {
-            merged = { ...merged, phone: ph ?? "" };
-          }
-        } catch (e: any) {
-          console.warn("get_my_builder_phone exception:", e?.message);
-          setPhoneError("Phone access is restricted. Contact support if you need to update your number.");
-          merged = { ...merged, phone: "" };
-        }
+        const phone = await loadPhone();
+        merged = { ...merged, phone };
       }
       setData(merged);
       setLoading(false);
@@ -170,6 +176,26 @@ function PersonalTab() {
                     <ShieldAlert className="h-4 w-4" />
                     <AlertDescription className="text-xs">{phoneError}</AlertDescription>
                   </Alert>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    disabled={retryingPhone}
+                    onClick={async () => {
+                      setRetryingPhone(true);
+                      const phone = await loadPhone();
+                      setData((d: any) => ({ ...d, phone }));
+                      setRetryingPhone(false);
+                    }}
+                  >
+                    {retryingPhone ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                    )}
+                    Retry loading phone
+                  </Button>
                 </div>
               ) : (
                 <Field label={t("profile.personal.fields.phone")}><Input value={data.phone ?? ""} onChange={(e) => set("phone", e.target.value)} /></Field>
