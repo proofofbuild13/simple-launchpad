@@ -176,6 +176,26 @@ function PersonalTab() {
                     <ShieldAlert className="h-4 w-4" />
                     <AlertDescription className="text-xs">{phoneError}</AlertDescription>
                   </Alert>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    disabled={retryingPhone}
+                    onClick={async () => {
+                      setRetryingPhone(true);
+                      const phone = await loadPhone();
+                      setData((d: any) => ({ ...d, phone }));
+                      setRetryingPhone(false);
+                    }}
+                  >
+                    {retryingPhone ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                    )}
+                    Retry loading phone
+                  </Button>
                 </div>
               ) : (
                 <Field label={t("profile.personal.fields.phone")}><Input value={data.phone ?? ""} onChange={(e) => set("phone", e.target.value)} /></Field>
