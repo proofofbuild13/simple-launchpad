@@ -229,7 +229,7 @@ export default function Messages() {
         </div>
 
         {/* Chat pane */}
-        <div className="flex flex-col">
+        <div className="flex flex-col min-h-0 overflow-hidden">
           {!active ? (
             <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
               Select a conversation
