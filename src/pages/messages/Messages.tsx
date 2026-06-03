@@ -190,7 +190,7 @@ export default function Messages() {
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col">
       <h1 className="text-2xl font-semibold mb-4">Messages</h1>
-      <Card className="flex-1 grid grid-cols-1 md:grid-cols-[300px_1fr] overflow-hidden">
+      <Card className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-[300px_1fr] overflow-hidden">
         {/* Sidebar */}
         <div className="border-r overflow-y-auto">
           {visible.length === 0 ? (
