@@ -72,7 +72,25 @@ function PersonalTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [retryingPhone, setRetryingPhone] = useState(false);
   const table = role === "startup" ? "startup_profiles" : "builder_profiles";
+
+  const loadPhone = async (): Promise<string | null> => {
+    setPhoneError(null);
+    try {
+      const { data: ph, error: phoneErr } = await supabase.rpc("get_my_builder_phone");
+      if (phoneErr) {
+        console.warn("get_my_builder_phone denied:", phoneErr.message);
+        setPhoneError("Phone access is restricted. Contact support if you need to update your number.");
+        return "";
+      }
+      return ph ?? "";
+    } catch (e: any) {
+      console.warn("get_my_builder_phone exception:", e?.message);
+      setPhoneError("Phone access is restricted. Contact support if you need to update your number.");
+      return "";
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -82,20 +100,8 @@ function PersonalTab() {
       const { data: row } = await supabase.from(table).select(sel).eq("id", user.id).maybeSingle();
       let merged: any = row ?? {};
       if (role === "builder") {
-        try {
-          const { data: ph, error: phoneErr } = await supabase.rpc("get_my_builder_phone");
-          if (phoneErr) {
-            console.warn("get_my_builder_phone denied:", phoneErr.message);
-            setPhoneError("Phone access is restricted. Contact support if you need to update your number.");
-            merged = { ...merged, phone: "" };
-          } else {
-            merged = { ...merged, phone: ph ?? "" };
-          }
-        } catch (e: any) {
-          console.warn("get_my_builder_phone exception:", e?.message);
-          setPhoneError("Phone access is restricted. Contact support if you need to update your number.");
-          merged = { ...merged, phone: "" };
-        }
+        const phone = await loadPhone();
+        merged = { ...merged, phone };
       }
       setData(merged);
       setLoading(false);
