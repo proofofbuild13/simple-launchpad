@@ -248,7 +248,7 @@ export default function Messages() {
                   <Archive className="h-4 w-4 mr-1" />Archive
                 </Button>
               </div>
-              <div ref={scrollerRef} className="flex-1 overflow-y-auto p-4 space-y-2">
+              <div ref={scrollerRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-2">
                 {messages.map((m) => {
                   const mine = m.sender_id === user?.id;
                   return (
