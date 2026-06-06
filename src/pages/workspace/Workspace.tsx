@@ -111,8 +111,8 @@ export default function Workspace() {
   const notifyOther = async (type: string, title: string, body: string) => {
     if (!contract || !user) return;
     const otherId = user.id === contract.founder_id ? contract.builder_id : contract.founder_id;
-    await supabase.from("notifications").insert({
-      user_id: otherId, type, title, body, link: `/workspace/${contract.id}`,
+    await supabase.rpc("send_notification", {
+      _user_id: otherId, _type: type, _title: title, _body: body, _link: `/workspace/${contract.id}`,
     });
   };
 
