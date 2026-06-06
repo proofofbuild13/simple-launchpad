@@ -92,12 +92,12 @@ export function RecordPaymentModal({ open, onOpenChange, milestone, contract, on
         screenshot_url,
       });
       if (error) throw error;
-      await supabase.from("notifications").insert({
-        user_id: contract.builder_id,
-        type: "payment_declared",
-        title: "Payment recorded — please confirm",
-        body: `Founder declared $${amount} via ${method.toUpperCase()}.`,
-        link: `/workspace/${contract.id}`,
+      await supabase.rpc("send_notification", {
+        _user_id: contract.builder_id,
+        _type: "payment_declared",
+        _title: "Payment recorded — please confirm",
+        _body: `Founder declared $${amount} via ${method.toUpperCase()}.`,
+        _link: `/workspace/${contract.id}`,
       });
       toast.success("Payment recorded");
       onDone();
