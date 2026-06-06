@@ -115,9 +115,9 @@ export default function PublicProject() {
         <div className="absolute inset-0 bg-white/5 opacity-10 mix-blend-overlay"></div>
         <CardContent className="flex flex-col sm:flex-row items-center justify-between py-8 gap-6 relative z-10">
           <div className="flex-1">
-            <h2 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Join proof_of_build to innovate future</h2>
+            <h2 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Join proof_of_Build to build the future</h2>
             <p className="text-sm text-muted-foreground mt-2 max-w-lg leading-relaxed">
-              Create an account find business problem make an idea, submit and get hired by founders, make an solution and solve it. Earn and Enjoy
+              Create an account to browse challenges, submit your solutions, and get hired by founders.
             </p>
           </div>
           <div className="flex gap-3 w-full sm:w-auto shrink-0">
@@ -142,7 +142,11 @@ function Section({ title, children }: { title: string; children: any }) {
   if (!children) return null;
   return (
     <Card>
-      <CardHeader><CardTitle className="text-base">{title}</CardTitle></CardHeader>
+      <CardHeader>
+        <CardTitle asChild className="text-base">
+          <h2>{title}</h2>
+        </CardTitle>
+      </CardHeader>
       <CardContent className="text-sm whitespace-pre-wrap text-foreground/80">{children}</CardContent>
     </Card>
   );
