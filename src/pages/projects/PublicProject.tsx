@@ -143,9 +143,7 @@ function Section({ title, children }: { title: string; children: any }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle asChild className="text-base">
-          <h2>{title}</h2>
-        </CardTitle>
+        <h2 className="text-base font-semibold leading-none tracking-tight">{title}</h2>
       </CardHeader>
       <CardContent className="text-sm whitespace-pre-wrap text-foreground/80">{children}</CardContent>
     </Card>
