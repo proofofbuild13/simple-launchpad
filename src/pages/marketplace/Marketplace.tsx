@@ -73,6 +73,14 @@ export default function Marketplace() {
 
   return (
     <div className="space-y-6">
+      <Helmet>
+        <title>Marketplace — Builders & startups | proof_of_Build</title>
+        <meta name="description" content="Discover vetted builders and startups across the proof_of_Build ecosystem. Search by skill, experience, availability, and hiring stage." />
+        <link rel="canonical" href="https://proofbuild.in/marketplace" />
+        <meta property="og:title" content="Marketplace — proof_of_Build" />
+        <meta property="og:description" content="Discover vetted builders and startups across the proof_of_Build ecosystem." />
+        <meta property="og:url" content="https://proofbuild.in/marketplace" />
+      </Helmet>
       <div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider">
           <Sparkles className="h-3 w-3" /> Discovery

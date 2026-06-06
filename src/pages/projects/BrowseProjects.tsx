@@ -85,6 +85,14 @@ export default function BrowseProjects() {
 
   return (
     <div className="space-y-6">
+      <Helmet>
+        <title>Browse open challenges | proof_of_Build</title>
+        <meta name="description" content="Browse open startup challenges on proof_of_Build. Submit working prototypes, win escrow-backed engagements, and get hired by founders." />
+        <link rel="canonical" href="https://proofbuild.in/browse" />
+        <meta property="og:title" content="Browse open challenges — proof_of_Build" />
+        <meta property="og:description" content="Pick a challenge, submit your build, get hired." />
+        <meta property="og:url" content="https://proofbuild.in/browse" />
+      </Helmet>
       <div>
         <h1 className="text-2xl font-semibold">Browse projects</h1>
         <p className="text-sm text-muted-foreground">Pick a challenge. Submit your build. Get hired — for a project or a full-time role.</p>
