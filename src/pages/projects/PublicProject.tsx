@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,8 +28,45 @@ export default function PublicProject() {
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   if (!project) return <p className="text-center text-muted-foreground py-20">Project not found or is private.</p>;
 
+  const pageTitle = `${project.title} — proof_of_Build`;
+  const pageDesc = (project.short_description || project.description || "Open challenge on proof_of_Build.").slice(0, 155);
+  const canonical = `https://proofbuild.in/p/${project.id}`;
+  const productLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: project.title,
+    description: pageDesc,
+    category: project.category || undefined,
+    offers: project.budget
+      ? {
+          "@type": "Offer",
+          price: String(project.budget),
+          priceCurrency: "USD",
+          availability:
+            project.status === "open" || project.status === "open_for_submissions"
+              ? "https://schema.org/InStock"
+              : "https://schema.org/Discontinued",
+          url: canonical,
+        }
+      : undefined,
+  };
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto py-10 px-4">
+      <Helmet>
+        <title>{pageTitle.slice(0, 60)}</title>
+        <meta name="description" content={pageDesc} />
+        <link rel="canonical" href={canonical} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDesc} />
+        <meta property="og:url" content={canonical} />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={pageDesc} />
+        <script type="application/ld+json">{JSON.stringify(productLd)}</script>
+      </Helmet>
+
+
 
 
       <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
@@ -77,9 +115,9 @@ export default function PublicProject() {
         <div className="absolute inset-0 bg-white/5 opacity-10 mix-blend-overlay"></div>
         <CardContent className="flex flex-col sm:flex-row items-center justify-between py-8 gap-6 relative z-10">
           <div className="flex-1">
-            <h2 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Join proof_of_build to innovate future</h2>
+            <h2 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Join proof_of_Build to build the future</h2>
             <p className="text-sm text-muted-foreground mt-2 max-w-lg leading-relaxed">
-              Create an account find business problem make an idea, submit and get hired by founders, make an solution and solve it. Earn and Enjoy
+              Create an account to browse challenges, submit your solutions, and get hired by founders.
             </p>
           </div>
           <div className="flex gap-3 w-full sm:w-auto shrink-0">
@@ -104,7 +142,9 @@ function Section({ title, children }: { title: string; children: any }) {
   if (!children) return null;
   return (
     <Card>
-      <CardHeader><CardTitle className="text-base">{title}</CardTitle></CardHeader>
+      <CardHeader>
+        <h2 className="text-base font-semibold leading-none tracking-tight">{title}</h2>
+      </CardHeader>
       <CardContent className="text-sm whitespace-pre-wrap text-foreground/80">{children}</CardContent>
     </Card>
   );

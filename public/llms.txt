@@ -1,0 +1,15 @@
+# proof_of_Build
+
+> Execution-based startup talent platform. Founders post real challenges, builders ship working prototypes, and hiring happens through escrow-backed contracts.
+
+proof_of_Build is a marketplace where startups hire engineers, designers, and operators based on working demos rather than résumés. Builders submit prototypes for posted challenges; founders review side-by-side, pay through escrow, and convert top performers into 3, 6, or 12-month engagements.
+
+## Pages
+
+- [Home](/): What proof_of_Build is and how the hire-via-build loop works.
+- [Browse projects](/browse): Live challenges open for builder submissions.
+
+## Optional
+
+- [Sign in](/login): Existing-user login.
+- [Get started](/register): Create a builder or startup account.
