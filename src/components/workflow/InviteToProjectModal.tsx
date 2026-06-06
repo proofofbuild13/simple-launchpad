@@ -71,12 +71,12 @@ export function InviteToProjectModal({ open, onOpenChange, builderId, builderNam
       const project = projects.find((p) => p.id === selected);
 
       // Notify builder
-      await supabase.from("notifications").insert({
-        user_id: builderId,
-        type: "project_invitation",
-        title: "You were invited to join a project",
-        body: `You've been invited to "${project?.title}". View and respond to this invitation.`,
-        link: `/projects/${selected}`,
+      await supabase.rpc("send_notification", {
+        _user_id: builderId,
+        _type: "project_invitation",
+        _title: "You were invited to join a project",
+        _body: `You've been invited to "${project?.title}". View and respond to this invitation.`,
+        _link: `/projects/${selected}`,
       });
 
       // Log activity

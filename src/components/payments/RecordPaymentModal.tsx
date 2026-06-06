@@ -58,12 +58,12 @@ export function RecordPaymentModal({ open, onOpenChange, milestone, contract, on
   const commission = (Number(amount || 0) * COMMISSION_RATE).toFixed(2);
 
   const remindBuilder = async () => {
-    await supabase.from("notifications").insert({
-      user_id: contract.builder_id,
-      type: "payment_method_missing",
-      title: "Action required: Update payment details",
-      body: "The startup is ready to pay for your milestone, but your payment details are missing. Please update them.",
-      link: `/settings?tab=payments`,
+    await supabase.rpc("send_notification", {
+      _user_id: contract.builder_id,
+      _type: "payment_method_missing",
+      _title: "Action required: Update payment details",
+      _body: "The startup is ready to pay for your milestone, but your payment details are missing. Please update them.",
+      _link: `/settings?tab=payments`,
     });
     toast.success("Reminder sent to builder");
   };
@@ -92,12 +92,12 @@ export function RecordPaymentModal({ open, onOpenChange, milestone, contract, on
         screenshot_url,
       });
       if (error) throw error;
-      await supabase.from("notifications").insert({
-        user_id: contract.builder_id,
-        type: "payment_declared",
-        title: "Payment recorded — please confirm",
-        body: `Founder declared $${amount} via ${method.toUpperCase()}.`,
-        link: `/workspace/${contract.id}`,
+      await supabase.rpc("send_notification", {
+        _user_id: contract.builder_id,
+        _type: "payment_declared",
+        _title: "Payment recorded — please confirm",
+        _body: `Founder declared $${amount} via ${method.toUpperCase()}.`,
+        _link: `/workspace/${contract.id}`,
       });
       toast.success("Payment recorded");
       onDone();

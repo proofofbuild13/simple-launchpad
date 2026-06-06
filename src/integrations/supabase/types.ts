@@ -1827,6 +1827,16 @@ export type Database = {
         Returns: string
       }
       mask_account: { Args: { _acc: string }; Returns: string }
+      send_notification: {
+        Args: {
+          _body?: string
+          _link?: string
+          _title: string
+          _type: string
+          _user_id: string
+        }
+        Returns: string
+      }
       set_my_builder_phone: { Args: { _phone: string }; Returns: undefined }
       user_has_any_role: { Args: { _uid: string }; Returns: boolean }
       verify_commission_payment: {
