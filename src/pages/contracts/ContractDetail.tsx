@@ -74,11 +74,11 @@ export default function ContractDetail() {
 
   const sendForSigning = async () => {
     await supabase.from("contracts").update({ status: "sent_for_signing" }).eq("id", id);
-    await supabase.from("notifications").insert({
-      user_id: c.builder_id, type: "contract_sent",
-      title: "Contract ready for signing",
-      body: "The founder has sent the contract for your signature.",
-      link: `/contracts/${id}`,
+    await supabase.rpc("send_notification", {
+      _user_id: c.builder_id, _type: "contract_sent",
+      _title: "Contract ready for signing",
+      _body: "The founder has sent the contract for your signature.",
+      _link: `/contracts/${id}`,
     });
     toast.success("Sent for signing");
     load();
