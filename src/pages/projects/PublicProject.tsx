@@ -28,8 +28,45 @@ export default function PublicProject() {
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   if (!project) return <p className="text-center text-muted-foreground py-20">Project not found or is private.</p>;
 
+  const pageTitle = `${project.title} — proof_of_Build`;
+  const pageDesc = (project.short_description || project.description || "Open challenge on proof_of_Build.").slice(0, 155);
+  const canonical = `https://proofbuild.in/p/${project.id}`;
+  const productLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: project.title,
+    description: pageDesc,
+    category: project.category || undefined,
+    offers: project.budget
+      ? {
+          "@type": "Offer",
+          price: String(project.budget),
+          priceCurrency: "USD",
+          availability:
+            project.status === "open" || project.status === "open_for_submissions"
+              ? "https://schema.org/InStock"
+              : "https://schema.org/Discontinued",
+          url: canonical,
+        }
+      : undefined,
+  };
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto py-10 px-4">
+      <Helmet>
+        <title>{pageTitle.slice(0, 60)}</title>
+        <meta name="description" content={pageDesc} />
+        <link rel="canonical" href={canonical} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDesc} />
+        <meta property="og:url" content={canonical} />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={pageDesc} />
+        <script type="application/ld+json">{JSON.stringify(productLd)}</script>
+      </Helmet>
+
+
 
 
       <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
