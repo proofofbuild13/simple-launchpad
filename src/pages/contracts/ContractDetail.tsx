@@ -121,9 +121,9 @@ export default function ContractDetail() {
       .update({ escrow_funded: true, status: fullySigned ? "contract_active" : c.status })
       .eq("id", id);
     if (fullySigned) {
-      await supabase.from("notifications").insert([
-        { user_id: c.builder_id, type: "contract_active", title: "Contract is now active", body: "Escrow funded — start your first milestone.", link: `/workspace/${id}` },
-        { user_id: c.founder_id, type: "contract_active", title: "Contract is now active", body: "Builder can now begin work.", link: `/workspace/${id}` },
+      await Promise.all([
+        supabase.rpc("send_notification", { _user_id: c.builder_id, _type: "contract_active", _title: "Contract is now active", _body: "Escrow funded — start your first milestone.", _link: `/workspace/${id}` }),
+        supabase.rpc("send_notification", { _user_id: c.founder_id, _type: "contract_active", _title: "Contract is now active", _body: "Builder can now begin work.", _link: `/workspace/${id}` }),
       ]);
     }
     toast.success("Escrow funded");
