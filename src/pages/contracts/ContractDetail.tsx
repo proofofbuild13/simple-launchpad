@@ -104,12 +104,12 @@ export default function ContractDetail() {
     }
     // Notify the other party
     const otherId = role === "founder" ? c.builder_id : c.founder_id;
-    await supabase.from("notifications").insert({
-      user_id: otherId,
-      type: fullySigned && funded ? "contract_active" : "contract_signed",
-      title: fullySigned && funded ? "Contract is now active" : `${role === "founder" ? "Founder" : "Builder"} signed the contract`,
-      body: fullySigned && funded ? "Open the workspace to start collaborating." : (fullySigned ? "Both parties signed — awaiting escrow funding." : "Awaiting the other party's signature."),
-      link: `/contracts/${id}`,
+    await supabase.rpc("send_notification", {
+      _user_id: otherId,
+      _type: fullySigned && funded ? "contract_active" : "contract_signed",
+      _title: fullySigned && funded ? "Contract is now active" : `${role === "founder" ? "Founder" : "Builder"} signed the contract`,
+      _body: fullySigned && funded ? "Open the workspace to start collaborating." : (fullySigned ? "Both parties signed — awaiting escrow funding." : "Awaiting the other party's signature."),
+      _link: `/contracts/${id}`,
     });
     toast.success("Signed");
     load();
