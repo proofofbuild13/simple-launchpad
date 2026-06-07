@@ -376,7 +376,11 @@ export type Database = {
           document_url: string | null
           end_date: string | null
           escrow_amount: number | null
+          escrow_balance: number
           escrow_funded: boolean | null
+          escrow_funded_at: string | null
+          escrow_provider: string | null
+          escrow_transaction_ref: string | null
           founder_id: string
           id: string
           ip_assignment: boolean | null
@@ -397,7 +401,11 @@ export type Database = {
           document_url?: string | null
           end_date?: string | null
           escrow_amount?: number | null
+          escrow_balance?: number
           escrow_funded?: boolean | null
+          escrow_funded_at?: string | null
+          escrow_provider?: string | null
+          escrow_transaction_ref?: string | null
           founder_id: string
           id?: string
           ip_assignment?: boolean | null
@@ -418,7 +426,11 @@ export type Database = {
           document_url?: string | null
           end_date?: string | null
           escrow_amount?: number | null
+          escrow_balance?: number
           escrow_funded?: boolean | null
+          escrow_funded_at?: string | null
+          escrow_provider?: string | null
+          escrow_transaction_ref?: string | null
           founder_id?: string
           id?: string
           ip_assignment?: boolean | null
@@ -700,6 +712,57 @@ export type Database = {
             columns: ["submission_id"]
             isOneToOne: false
             referencedRelation: "submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      escrow_ledger: {
+        Row: {
+          amount: number
+          balance_after: number
+          contract_id: string
+          created_at: string
+          created_by: string | null
+          entry_type: string
+          id: string
+          milestone_id: string | null
+          notes: string | null
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          contract_id: string
+          created_at?: string
+          created_by?: string | null
+          entry_type: string
+          id?: string
+          milestone_id?: string | null
+          notes?: string | null
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          contract_id?: string
+          created_at?: string
+          created_by?: string | null
+          entry_type?: string
+          id?: string
+          milestone_id?: string | null
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escrow_ledger_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escrow_ledger_milestone_id_fkey"
+            columns: ["milestone_id"]
+            isOneToOne: false
+            referencedRelation: "contract_milestones"
             referencedColumns: ["id"]
           },
         ]
@@ -1284,6 +1347,24 @@ export type Database = {
           },
         ]
       }
+      platform_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1785,6 +1866,15 @@ export type Database = {
         Args: { _offer_id: string }
         Returns: string
       }
+      fund_escrow: {
+        Args: {
+          _amount: number
+          _contract_id: string
+          _screenshot_url?: string
+          _transaction_ref: string
+        }
+        Returns: string
+      }
       get_builder_default_payment: {
         Args: { _builder_id: string }
         Returns: {
@@ -1795,6 +1885,16 @@ export type Database = {
           method_type: string
           upi_id: string
           verified: boolean
+        }[]
+      }
+      get_escrow_summary: {
+        Args: { _contract_id: string }
+        Returns: {
+          current_balance: number
+          milestone_count: number
+          released_count: number
+          total_funded: number
+          total_released: number
         }[]
       }
       get_my_builder_phone: { Args: never; Returns: string }
@@ -1827,6 +1927,10 @@ export type Database = {
         Returns: string
       }
       mask_account: { Args: { _acc: string }; Returns: string }
+      release_escrow_for_milestone: {
+        Args: { _milestone_id: string }
+        Returns: string
+      }
       send_notification: {
         Args: {
           _body?: string
