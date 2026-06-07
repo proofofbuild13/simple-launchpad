@@ -9,10 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, FileSignature, Plus, Trash2, ArrowRight } from "lucide-react";
+import { Loader2, FileSignature, Plus, Trash2, ArrowRight, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { WorkflowStatusTracker } from "@/components/workflow/WorkflowStatusTracker";
+import { EscrowStatusCard } from "@/components/payments/EscrowStatusCard";
+import { FundEscrowModal } from "@/components/payments/FundEscrowModal";
 
 export default function ContractDetail() {
   const { id } = useParams();
@@ -24,30 +26,41 @@ export default function ContractDetail() {
   const [parties, setParties] = useState<{ founder?: string; builder?: string }>({});
   const [loading, setLoading] = useState(true);
   const [newM, setNewM] = useState({ title: "", description: "", amount: "", due_date: "" });
+  const [fundEscrowOpen, setFundEscrowOpen] = useState(false);
 
   const load = async () => {
     if (!id) return;
     const { data } = await supabase.from("contracts").select("*, projects(*)").eq("id", id).maybeSingle();
     setC(data);
-    const { data: m } = await supabase.from("contract_milestones").select("*").eq("contract_id", id).order("order_index", { ascending: true });
+    const { data: m } = await supabase
+      .from("contract_milestones")
+      .select("*")
+      .eq("contract_id", id)
+      .order("order_index", { ascending: true });
     setMilestones(m ?? []);
     const { data: s } = await supabase.from("contract_signatures").select("*").eq("contract_id", id);
     setSignatures(s ?? []);
 
     if (data) {
-      const { data: founders } = await supabase.from("startup_profiles").select("company_name").eq("id", data.founder_id).maybeSingle();
-      const { data: builders } = await supabase.from("builder_profiles").select("full_name").eq("id", data.builder_id).maybeSingle();
+      const { data: founders } = await supabase
+        .from("startup_profiles").select("company_name").eq("id", data.founder_id).maybeSingle();
+      const { data: builders } = await supabase
+        .from("builder_profiles").select("full_name").eq("id", data.builder_id).maybeSingle();
       setParties({ founder: founders?.company_name, builder: builders?.full_name });
     }
-
     setLoading(false);
   };
+
   useEffect(() => { load(); }, [id]);
 
   const isFounder = user?.id === c?.founder_id;
   const isBuilder = user?.id === c?.builder_id;
   const founderSigned = signatures.some((s) => s.role === "founder");
   const builderSigned = signatures.some((s) => s.role === "builder");
+  const bothSigned = founderSigned && builderSigned;
+  const activeMilestones = milestones.filter((m) => m.status !== "cancelled");
+  const totalMilestones = activeMilestones.reduce((a, b) => a + Number(b.amount || 0), 0);
+
   const addMilestone = async () => {
     if (!newM.title) return;
     await supabase.from("contract_milestones").insert({
@@ -74,11 +87,11 @@ export default function ContractDetail() {
 
   const sendForSigning = async () => {
     await supabase.from("contracts").update({ status: "sent_for_signing" }).eq("id", id);
-    await supabase.rpc("send_notification", {
-      _user_id: c.builder_id, _type: "contract_sent",
-      _title: "Contract ready for signing",
-      _body: "The founder has sent the contract for your signature.",
-      _link: `/contracts/${id}`,
+    await supabase.from("notifications").insert({
+      user_id: c.builder_id, type: "contract_sent",
+      title: "Contract ready for signing",
+      body: "The founder has sent the contract for your signature.",
+      link: `/contracts/${id}`,
     });
     toast.success("Sent for signing");
     load();
@@ -87,46 +100,25 @@ export default function ContractDetail() {
   const sign = async () => {
     if (!user) return;
     const role = isFounder ? "founder" : "builder";
-    await supabase.from("contract_signatures").insert({
-      contract_id: id, signed_by: user.id, role,
-    });
-    const fullySigned = role === "founder" ? builderSigned : founderSigned;
-    // Re-fetch contract to read the freshest escrow_funded value
-    const { data: fresh } = await supabase.from("contracts")
-      .select("escrow_funded").eq("id", id).maybeSingle();
-    const funded = !!fresh?.escrow_funded;
-    if (fullySigned) {
-      await supabase.from("contracts")
-        .update({ status: funded ? "contract_active" : "partially_signed" })
-        .eq("id", id);
-    } else {
-      await supabase.from("contracts").update({ status: "partially_signed" }).eq("id", id);
-    }
-    // Notify the other party
+    await supabase.from("contract_signatures").insert({ contract_id: id, signed_by: user.id, role });
+
+    const otherSigned = role === "founder" ? builderSigned : founderSigned;
+    // If both have now signed, move to partially_signed — escrow funding activates it
+    await supabase.from("contracts")
+      .update({ status: otherSigned ? "partially_signed" : "partially_signed" })
+      .eq("id", id);
+
     const otherId = role === "founder" ? c.builder_id : c.founder_id;
-    await supabase.rpc("send_notification", {
-      _user_id: otherId,
-      _type: fullySigned && funded ? "contract_active" : "contract_signed",
-      _title: fullySigned && funded ? "Contract is now active" : `${role === "founder" ? "Founder" : "Builder"} signed the contract`,
-      _body: fullySigned && funded ? "Open the workspace to start collaborating." : (fullySigned ? "Both parties signed — awaiting escrow funding." : "Awaiting the other party's signature."),
-      _link: `/contracts/${id}`,
+    await supabase.from("notifications").insert({
+      user_id: otherId,
+      type: "contract_signed",
+      title: `${role === "founder" ? "Founder" : "Builder"} signed the contract`,
+      body: otherSigned
+        ? "Both parties signed. Waiting for founder to fund escrow to activate."
+        : "Awaiting the other party's signature.",
+      link: `/contracts/${id}`,
     });
     toast.success("Signed");
-    load();
-  };
-
-  const fundEscrow = async () => {
-    const fullySigned = founderSigned && builderSigned;
-    await supabase.from("contracts")
-      .update({ escrow_funded: true, status: fullySigned ? "contract_active" : c.status })
-      .eq("id", id);
-    if (fullySigned) {
-      await Promise.all([
-        supabase.rpc("send_notification", { _user_id: c.builder_id, _type: "contract_active", _title: "Contract is now active", _body: "Escrow funded — start your first milestone.", _link: `/workspace/${id}` }),
-        supabase.rpc("send_notification", { _user_id: c.founder_id, _type: "contract_active", _title: "Contract is now active", _body: "Builder can now begin work.", _link: `/workspace/${id}` }),
-      ]);
-    }
-    toast.success("Escrow funded");
     load();
   };
 
@@ -142,17 +134,17 @@ export default function ContractDetail() {
       <h1>Service Agreement — ${c.projects?.title ?? ""}</h1>
       <p><strong>Contract ID:</strong> ${c.id}<br/><strong>Status:</strong> ${c.status}</p>
       <h2>Parties</h2>
-      <p>Founder ID: ${c.founder_id}<br/>Builder ID: ${c.builder_id}</p>
+      <p>Founder: ${parties.founder ?? c.founder_id}<br/>Builder: ${parties.builder ?? c.builder_id}</p>
       <h2>Terms</h2>
-      <p>Start date: ${c.start_date ?? "—"}<br/>Escrow amount: $${c.escrow_amount ?? 0}<br/>
+      <p>Start date: ${c.start_date ?? "—"}<br/>Escrow amount: ₹${c.escrow_amount ?? 0}<br/>
       IP Assignment: ${c.ip_assignment ? "Yes" : "No"} · NDA: ${c.nda_included ? "Yes" : "No"} · Non-compete: ${c.non_compete ? "Yes" : "No"}</p>
       <h2>Milestones</h2>
       <table><tr><th>#</th><th>Title</th><th>Amount</th><th>Due</th></tr>
-      ${milestones.filter((m:any)=>m.status!=="cancelled").map((m:any,i:number)=>`<tr><td>${i+1}</td><td>${m.title}</td><td>$${m.amount}</td><td>${m.due_date ?? "—"}</td></tr>`).join("")}
+      ${activeMilestones.map((m, i) => `<tr><td>${i+1}</td><td>${m.title}</td><td>₹${m.amount}</td><td>${m.due_date ?? "—"}</td></tr>`).join("")}
       </table>
       <div class="sig">
-        <div>Founder signature<br/>${parties.founder ? parties.founder : ""}<br/>${founderSigned ? "✓ Signed" : ""}</div>
-        <div>Builder signature<br/>${parties.builder ? parties.builder : ""}<br/>${builderSigned ? "✓ Signed" : ""}</div>
+        <div>Founder<br/>${parties.founder ?? ""}<br/>${founderSigned ? "✓ Signed" : "Pending"}</div>
+        <div>Builder<br/>${parties.builder ?? ""}<br/>${builderSigned ? "✓ Signed" : "Pending"}</div>
       </div>
       </body></html>`;
     const w = window.open("", "_blank");
@@ -162,7 +154,7 @@ export default function ContractDetail() {
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   if (!c) return <p className="py-20 text-center text-muted-foreground">Not found.</p>;
 
-  const totalMilestones = milestones.filter((m) => m.status !== "cancelled").reduce((a, b) => a + Number(b.amount || 0), 0);
+  const isActive = c.status === "contract_active" || c.status === "active";
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -176,20 +168,22 @@ export default function ContractDetail() {
 
       <Card><CardContent className="pt-6"><WorkflowStatusTracker contractId={c.id} /></CardContent></Card>
 
+      {/* Timeline steps */}
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base">Contract timeline</CardTitle>
+          <CardTitle className="text-base">Contract progress</CardTitle>
           <Button size="sm" variant="outline" onClick={downloadPdf}>Download PDF</Button>
         </CardHeader>
         <CardContent>
-          <ol className="grid grid-cols-2 sm:grid-cols-6 gap-2 text-xs">
+          <ol className="grid grid-cols-2 sm:grid-cols-7 gap-2 text-xs">
             {[
-              { key: "drafted",   label: "Drafted",         done: true },
-              { key: "sent",      label: "Sent",            done: ["sent_for_signing","partially_signed","contract_active","active","contract_completed"].includes(c.status) },
-              { key: "founder",   label: "Founder signed",  done: founderSigned },
-              { key: "builder",   label: "Builder signed",  done: builderSigned },
-              { key: "escrow",    label: "Escrow funded",   done: !!c.escrow_funded },
-              { key: "active",    label: "Active",          done: c.status === "contract_active" || c.status === "active" || c.status === "contract_completed" },
+              { key: "drafted",    label: "Drafted",         done: true },
+              { key: "sent",       label: "Sent",            done: ["sent_for_signing","partially_signed","contract_active","active","contract_completed"].includes(c.status) },
+              { key: "founder",    label: "Founder signed",  done: founderSigned },
+              { key: "builder",    label: "Builder signed",  done: builderSigned },
+              { key: "escrow",     label: "Escrow funded",   done: !!c.escrow_funded },
+              { key: "active",     label: "Active",          done: isActive || c.status === "contract_completed" },
+              { key: "complete",   label: "Completed",       done: c.status === "contract_completed" },
             ].map((step) => (
               <li key={step.key} className={`rounded-md border p-2 text-center ${step.done ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}`}>
                 <div className={`mx-auto mb-1 h-2 w-2 rounded-full ${step.done ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
@@ -200,17 +194,39 @@ export default function ContractDetail() {
         </CardContent>
       </Card>
 
-      {(c.status === "contract_active" || c.status === "active") && (
+      {/* Escrow funded — contract active banner */}
+      {isActive && (
         <Card className="border-emerald-500/40">
           <CardContent className="py-4 flex items-center justify-between">
-            <div className="text-sm">Contract is live. Open the workspace to manage milestones and deliverables.</div>
-            <Button onClick={() => navigate(`/workspace/${c.id}`)}>Open workspace <ArrowRight className="h-4 w-4 ml-2" /></Button>
+            <div className="text-sm flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-emerald-600" />
+              Contract is live. Escrow is funded and holding milestone payments.
+            </div>
+            <Button onClick={() => navigate(`/workspace/${c.id}`)}>
+              Open workspace <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Both signed, escrow not funded yet */}
+      {bothSigned && !c.escrow_funded && isFounder && (
+        <Card className="border-amber-500/40 bg-amber-50/40 dark:bg-amber-950/20">
+          <CardContent className="py-4 flex items-center justify-between gap-4">
+            <div className="text-sm">
+              <div className="font-medium">Both parties signed — fund escrow to activate</div>
+              <div className="text-muted-foreground text-xs mt-1">Deposit ₹{totalMilestones.toLocaleString()} to release the contract and let the builder begin work.</div>
+            </div>
+            <Button className="bg-emerald-600 hover:bg-emerald-700 shrink-0" onClick={() => setFundEscrowOpen(true)}>
+              <ShieldCheck className="h-4 w-4 mr-2" />Fund escrow
+            </Button>
           </CardContent>
         </Card>
       )}
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+          {/* Clauses */}
           <Card>
             <CardHeader><CardTitle className="text-base">Clauses</CardTitle></CardHeader>
             <CardContent className="space-y-3 text-sm">
@@ -220,29 +236,38 @@ export default function ContractDetail() {
             </CardContent>
           </Card>
 
+          {/* Milestones */}
           <Card>
-            <CardHeader><CardTitle className="text-base">Milestones · ${totalMilestones}</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">Milestones · ₹{totalMilestones.toLocaleString()}</CardTitle></CardHeader>
             <CardContent className="space-y-3">
-              {milestones.filter((m) => m.status !== "cancelled").map((m, i) => (
+              {activeMilestones.map((m, i) => (
                 <div key={m.id} className="flex items-start justify-between gap-3 p-3 border rounded-md">
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium">{i + 1}. {m.title}</div>
                     {m.description && <p className="text-xs text-muted-foreground mt-1">{m.description}</p>}
                     <div className="text-xs text-muted-foreground mt-1">
-                      {m.due_date ? format(new Date(m.due_date), "PP") : "No date"} · ${m.amount}
+                      {m.due_date ? format(new Date(m.due_date), "PP") : "No date"} · ₹{m.amount}
                     </div>
                   </div>
-                  {isFounder && c.status === "contract_drafted" && (
-                    <Button size="icon" variant="ghost" onClick={() => removeMilestone(m.id)}><Trash2 className="h-4 w-4" /></Button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {m.status !== "in_progress" && (
+                      <Badge variant="outline" className="text-[10px] capitalize">{m.status.replace(/_/g, " ")}</Badge>
+                    )}
+                    {isFounder && c.status === "contract_drafted" && (
+                      <Button size="icon" variant="ghost" onClick={() => removeMilestone(m.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))}
+
               {isFounder && c.status === "contract_drafted" && (
                 <div className="space-y-2 p-3 border-2 border-dashed rounded-md">
                   <Input placeholder="Milestone title" value={newM.title} onChange={(e) => setNewM({ ...newM, title: e.target.value })} />
                   <Textarea rows={2} placeholder="Description" value={newM.description} onChange={(e) => setNewM({ ...newM, description: e.target.value })} />
                   <div className="grid grid-cols-2 gap-2">
-                    <Input type="number" placeholder="Amount" value={newM.amount} onChange={(e) => setNewM({ ...newM, amount: e.target.value })} />
+                    <Input type="number" placeholder="Amount (₹)" value={newM.amount} onChange={(e) => setNewM({ ...newM, amount: e.target.value })} />
                     <Input type="date" value={newM.due_date} onChange={(e) => setNewM({ ...newM, due_date: e.target.value })} />
                   </div>
                   <Button size="sm" onClick={addMilestone}><Plus className="h-4 w-4 mr-1" />Add milestone</Button>
@@ -253,31 +278,38 @@ export default function ContractDetail() {
         </div>
 
         <div className="space-y-4">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Escrow</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <div className="text-2xl font-semibold">${c.escrow_amount ?? 0}</div>
-              <Badge variant={c.escrow_funded ? "default" : "outline"}>{c.escrow_funded ? "Funded" : "Not funded"}</Badge>
-              {isFounder && !c.escrow_funded && (
-                <Button className="w-full" size="sm" onClick={fundEscrow}>Fund escrow</Button>
-              )}
-            </CardContent>
-          </Card>
+          {/* Escrow card */}
+          <EscrowStatusCard
+            contractId={c.id}
+            totalAmount={totalMilestones}
+            escrowFunded={!!c.escrow_funded}
+            escrowBalance={Number(c.escrow_balance ?? 0)}
+            isFounder={isFounder}
+            onFundClick={() => setFundEscrowOpen(true)}
+          />
 
+          {/* Signatures */}
           <Card>
             <CardHeader><CardTitle className="text-base">Signatures</CardTitle></CardHeader>
             <CardContent className="space-y-3 text-sm">
               <SignRow label="Founder" signed={founderSigned} name={parties.founder} />
               <SignRow label="Builder" signed={builderSigned} name={parties.builder} />
 
-              {isFounder && c.status === "contract_drafted" && milestones.length > 0 && (
+              {isFounder && c.status === "contract_drafted" && activeMilestones.length > 0 && (
                 <Button className="w-full" size="sm" onClick={sendForSigning}>Send for signing</Button>
               )}
+
               {((isFounder && !founderSigned) || (isBuilder && !builderSigned)) &&
                 (c.status === "sent_for_signing" || c.status === "partially_signed") && (
                 <Button className="w-full" size="sm" onClick={sign}>
                   <FileSignature className="h-4 w-4 mr-2" />Sign contract
                 </Button>
+              )}
+
+              {bothSigned && !c.escrow_funded && !isFounder && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Waiting for founder to fund escrow. Contract will activate automatically.
+                </p>
               )}
             </CardContent>
           </Card>
@@ -287,6 +319,14 @@ export default function ContractDetail() {
           </Link>
         </div>
       </div>
+
+      <FundEscrowModal
+        open={fundEscrowOpen}
+        onOpenChange={setFundEscrowOpen}
+        contract={c}
+        milestones={activeMilestones}
+        onDone={load}
+      />
     </div>
   );
 }
