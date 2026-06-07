@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Upload, AlertTriangle, CheckCircle2, RotateCw, DollarSign, Wallet, FileText, Receipt } from "lucide-react";
+import { Loader2, Upload, AlertTriangle, CheckCircle2, RotateCw, DollarSign, Wallet, FileText, Receipt, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { WorkflowStepper } from "@/components/workflow/WorkflowStepper";
 import { PaymentTimeline, paymentStageIndex } from "@/components/workflow/PaymentTimeline";
@@ -143,11 +143,23 @@ export default function Workspace() {
   };
 
   const approve = async (m: any) => {
-    await supabase.from("contract_milestones").update({ status: "approved" }).eq("id", m.id);
-    await notifyOther("milestone_approved", "Milestone approved", `"${m.title}" was approved. Awaiting payment.`);
-    toast.success("Approved — record the payment");
-    setRecordMilestone(m);
-    setRecordOpen(true);
+    const { error: mErr } = await supabase.from("contract_milestones").update({ status: "approved" }).eq("id", m.id);
+    if (mErr) { toast.error(mErr.message); return; }
+
+    if (contract?.escrow_funded) {
+      const { error } = await supabase.rpc("release_escrow_for_milestone", { _milestone_id: m.id });
+      if (error) {
+        toast.error("Approval saved but escrow release failed: " + error.message);
+      } else {
+        toast.success("Milestone approved — escrow released to builder");
+      }
+    } else {
+      await notifyOther("milestone_approved", "Milestone approved", `"${m.title}" was approved. Awaiting payment.`);
+      toast.success("Milestone approved — record the payment");
+      setRecordMilestone(m);
+      setRecordOpen(true);
+    }
+    setActive(null);
     load();
   };
 
@@ -271,12 +283,23 @@ export default function Workspace() {
             )}
 
             {isFounder && active.status === "submitted" && (
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" onClick={() => approve(active)}><CheckCircle2 className="h-4 w-4 mr-1" />Approve milestone</Button>
-                <div className="flex gap-2 items-center">
-                  <Input placeholder="Revision reason" value={revReason} onChange={(e) => setRevReason(e.target.value)} className="w-60" />
-                  <Button size="sm" variant="outline" onClick={() => requestRevision(active)}><RotateCw className="h-4 w-4 mr-1" />Request revision</Button>
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" onClick={() => approve(active)}>
+                    <CheckCircle2 className="h-4 w-4 mr-1" />
+                    {contract?.escrow_funded ? "Approve & release escrow" : "Approve milestone"}
+                  </Button>
+                  <div className="flex gap-2 items-center">
+                    <Input placeholder="Revision reason" value={revReason} onChange={(e) => setRevReason(e.target.value)} className="w-60" />
+                    <Button size="sm" variant="outline" onClick={() => requestRevision(active)}><RotateCw className="h-4 w-4 mr-1" />Request revision</Button>
+                  </div>
                 </div>
+                {contract?.escrow_funded && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <ShieldCheck className="h-3 w-3 text-emerald-600" />
+                    Approving will automatically release ₹{active.amount} from escrow.
+                  </p>
+                )}
               </div>
             )}
 
@@ -303,13 +326,13 @@ export default function Workspace() {
           <h2 className="text-lg font-semibold">Payments</h2>
         </div>
 
-        {milestones.filter((m) => ["approved", "fully_settled"].includes(m.status) || paymentRecords[m.id]).length === 0 && (
+        {milestones.filter((m) => ["approved", "awaiting_release", "escrow_released", "fully_settled"].includes(m.status) || paymentRecords[m.id]).length === 0 && (
           <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">
             Approved milestones will appear here for payment tracking.
           </CardContent></Card>
         )}
 
-        {milestones.filter((m) => ["approved", "fully_settled"].includes(m.status) || paymentRecords[m.id]).map((m) => {
+        {milestones.filter((m) => ["approved", "awaiting_release", "escrow_released", "fully_settled"].includes(m.status) || paymentRecords[m.id]).map((m) => {
           const pr = paymentRecords[m.id];
           const inv = pr ? invoices[pr.id] : null;
           const cp = inv ? commissionPayments[inv.id] : null;
@@ -323,11 +346,31 @@ export default function Workspace() {
                     <CardTitle className="text-base">{m.title}</CardTitle>
                     <p className="text-xs text-muted-foreground">${m.amount}</p>
                   </div>
+                  {m.status === "escrow_released" && (
+                    <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30" variant="outline">
+                      <ShieldCheck className="h-3 w-3 mr-1" />Escrow released
+                    </Badge>
+                  )}
+                  {m.status === "awaiting_release" && (
+                    <Badge className="bg-amber-500/15 text-amber-600 border-amber-500/30" variant="outline">Releasing…</Badge>
+                  )}
                   {pr?.status === "settled" && <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30" variant="outline">Fully settled</Badge>}
                   {pr?.status === "disputed" && <Badge variant="destructive">Disputed</Badge>}
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
+                {contract?.escrow_funded && ["escrow_released", "fully_settled"].includes(m.status) && (
+                  <div className="rounded-md border bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800 p-3 text-xs space-y-1">
+                    <div className="flex items-center gap-1.5 font-medium text-emerald-700 dark:text-emerald-400">
+                      <ShieldCheck className="h-3.5 w-3.5" />Released from escrow
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 pt-1">
+                      <div><span className="text-muted-foreground">Gross</span><div className="font-mono">₹{Number(m.amount).toLocaleString()}</div></div>
+                      <div><span className="text-muted-foreground">Commission (15%)</span><div className="font-mono">-₹{(Number(m.amount) * 0.15).toFixed(2)}</div></div>
+                      <div><span className="text-muted-foreground">Builder receives</span><div className="font-mono">₹{(Number(m.amount) * 0.85).toFixed(2)}</div></div>
+                    </div>
+                  </div>
+                )}
                 <PaymentTimeline current={stage} />
 
                 {/* Step 1: founder records */}
