@@ -22,6 +22,8 @@ const STATUS_COLOR: Record<string, string> = {
   submitted: "bg-amber-500/15 text-amber-600",
   revision_requested: "bg-amber-500/15 text-amber-600",
   approved: "bg-emerald-500/15 text-emerald-600",
+  awaiting_release: "bg-amber-500/15 text-amber-600",
+  escrow_released: "bg-emerald-500/15 text-emerald-600",
   fully_settled: "bg-primary/15 text-primary",
   dispute: "bg-destructive/15 text-destructive",
 };
@@ -31,6 +33,7 @@ const COLUMNS: [string, string][] = [
   ["submitted", "Submitted"],
   ["revision_requested", "Revisions"],
   ["approved", "Approved"],
+  ["escrow_released", "Escrow released"],
   ["fully_settled", "Settled"],
 ];
 
@@ -149,10 +152,13 @@ export default function Workspace() {
     if (contract?.escrow_funded) {
       const { error } = await supabase.rpc("release_escrow_for_milestone", { _milestone_id: m.id });
       if (error) {
-        toast.error("Approval saved but escrow release failed: " + error.message);
-      } else {
-        toast.success("Milestone approved — escrow released to builder");
+        // Roll back so the founder can retry from the submitted column
+        await supabase.from("contract_milestones").update({ status: "submitted" }).eq("id", m.id);
+        toast.error("Escrow release failed: " + error.message);
+        load();
+        return;
       }
+      toast.success("Milestone approved — escrow released to builder");
     } else {
       await notifyOther("milestone_approved", "Milestone approved", `"${m.title}" was approved. Awaiting payment.`);
       toast.success("Milestone approved — record the payment");
@@ -185,10 +191,13 @@ export default function Workspace() {
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   if (!contract) return <p className="py-20 text-center text-muted-foreground">Not found.</p>;
 
-  const settledMilestones = milestones.filter((m) => paymentRecords[m.id]);
-  const totalPaid = settledMilestones
-    .filter((m) => paymentRecords[m.id]?.status === "settled")
-    .reduce((a, b) => a + Number(b.amount || 0), 0);
+  const totalPaid = contract.escrow_funded
+    ? milestones
+        .filter((m) => ["escrow_released", "fully_settled"].includes(m.status))
+        .reduce((a, b) => a + Number(b.amount || 0), 0)
+    : milestones
+        .filter((m) => paymentRecords[m.id]?.status === "settled")
+        .reduce((a, b) => a + Number(b.amount || 0), 0);
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-4 sm:space-y-6">
@@ -197,9 +206,9 @@ export default function Workspace() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-xl sm:text-2xl font-semibold truncate">{contract.projects?.title}</h1>
           <div className="flex items-center gap-2 text-sm shrink-0">
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-            <span className="font-mono">${totalPaid}</span>
-            <span className="text-muted-foreground">/ ${contract.escrow_amount}</span>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+            <span className="font-mono">₹{totalPaid.toLocaleString()}</span>
+            <span className="text-muted-foreground">/ ₹{Number(contract.escrow_amount ?? 0).toLocaleString()}</span>
           </div>
         </div>
       </div>
@@ -225,7 +234,7 @@ export default function Workspace() {
                     <Card className="hover:border-primary transition-colors">
                       <CardContent className="p-3 space-y-1">
                         <div className="text-sm font-medium">{m.title}</div>
-                        <div className="text-xs text-muted-foreground">${m.amount}</div>
+                        <div className="text-xs text-muted-foreground">₹{Number(m.amount).toLocaleString()}</div>
                         <Badge className={`${STATUS_COLOR[m.status]} text-[10px]`} variant="outline">{m.status?.replace(/_/g, " ")}</Badge>
                         {m.status === "approved" && paymentRecords[m.id] && (
                           <div className="text-[10px] text-muted-foreground pt-1">
@@ -303,7 +312,7 @@ export default function Workspace() {
               </div>
             )}
 
-            {isFounder && active.status === "approved" && !paymentRecords[active.id] && (
+            {isFounder && active.status === "approved" && !paymentRecords[active.id] && !contract?.escrow_funded && (
               <Button size="sm" onClick={() => { setRecordMilestone(active); setRecordOpen(true); }}>
                 <Wallet className="h-4 w-4 mr-1" />Record payment
               </Button>
@@ -344,7 +353,7 @@ export default function Workspace() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <CardTitle className="text-base">{m.title}</CardTitle>
-                    <p className="text-xs text-muted-foreground">${m.amount}</p>
+                    <p className="text-xs text-muted-foreground">₹{Number(m.amount).toLocaleString()}</p>
                   </div>
                   {m.status === "escrow_released" && (
                     <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30" variant="outline">
@@ -371,10 +380,16 @@ export default function Workspace() {
                     </div>
                   </div>
                 )}
-                <PaymentTimeline current={stage} />
+                <PaymentTimeline
+                  current={
+                    contract?.escrow_funded && ["escrow_released", "fully_settled"].includes(m.status)
+                      ? 4
+                      : stage
+                  }
+                />
 
-                {/* Step 1: founder records */}
-                {isFounder && !pr && m.status === "approved" && (
+                {/* Step 1: founder records — manual flow only */}
+                {isFounder && !pr && m.status === "approved" && !contract?.escrow_funded && (
                   <Button size="sm" onClick={() => { setRecordMilestone(m); setRecordOpen(true); }}>
                     <Wallet className="h-4 w-4 mr-1" />Record builder payment
                   </Button>
@@ -384,14 +399,14 @@ export default function Workspace() {
                 {pr && (
                   <div className="rounded-md border p-3 text-xs space-y-1">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5"><Receipt className="h-3.5 w-3.5" /><span className="font-medium">Direct payment</span></div>
+                      <div className="flex items-center gap-1.5"><Receipt className="h-3.5 w-3.5" /><span className="font-medium">{pr.payment_method === "escrow" ? "Escrow payment" : "Direct payment"}</span></div>
                       <Badge variant="outline" className="capitalize">{pr.status}</Badge>
                     </div>
                     <div className="grid grid-cols-2 gap-1 text-muted-foreground">
-                      <div>Declared: <span className="text-foreground font-mono">${pr.declared_amount}</span></div>
+                      <div>Declared: <span className="text-foreground font-mono">₹{Number(pr.declared_amount).toLocaleString()}</span></div>
                       <div>Method: <span className="text-foreground uppercase">{pr.payment_method}</span></div>
                       <div>Ref: <span className="text-foreground font-mono">{pr.transaction_ref}</span></div>
-                      {pr.confirmed_amount != null && <div>Confirmed: <span className="text-foreground font-mono">${pr.confirmed_amount}</span></div>}
+                      {pr.confirmed_amount != null && <div>Confirmed: <span className="text-foreground font-mono">₹{Number(pr.confirmed_amount).toLocaleString()}</span></div>}
                     </div>
                     {isBuilder && pr.status === "declared" && (
                       <Button size="sm" className="mt-2" onClick={() => { setConfirmRecord(pr); setConfirmOpen(true); }}>
@@ -426,7 +441,7 @@ export default function Workspace() {
                       <span className="font-medium">Platform fee payment</span>
                       <Badge variant="outline" className="capitalize">{cp.status.replace(/_/g, " ")}</Badge>
                     </div>
-                    <div className="text-muted-foreground">Ref <span className="text-foreground font-mono">{cp.transaction_ref}</span> · ${cp.amount}</div>
+                    <div className="text-muted-foreground">Ref <span className="text-foreground font-mono">{cp.transaction_ref}</span> · ₹{Number(cp.amount).toLocaleString()}</div>
                     {cp.status === "submitted" && <p className="text-muted-foreground">Awaiting admin verification.</p>}
                     {cp.status === "rejected" && cp.admin_notes && <p className="text-destructive">{cp.admin_notes}</p>}
                   </div>

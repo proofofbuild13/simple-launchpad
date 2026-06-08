@@ -1,58 +1,55 @@
 
-## Milestone-Based Escrow System
+## Payment system audit — findings
 
-Implements escrow ledger, fund/release RPCs, and UI for funding escrow and auto-releasing per-milestone payments. Manual payment path stays intact for legacy/non-escrow contracts.
+### Backend (RPCs) — healthy
+- `fund_escrow`, `release_escrow_for_milestone`, `get_escrow_summary` are correct: balance is decremented, ledger entry written, `payment_records` + `commission_invoices` rows created with the platform commission rate, both parties notified.
+- RLS / GRANTs on `escrow_ledger` and `platform_settings` are in place.
 
-### 1. Database migration (`supabase/migrations/…_escrow_system.sql`)
-- New table `public.escrow_ledger` with RLS (parties + admin read; founder/admin insert) and indexes.
-- `public.platform_settings` table seeded with `commission_rate = 0.15` (admin-write, authenticated-read).
-- Add columns to `contracts`: `escrow_balance`, `escrow_provider`, `escrow_funded_at`, `escrow_transaction_ref`.
-- RPCs (SECURITY DEFINER, EXECUTE granted to `authenticated`):
-  - `fund_escrow(_contract_id, _amount, _transaction_ref, _screenshot_url)` — founder-only, writes ledger `funded` entry, sets contract active if both signed.
-  - `release_escrow_for_milestone(_milestone_id)` — founder-only, requires `approved` status, decrements balance, writes ledger `released` entry, creates `payment_records` row (`escrow` method, confirmed), creates `commission_invoices` row using `platform_settings.commission_rate`, sets milestone `escrow_released`, notifies both parties.
-  - `get_escrow_summary(_contract_id)` — totals + counts.
-- Includes GRANTs on new public tables per project convention.
+### Frontend — real bugs in `src/pages/workspace/Workspace.tsx`
 
-### 2. New file `src/components/payments/FundEscrowModal.tsx`
-Dialog showing milestone total, commission note (billed per-milestone), platform payee details from `PLATFORM_PAYEE`, reference `ESCROW-{contract.id.slice(0,8).toUpperCase()}`. Inputs: transaction ref (required, mono), optional screenshot upload to `payment-proofs` bucket. Calls `fund_escrow` RPC; success toast + `onDone()`.
+1. **Milestones disappear from the kanban after escrow release.** `COLUMNS` only lists `in_progress | submitted | revision_requested | approved | fully_settled`. When `release_escrow_for_milestone` flips the milestone to `escrow_released`, the card vanishes from the board (it only reappears once an admin verifies commission and bumps it to `fully_settled`). `STATUS_COLOR` is also missing entries for `escrow_released` and `awaiting_release`.
 
-### 3. New file `src/components/payments/EscrowStatusCard.tsx`
-- Unfunded: amber warning, amount needed, founder gets "Fund escrow" button, builder gets waiting message.
-- Funded: three stat boxes (Held / Released / Progress %), emerald progress bar, last 10 ledger entries with typed badges and signed amounts, summary line using `get_escrow_summary` for `released_count / milestone_count`.
+2. **`approve()` ordering race.** The function first does `UPDATE contract_milestones SET status='approved'`, then calls `release_escrow_for_milestone`. If the update succeeds but the RPC fails (insufficient balance, network), the milestone is stuck as `approved` while the founder sees a generic "release failed" toast and no retry path. The RPC already enforces `status='approved'` and is transactional — we should let the RPC own the state change.
 
-### 4. Update `src/pages/contracts/ContractDetail.tsx`
-- Add imports + `fundEscrowOpen` state.
-- Remove old `fundEscrow` function and the old Escrow card; replace sidebar with `<EscrowStatusCard …/>`.
-- Timeline → 7 steps including "Escrow funded"; rename CardTitle to "Contract progress".
-- Add amber CTA banner under timeline when both signed, unfunded, founder.
-- `sign()` no longer flips to `contract_active`; always `partially_signed`. Activation happens inside `fund_escrow`.
-- Signatures card: builder sees "Waiting for founder to fund escrow…" when both signed & unfunded.
-- Mount `<FundEscrowModal …/>` at bottom.
-- Swap `$` → `₹` in milestone displays.
+3. **Currency mix-up.** Header reads `${totalPaid} / ${contract.escrow_amount}`, milestone cards show `${m.amount}`, payment record card shows `$pr.declared_amount`. The escrow side of the app (FundEscrowModal, EscrowStatusCard, ContractDetail) uses ₹. Every visible amount in Workspace should be ₹.
 
-### 5. Update `src/pages/workspace/Workspace.tsx`
-- New `approve(m)` logic: update milestone to `approved`, then branch on `contract.escrow_funded`:
-  - funded → `release_escrow_for_milestone`, toast escrow released.
-  - not funded → existing RecordPaymentModal flow.
-- Approve button label switches to "Approve & release escrow" when funded; small helper text with ShieldCheck note.
-- Payments section: include `awaiting_release` and `escrow_released` in the visible-status filter.
-- For `escrow_released`/`fully_settled` with escrow funded, show emerald summary box (gross / -15% commission / builder net) above PaymentTimeline.
-- New badges: `escrow_released` (emerald + ShieldCheck) and `awaiting_release` (amber "Releasing…").
+4. **`totalPaid` is wrong for escrow contracts.** It only sums milestones whose `payment_records.status === 'settled'`, which never happens on the escrow path until admin verification of commission. For escrow-funded contracts the header should sum milestones with status `escrow_released` or `fully_settled`.
 
-### 6. Verification
-- `tsc --noEmit` clean across the 4 files.
-- RPC argument names match exactly.
-- Old escrow code removed (no dead `fundEscrow`).
-- Manual payment path unchanged for `escrow_funded=false`.
+5. **`PaymentTimeline` stage is wrong for escrow milestones.** `paymentStageIndex` is driven by `paymentRecord/invoice/commissionPayment` from the manual flow; on the escrow path the auto-created `payment_record` is already `confirmed`, so the timeline jumps mid-flow and never reads "released". Add a short-circuit: when `contract.escrow_funded` and milestone is `escrow_released`/`fully_settled`, force the timeline to its final stage (and hide the manual "Confirm receipt" / "Record payment" CTAs, which already don't apply).
 
-### Assumptions
-- `commission_invoice_seq` sequence already exists (used by current confirm flow).
-- `payment_records.payment_method` accepts `'escrow'` string (text column).
-- `PLATFORM_PAYEE` / `COMMISSION_RATE` exports in `src/config/platformPayee.ts` are reused as-is.
-- Hardcoded `0.15` in Workspace summary box is display-only (per spec §6.5); authoritative rate stays in `platform_settings`.
+6. **Manual "Record builder payment" button shows on escrow contracts.** Guard `isFounder && !pr && m.status === 'approved'` with `!contract.escrow_funded` so the founder never sees a manual record button on an escrow contract (the RPC already auto-creates the record).
 
-### Execution order
-1. Run migration (await approval).
-2. After types regenerate: create `FundEscrowModal.tsx` and `EscrowStatusCard.tsx`.
-3. Patch `ContractDetail.tsx` and `Workspace.tsx`.
-4. Type-check via build signal; fix any drift.
+### Frontend — small issues in `src/pages/contracts/ContractDetail.tsx`
+
+7. **Dead ternary** at line 108: `otherSigned ? "partially_signed" : "partially_signed"`. Replace with the literal `"partially_signed"` to make intent obvious. (Behavior is already correct — activation happens inside `fund_escrow`.)
+
+8. **`escrow_amount` vs. `sum(milestones.amount)` drift.** `FundEscrowModal` deposits the milestone total, not `contract.escrow_amount`. If the founder added/removed milestones after the offer, the deposited amount and `contract.escrow_amount` diverge silently. Display the milestone total (₹) as the authoritative figure in the EscrowStatusCard header instead of relying on `escrow_amount`.
+
+## Plan — UI-only fixes (no schema changes)
+
+### `src/pages/workspace/Workspace.tsx`
+- Extend `COLUMNS` to 6 columns, inserting `["escrow_released", "Escrow released"]` between `approved` and `fully_settled`. Add matching `STATUS_COLOR` entries for `escrow_released` (emerald) and `awaiting_release` (amber).
+- Rewrite `approve(m)`:
+  - If `contract.escrow_funded`: call `release_escrow_for_milestone` directly. The RPC requires `status='approved'`, so first `UPDATE contract_milestones SET status='approved'` inside the same handler but only call `load()` after the RPC resolves; on RPC failure, roll the status back to `submitted` and surface the actual error.
+  - If not funded: keep existing manual flow (set `approved` → open `RecordPaymentModal`).
+- Replace every visible `$` in the Workspace tree with `₹` (header total, kanban card amount, payment-record card, commission-payment card).
+- `totalPaid` calculation: when `contract.escrow_funded`, sum milestone amounts whose status ∈ `{escrow_released, fully_settled}`; otherwise keep the current settled-payment_records sum.
+- Add `contract.escrow_funded` guard to the "Record builder payment" button so it only appears on non-escrow contracts.
+- In the per-milestone Payment card, when `contract.escrow_funded && m.status ∈ {escrow_released, fully_settled}`, pass a forced final stage to `<PaymentTimeline current={...} />` and hide manual-flow CTAs.
+
+### `src/pages/contracts/ContractDetail.tsx`
+- Simplify the dead ternary on line 108 to `status: "partially_signed"`.
+- In `EscrowStatusCard` invocation, keep `totalAmount={totalMilestones}` (already correct) — no change needed there, but verify the unfunded copy reads the milestone total, not `escrow_amount`.
+
+### `src/components/payments/EscrowStatusCard.tsx`
+- No structural changes; just confirm the "Amount required" line uses the `totalAmount` prop (it does) so it stays in sync with edited milestones.
+
+### Verification
+- Type-check passes for the 3 edited files.
+- Manual smoke flow (funded contract): submit deliverable → founder approves → milestone moves to **Escrow released** column with emerald badge, ledger updates, builder gets payment record auto-confirmed, commission invoice generated, founder header total reflects released amount.
+- Manual smoke flow (legacy non-escrow contract): unchanged — approve still opens `RecordPaymentModal`.
+
+### Out of scope
+- No DB migration. The existing RPCs already work; only the React UI needs to catch up to the `escrow_released` / `awaiting_release` statuses and the ₹ currency.
+- No changes to admin commission verification.
+
