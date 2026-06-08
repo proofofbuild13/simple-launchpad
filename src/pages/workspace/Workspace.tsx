@@ -207,8 +207,8 @@ export default function Workspace() {
           <h1 className="text-xl sm:text-2xl font-semibold truncate">{contract.projects?.title}</h1>
           <div className="flex items-center gap-2 text-sm shrink-0">
             <Wallet className="h-4 w-4 text-muted-foreground" />
-            <span className="font-mono">₹{totalPaid.toLocaleString()}</span>
-            <span className="text-muted-foreground">/ ₹{Number(contract.escrow_amount ?? 0).toLocaleString()}</span>
+            <span className="font-mono">${totalPaid.toLocaleString()}</span>
+            <span className="text-muted-foreground">/ ${Number(contract.escrow_amount ?? 0).toLocaleString()}</span>
           </div>
         </div>
       </div>
@@ -234,7 +234,7 @@ export default function Workspace() {
                     <Card className="hover:border-primary transition-colors">
                       <CardContent className="p-3 space-y-1">
                         <div className="text-sm font-medium">{m.title}</div>
-                        <div className="text-xs text-muted-foreground">₹{Number(m.amount).toLocaleString()}</div>
+                        <div className="text-xs text-muted-foreground">${Number(m.amount).toLocaleString()}</div>
                         <Badge className={`${STATUS_COLOR[m.status]} text-[10px]`} variant="outline">{m.status?.replace(/_/g, " ")}</Badge>
                         {m.status === "approved" && paymentRecords[m.id] && (
                           <div className="text-[10px] text-muted-foreground pt-1">
@@ -306,7 +306,7 @@ export default function Workspace() {
                 {contract?.escrow_funded && (
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <ShieldCheck className="h-3 w-3 text-emerald-600" />
-                    Approving will automatically release ₹{active.amount} from escrow.
+                    Approving will automatically release ${active.amount} from escrow.
                   </p>
                 )}
               </div>
@@ -353,7 +353,7 @@ export default function Workspace() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <CardTitle className="text-base">{m.title}</CardTitle>
-                    <p className="text-xs text-muted-foreground">₹{Number(m.amount).toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">${Number(m.amount).toLocaleString()}</p>
                   </div>
                   {m.status === "escrow_released" && (
                     <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30" variant="outline">
@@ -374,9 +374,9 @@ export default function Workspace() {
                       <ShieldCheck className="h-3.5 w-3.5" />Released from escrow
                     </div>
                     <div className="grid grid-cols-3 gap-2 pt-1">
-                      <div><span className="text-muted-foreground">Gross</span><div className="font-mono">₹{Number(m.amount).toLocaleString()}</div></div>
-                      <div><span className="text-muted-foreground">Commission (15%)</span><div className="font-mono">-₹{(Number(m.amount) * 0.15).toFixed(2)}</div></div>
-                      <div><span className="text-muted-foreground">Builder receives</span><div className="font-mono">₹{(Number(m.amount) * 0.85).toFixed(2)}</div></div>
+                      <div><span className="text-muted-foreground">Gross</span><div className="font-mono">${Number(m.amount).toLocaleString()}</div></div>
+                      <div><span className="text-muted-foreground">Commission (15%)</span><div className="font-mono">-${(Number(m.amount) * 0.15).toFixed(2)}</div></div>
+                      <div><span className="text-muted-foreground">Builder receives</span><div className="font-mono">${(Number(m.amount) * 0.85).toFixed(2)}</div></div>
                     </div>
                   </div>
                 )}
@@ -404,10 +404,10 @@ export default function Workspace() {
                       <Badge variant="outline" className="capitalize">{pr.status}</Badge>
                     </div>
                     <div className="grid grid-cols-2 gap-1 text-muted-foreground">
-                      <div>Declared: <span className="text-foreground font-mono">₹{Number(pr.declared_amount).toLocaleString()}</span></div>
+                      <div>Declared: <span className="text-foreground font-mono">${Number(pr.declared_amount).toLocaleString()}</span></div>
                       <div>Method: <span className="text-foreground uppercase">{pr.payment_method}</span></div>
                       <div>Ref: <span className="text-foreground font-mono">{pr.transaction_ref}</span></div>
-                      {pr.confirmed_amount != null && <div>Confirmed: <span className="text-foreground font-mono">₹{Number(pr.confirmed_amount).toLocaleString()}</span></div>}
+                      {pr.confirmed_amount != null && <div>Confirmed: <span className="text-foreground font-mono">${Number(pr.confirmed_amount).toLocaleString()}</span></div>}
                     </div>
                     {isBuilder && pr.status === "declared" && (
                       <Button size="sm" className="mt-2" onClick={() => { setConfirmRecord(pr); setConfirmOpen(true); }}>
@@ -442,7 +442,7 @@ export default function Workspace() {
                       <span className="font-medium">Platform fee payment</span>
                       <Badge variant="outline" className="capitalize">{cp.status.replace(/_/g, " ")}</Badge>
                     </div>
-                    <div className="text-muted-foreground">Ref <span className="text-foreground font-mono">{cp.transaction_ref}</span> · ₹{Number(cp.amount).toLocaleString()}</div>
+                    <div className="text-muted-foreground">Ref <span className="text-foreground font-mono">{cp.transaction_ref}</span> · ${Number(cp.amount).toLocaleString()}</div>
                     {cp.status === "submitted" && <p className="text-muted-foreground">Awaiting admin verification.</p>}
                     {cp.status === "rejected" && cp.admin_notes && <p className="text-destructive">{cp.admin_notes}</p>}
                   </div>
