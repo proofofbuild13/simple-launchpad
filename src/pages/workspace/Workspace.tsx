@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Upload, AlertTriangle, CheckCircle2, RotateCw, DollarSign, Wallet, FileText, Receipt, ShieldCheck } from "lucide-react";
+import { Loader2, Upload, AlertTriangle, CheckCircle2, RotateCw, Wallet, FileText, Receipt, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { WorkflowStepper } from "@/components/workflow/WorkflowStepper";
 import { PaymentTimeline, paymentStageIndex } from "@/components/workflow/PaymentTimeline";
@@ -382,11 +382,12 @@ export default function Workspace() {
                 )}
                 <PaymentTimeline
                   current={
-                    contract?.escrow_funded && ["escrow_released", "fully_settled"].includes(m.status)
-                      ? 4
+                    contract?.escrow_funded && m.status === "fully_settled" ? 7
+                      : contract?.escrow_funded && m.status === "escrow_released" ? 4
                       : stage
                   }
                 />
+
 
                 {/* Step 1: founder records — manual flow only */}
                 {isFounder && !pr && m.status === "approved" && !contract?.escrow_funded && (
