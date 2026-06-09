@@ -146,20 +146,16 @@ export default function Workspace() {
   };
 
   const approve = async (m: any) => {
-    const { error: mErr } = await supabase.from("contract_milestones").update({ status: "approved" }).eq("id", m.id);
-    if (mErr) { toast.error(mErr.message); return; }
-
     if (contract?.escrow_funded) {
       const { error } = await supabase.rpc("release_escrow_for_milestone", { _milestone_id: m.id });
       if (error) {
-        // Roll back so the founder can retry from the submitted column
-        await supabase.from("contract_milestones").update({ status: "submitted" }).eq("id", m.id);
         toast.error("Escrow release failed: " + error.message);
-        load();
         return;
       }
       toast.success("Milestone approved — escrow released to builder");
     } else {
+      const { error: mErr } = await supabase.from("contract_milestones").update({ status: "approved" }).eq("id", m.id);
+      if (mErr) { toast.error(mErr.message); return; }
       await notifyOther("milestone_approved", "Milestone approved", `"${m.title}" was approved. Awaiting payment.`);
       toast.success("Milestone approved — record the payment");
       setRecordMilestone(m);
