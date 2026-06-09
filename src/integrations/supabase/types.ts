@@ -1865,6 +1865,13 @@ export type Database = {
         Returns: undefined
       }
       bootstrap_admin: { Args: never; Returns: boolean }
+      builder_payment_status: {
+        Args: { _builder_id: string }
+        Returns: {
+          has_method: boolean
+          is_verified: boolean
+        }[]
+      }
       can_delete_project: { Args: { _project_id: string }; Returns: Json }
       confirm_payment_record: {
         Args: { _confirmed_amount: number; _id: string; _screenshot?: string }

@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { WorkflowStepper } from "@/components/workflow/WorkflowStepper";
 import { PaymentTimeline, paymentStageIndex } from "@/components/workflow/PaymentTimeline";
 import { RecordPaymentModal } from "@/components/payments/RecordPaymentModal";
+import { ensureBuilderPaymentReady } from "@/lib/builderPaymentCheck";
 import { ConfirmReceiptModal } from "@/components/payments/ConfirmReceiptModal";
 import { PayCommissionModal } from "@/components/payments/PayCommissionModal";
 import { CommissionInvoiceCard } from "@/components/payments/CommissionInvoiceCard";
@@ -146,6 +147,9 @@ export default function Workspace() {
   };
 
   const approve = async (m: any) => {
+    const ready = await ensureBuilderPaymentReady(contract);
+    if (!ready) { setActive(null); return; }
+
     if (contract?.escrow_funded) {
       const { error } = await supabase.rpc("release_escrow_for_milestone", { _milestone_id: m.id });
       if (error) {
