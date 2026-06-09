@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { ShieldCheck, Info } from "lucide-react";
 import { PLATFORM_PAYEE, COMMISSION_RATE } from "@/config/platformPayee";
+import { ensureBuilderPaymentReady } from "@/lib/builderPaymentCheck";
 
 interface Props {
   open: boolean;
@@ -36,6 +37,8 @@ export function FundEscrowModal({ open, onOpenChange, contract, milestones, onDo
   const submit = async () => {
     if (!user) return;
     if (!ref.trim()) { toast.error("Transaction reference required"); return; }
+    const ready = await ensureBuilderPaymentReady(contract);
+    if (!ready) return;
     setSaving(true);
     try {
       let screenshotUrl: string | null = null;
