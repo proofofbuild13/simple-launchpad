@@ -1856,6 +1856,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_resolve_escrow: {
+        Args: {
+          _contract_id: string
+          _direction: string
+          _milestone_id: string
+        }
+        Returns: undefined
+      }
       bootstrap_admin: { Args: never; Returns: boolean }
       can_delete_project: { Args: { _project_id: string }; Returns: Json }
       confirm_payment_record: {
