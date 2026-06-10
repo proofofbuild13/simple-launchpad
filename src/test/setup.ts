@@ -1,7 +1,8 @@
+// Optional: extends `expect` with DOM matchers. Some runtimes have ESM
+// resolution issues with jest-dom's lodash subpath imports — keep it
+// optional so pure-logic tests still run.
 try {
-  // Optional: extends `expect` with DOM matchers. Some runtimes have ESM
-  // resolution issues with jest-dom's lodash subpath imports — keep it
-  // optional so pure-logic tests still run.
+  // @ts-expect-error - dynamic import, types not required here
   await import("@testing-library/jest-dom");
 } catch {
   // no-op
