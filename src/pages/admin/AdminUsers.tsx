@@ -1,26 +1,30 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users as UsersIcon, Search, Eye, Flag, Ban, ShieldCheck } from "lucide-react";
+import { Users as UsersIcon, Search, Eye, Flag, Ban, ShieldCheck, Download } from "lucide-react";
 import { Link } from "react-router-dom";
-import { toast } from "sonner";
-import { logAudit } from "@/lib/audit";
+import { UserStatusDialog } from "@/components/admin/UserStatusDialog";
+import { downloadCSV } from "@/lib/csvExport";
+
+type Status = "active" | "flagged" | "suspended" | "banned" | "under_review";
 
 export default function AdminUsers() {
   const [rows, setRows] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
+  const [dialog, setDialog] = useState<{ open: boolean; userId: string | null; status: Status | null }>({ open: false, userId: null, status: null });
 
   const load = async () => {
     setLoading(true);
     const [{ data: profiles }, { data: roles }, { data: status }] = await Promise.all([
-      supabase.from("profiles").select("id, full_name, avatar_url, created_at").order("created_at", { ascending: false }).limit(200),
+      supabase.from("profiles").select("id, full_name, avatar_url, created_at").order("created_at", { ascending: false }).limit(500),
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("user_status").select("*"),
     ]);
@@ -36,21 +40,21 @@ export default function AdminUsers() {
   };
   useEffect(() => { load(); }, []);
 
-  const setStatus = async (userId: string, status: string) => {
-    const { error } = await supabase.from("user_status").upsert({
-      user_id: userId, status, updated_at: new Date().toISOString(),
-    });
-    if (error) return toast.error(error.message);
-    await logAudit(`user_${status}`, "user_status", userId, { status });
-    toast.success(`User marked ${status}`);
-    load();
-  };
+  const openDialog = (userId: string, status: Status) => setDialog({ open: true, userId, status });
 
   const filtered = rows.filter((r) => {
     if (roleFilter !== "all" && r.role !== roleFilter) return false;
+    if (statusFilter !== "all" && r.status !== statusFilter) return false;
     if (!search) return true;
     return (r.full_name ?? "").toLowerCase().includes(search.toLowerCase()) || r.id.includes(search);
   });
+
+  const exportCSV = () => {
+    downloadCSV(`users-${new Date().toISOString().slice(0,10)}.csv`, filtered.map((r) => ({
+      id: r.id, full_name: r.full_name ?? "", role: r.role, status: r.status,
+      reason: r.reason ?? "", joined_at: new Date(r.created_at).toISOString(),
+    })));
+  };
 
   const statusBadge = (s: string) => {
     const map: Record<string, "default"|"destructive"|"secondary"|"outline"> = {
@@ -61,9 +65,14 @@ export default function AdminUsers() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold flex items-center gap-2"><UsersIcon className="h-6 w-6" /> User management</h1>
-        <p className="text-sm text-muted-foreground">{filtered.length} users</p>
+      <div className="flex items-end justify-between flex-wrap gap-2">
+        <div>
+          <h1 className="text-2xl font-semibold flex items-center gap-2"><UsersIcon className="h-6 w-6" /> User management</h1>
+          <p className="text-sm text-muted-foreground">{filtered.length} users</p>
+        </div>
+        <Button size="sm" variant="outline" onClick={exportCSV} disabled={!filtered.length}>
+          <Download className="h-4 w-4 mr-1" /> Export CSV
+        </Button>
       </div>
 
       <Card>
@@ -74,13 +83,24 @@ export default function AdminUsers() {
               <Input className="pl-9" placeholder="Search name or id…" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All roles</SelectItem>
                 <SelectItem value="startup">Startup</SelectItem>
                 <SelectItem value="builder">Builder</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
                 <SelectItem value="super_admin">Super admin</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="flagged">Flagged</SelectItem>
+                <SelectItem value="under_review">Under review</SelectItem>
+                <SelectItem value="suspended">Suspended</SelectItem>
+                <SelectItem value="banned">Banned</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -112,9 +132,9 @@ export default function AdminUsers() {
                   <TableCell className="text-xs text-muted-foreground">{new Date(u.created_at).toLocaleDateString()}</TableCell>
                   <TableCell className="text-right space-x-1">
                     <Button asChild size="sm" variant="ghost"><Link to={`/admin/users/${u.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
-                    <Button size="sm" variant="ghost" onClick={() => setStatus(u.id, "flagged")} title="Flag"><Flag className="h-3.5 w-3.5 text-amber-500" /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => setStatus(u.id, "suspended")} title="Suspend"><Ban className="h-3.5 w-3.5 text-destructive" /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => setStatus(u.id, "active")} title="Activate"><ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /></Button>
+                    <Button size="sm" variant="ghost" onClick={() => openDialog(u.id, "flagged")} title="Flag"><Flag className="h-3.5 w-3.5 text-amber-500" /></Button>
+                    <Button size="sm" variant="ghost" onClick={() => openDialog(u.id, "suspended")} title="Suspend"><Ban className="h-3.5 w-3.5 text-destructive" /></Button>
+                    <Button size="sm" variant="ghost" onClick={() => openDialog(u.id, "active")} title="Activate"><ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /></Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -122,6 +142,14 @@ export default function AdminUsers() {
           </Table>
         </CardContent>
       </Card>
+
+      <UserStatusDialog
+        open={dialog.open}
+        userId={dialog.userId}
+        status={dialog.status}
+        onOpenChange={(open) => setDialog((d) => ({ ...d, open }))}
+        onDone={load}
+      />
     </div>
   );
 }
