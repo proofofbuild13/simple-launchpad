@@ -1,43 +1,69 @@
-# Fix: Builder payment-details check runs too late
+# Admin Quick Wins
 
-## Problem
-Today the system only discovers that the builder has no payment method **after** the founder clicks "Approve milestone" — the `RecordPaymentModal` opens, queries `payment_methods`, then disables the submit button with an inline "Remind Builder" link. By that point:
+Targeted upgrades to existing admin pages — no new sections, no route changes. Every state-changing action goes through a SECURITY DEFINER RPC with admin-role check and writes to `admin_audit_logs`.
 
-- The milestone is already flipped to `approved` (manual path), so the founder is stuck mid-flow.
-- For escrow contracts there is no check at all — `release_escrow_for_milestone` runs and funds are released without the builder ever being prompted to add UPI/bank details.
-- The builder only learns details are missing if the founder manually clicks "Remind Builder" inside the modal.
+## 1. User management (AdminUsers + AdminUserDetail)
 
-## Fix (frontend + one helper RPC)
+**a. Suspension/flag reason + notify user**
+- Replace the bare flag/suspend/ban icon buttons with a small dialog: required reason text + checkbox "notify user".
+- New RPC `admin_set_user_status(_user_id, _status, _reason, _notify)` — upserts `user_status` (sets `reason`, `flagged_by=auth.uid()`), inserts a `notifications` row when `_notify`, audits the action.
 
-### 1. New SECURITY DEFINER RPC `builder_payment_status(_builder_id uuid)`
-Returns `{ has_method: boolean, is_verified: boolean }`. Authorized for any counterparty on an active contract or admin (same gate as `get_builder_default_payment`). This lets the founder check without reading the `payment_methods` table directly.
+**b. Role change**
+- In `AdminUserDetail`, add a Role card with a Select (`startup`, `builder`, `admin`, `super_admin`) + Save.
+- New RPC `admin_set_user_role(_user_id, _role)` — super_admin only for admin/super_admin assignments; upserts `user_roles`, audits.
 
-### 2. New helper `src/lib/builderPaymentCheck.ts`
-`ensureBuilderPaymentReady(contract)` →
-- Calls `builder_payment_status`.
-- If `has_method === false`: calls `send_notification` to the builder (`type: 'payment_method_missing'`, link `/settings?tab=payments`), shows founder a toast "Builder hasn't added payment details — we've notified them", returns `false`.
-- Otherwise returns `true`.
+**c. Force email verification / send password reset**
+- `AdminUserDetail` gets two buttons that call existing Supabase admin endpoints via a new edge function `admin-user-actions` (uses `SUPABASE_SERVICE_ROLE_KEY`): `mark_email_verified` and `send_password_reset`. Audited.
 
-Idempotency: only sends one notification per 24h by checking the most recent matching `notifications` row client-side before insert.
+**d. Bulk CSV export**
+- "Export users" button on `AdminUsers` → client-side CSV of the currently filtered rows (id, name, role, status, joined).
 
-### 3. `src/pages/workspace/Workspace.tsx` — gate `approve(m)`
-At the top of `approve`, before either branch:
-```ts
-const ready = await ensureBuilderPaymentReady(contract);
-if (!ready) { setActive(null); return; }
-```
-This blocks both the escrow release path and the manual `RecordPaymentModal` path until the builder has a payment method on file.
+## 2. Financial controls (AdminCommissions + new actions on AdminDisputeDetail)
 
-### 4. `src/components/payments/FundEscrowModal.tsx` — same gate
-Run `ensureBuilderPaymentReady` before allowing the founder to fund escrow, so money never enters escrow for a builder who can't be paid out.
+**a. Waive / adjust commission invoice**
+- In `AdminCommissions`, add a second card "All invoices" with status filter. Each row has "Waive" and "Mark paid" actions.
+- New RPC `admin_adjust_commission_invoice(_invoice_id, _action, _notes)` — `action ∈ ('waive','mark_paid','reopen')`; updates `commission_invoices.status`, propagates to `payment_records` if needed, audits.
 
-### 5. `RecordPaymentModal` — keep existing "Remind Builder" UI as a fallback
-No behavior change; it stays as a safety net if state drifts between the pre-check and modal open.
+**b. Manual escrow refund/release**
+- Already have `admin_resolve_escrow`. Surface it on the dispute detail page with a confirmation dialog and notes field. (Currently only used from contract pages — make it discoverable on `AdminDisputes`.)
 
-## Files touched
-- `supabase/migrations/<new>.sql` — `builder_payment_status` RPC + grant to `authenticated`.
-- `src/lib/builderPaymentCheck.ts` — new helper.
-- `src/pages/workspace/Workspace.tsx` — call helper in `approve`.
-- `src/components/payments/FundEscrowModal.tsx` — call helper before funding.
+**c. Revenue export**
+- "Export revenue CSV" on `AdminCommissions` — paid invoices for selectable date range (last 7/30/90d/all).
 
-No changes to `release_escrow_for_milestone`, no schema changes, no edits to the working escrow ledger logic.
+## 3. Platform settings + analytics (new tab on AdminDashboard)
+
+**a. Editable platform settings**
+- Add a settings card to `AdminDashboard` (or a small `<Tabs>` next to the activity feed): inputs for `commission_rate` (0.15 default), `placement_fee_percent` (8.33), `escrow_release_grace_days`.
+- Reads/writes `public.platform_settings` (super_admin only via RLS already in place). Values are picked up by existing functions like `release_escrow_for_milestone` that already read from `platform_settings`.
+
+**b. KPI trend mini-charts**
+- Add a "30-day GMV & revenue" chart using recharts (already in `src/components/ui/chart.tsx`). Two lines: daily declared payments vs daily commission paid. Aggregates client-side from existing tables — no schema change.
+
+## Technical details
+
+**New migration** (one file):
+- `admin_set_user_status(uuid, text, text, boolean)` RPC
+- `admin_set_user_role(uuid, app_role)` RPC, super_admin guard for admin roles
+- `admin_adjust_commission_invoice(uuid, text, text)` RPC
+- Seed `platform_settings` with `commission_rate=0.15`, `placement_fee_percent=8.33`, `escrow_release_grace_days=7` (`ON CONFLICT DO NOTHING`).
+- All RPCs: `SECURITY DEFINER`, `SET search_path=public`, check `has_role(auth.uid(),'admin'|'super_admin')`, write `admin_audit_logs`. Revoke EXECUTE from anon/PUBLIC, grant to authenticated.
+
+**New edge function** `admin-user-actions`:
+- Verifies caller JWT, looks up role in `user_roles`, rejects non-admins.
+- Switch on `action`: `mark_email_verified` uses `supabaseAdmin.auth.admin.updateUserById`; `send_password_reset` uses `supabaseAdmin.auth.admin.generateLink({type:'recovery'})`.
+- Writes audit row.
+
+**Frontend files changed:**
+- `src/pages/admin/AdminUsers.tsx` — reason dialog, CSV export
+- `src/pages/admin/AdminUserDetail.tsx` — role editor, account actions
+- `src/pages/dashboard/AdminCommissions.tsx` — invoice list, waive/mark paid, CSV export
+- `src/pages/dashboard/AdminDisputes.tsx` — surface admin escrow resolution
+- `src/pages/admin/AdminDashboard.tsx` — settings card + 30-day trend chart
+- New helper `src/components/admin/UserStatusDialog.tsx`
+
+## Out of scope (call out for follow-up if you want them later)
+- Impersonation/login-as
+- Bulk dispute triage queue
+- Content/message moderation tools
+- Cohort & funnel analytics
+- Feature flags system
