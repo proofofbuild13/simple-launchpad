@@ -1856,11 +1856,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_adjust_commission_invoice: {
+        Args: { _action: string; _invoice_id: string; _notes?: string }
+        Returns: undefined
+      }
       admin_resolve_escrow: {
         Args: {
           _contract_id: string
           _direction: string
           _milestone_id: string
+        }
+        Returns: undefined
+      }
+      admin_set_user_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      admin_set_user_status: {
+        Args: {
+          _notify?: boolean
+          _reason?: string
+          _status: string
+          _user_id: string
         }
         Returns: undefined
       }

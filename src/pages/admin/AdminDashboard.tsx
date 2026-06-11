@@ -1,19 +1,31 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Users, Briefcase, FileSignature, Wallet, AlertTriangle, TrendingUp,
-  Activity, Shield, Clock, CheckCircle2,
+  Activity, Shield, Clock, CheckCircle2, Settings, Save,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { fmtUSD } from "@/lib/currency";
+import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
 
 export default function AdminDashboard() {
+  const { role } = useAuth();
   const [kpis, setKpis] = useState<any>({});
   const [feed, setFeed] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<any>({ overdue: 0, openDisputes: 0, flagged: 0 });
+  const [trend, setTrend] = useState<{ date: string; gmv: number; revenue: number }[]>([]);
+  const [settings, setSettings] = useState<Record<string, string>>({});
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+
+  const isSuper = role === "super_admin";
 
   const load = async () => {
     const counts = async (table: string, filter?: any) => {
@@ -38,26 +50,41 @@ export default function AdminDashboard() {
       counts("user_status", (q: any) => q.in("status", ["flagged","suspended","banned","under_review"])),
     ]);
 
-    const { data: gmvRows } = await supabase
-      .from("payment_records").select("declared_amount, declared_at").gte("declared_at", new Date(Date.now()-30*864e5).toISOString());
+    const since = new Date(Date.now()-30*864e5).toISOString();
+    const [{ data: gmvRows }, { data: revRows }, { data: pendRows }, { data: settingsRows }] = await Promise.all([
+      supabase.from("payment_records").select("declared_amount, declared_at").gte("declared_at", since),
+      supabase.from("commission_invoices").select("commission_amount, status, created_at").eq("status","paid"),
+      supabase.from("commission_invoices").select("commission_amount").neq("status","paid"),
+      supabase.from("platform_settings").select("key, value"),
+    ]);
     const gmv = (gmvRows ?? []).reduce((s, r: any) => s + Number(r.declared_amount || 0), 0);
-
-    const { data: revRows } = await supabase
-      .from("commission_invoices").select("commission_amount, status").eq("status","paid");
     const revenue = (revRows ?? []).reduce((s, r: any) => s + Number(r.commission_amount || 0), 0);
-
-    const { data: pendRows } = await supabase
-      .from("commission_invoices").select("commission_amount").neq("status","paid");
     const pending = (pendRows ?? []).reduce((s, r: any) => s + Number(r.commission_amount || 0), 0);
 
-    setKpis({
-      users, startups, builders, projects, activeContracts,
-      openDisputes, gmv, revenue, pending,
+    // Build 30-day daily trend
+    const buckets: Record<string, { gmv: number; revenue: number }> = {};
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
+      buckets[d] = { gmv: 0, revenue: 0 };
+    }
+    (gmvRows ?? []).forEach((r: any) => {
+      const d = String(r.declared_at).slice(0, 10);
+      if (buckets[d]) buckets[d].gmv += Number(r.declared_amount || 0);
     });
+    (revRows ?? []).forEach((r: any) => {
+      const d = String(r.created_at).slice(0, 10);
+      if (buckets[d]) buckets[d].revenue += Number(r.commission_amount || 0);
+    });
+    setTrend(Object.entries(buckets).map(([date, v]) => ({ date: date.slice(5), gmv: v.gmv, revenue: v.revenue })));
+
+    setKpis({ users, startups, builders, projects, activeContracts, openDisputes, gmv, revenue, pending });
     setAlerts({ overdue: overdueInv, openDisputes, flagged });
 
-    const { data: logs } = await supabase
-      .from("admin_audit_logs").select("*").order("created_at",{ascending:false}).limit(25);
+    const s: Record<string, string> = {};
+    (settingsRows ?? []).forEach((r: any) => { s[r.key] = typeof r.value === "string" ? r.value : JSON.stringify(r.value); });
+    setSettings(s);
+
+    const { data: logs } = await supabase.from("admin_audit_logs").select("*").order("created_at",{ascending:false}).limit(25);
     setFeed(logs ?? []);
   };
 
@@ -67,7 +94,17 @@ export default function AdminDashboard() {
     return () => clearInterval(t);
   }, []);
 
-  const kpiCards = [
+  const saveSetting = async (key: string) => {
+    setSavingKey(key);
+    let parsed: any = settings[key];
+    try { parsed = JSON.parse(settings[key]); } catch { /* keep as string */ }
+    const { error } = await supabase.from("platform_settings").upsert({ key, value: parsed });
+    setSavingKey(null);
+    if (error) return toast.error(error.message);
+    toast.success(`${key} updated`);
+  };
+
+  const kpiCards = useMemo(() => [
     { label: "Total users", value: kpis.users, icon: Users },
     { label: "Active startups", value: kpis.startups, icon: Briefcase },
     { label: "Active builders", value: kpis.builders, icon: Users },
@@ -77,6 +114,12 @@ export default function AdminDashboard() {
     { label: "Platform revenue", value: fmtUSD(kpis.revenue ?? 0), icon: Wallet },
     { label: "Pending platform fees", value: fmtUSD(kpis.pending ?? 0), icon: Clock },
     { label: "Open disputes", value: kpis.openDisputes, icon: AlertTriangle },
+  ], [kpis]);
+
+  const settingDefs = [
+    { key: "commission_rate", label: "Commission rate", help: "Decimal e.g. 0.15 = 15%" },
+    { key: "placement_fee_percent", label: "Placement fee %", help: "Percent e.g. 8.33" },
+    { key: "escrow_release_grace_days", label: "Escrow release grace (days)", help: "Integer" },
   ];
 
   return (
@@ -106,6 +149,25 @@ export default function AdminDashboard() {
           </Card>
         ))}
       </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2"><TrendingUp className="h-4 w-4" /> 30-day GMV & revenue</CardTitle>
+        </CardHeader>
+        <CardContent className="h-[260px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={trend} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+              <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(v: any) => `$${Number(v).toLocaleString()}`} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Line type="monotone" dataKey="gmv" name="GMV" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="revenue" name="Revenue" stroke="hsl(var(--destructive))" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
@@ -176,6 +238,27 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2"><Settings className="h-4 w-4" /> Platform settings</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-3">
+          {settingDefs.map((d) => (
+            <div key={d.key} className="space-y-1.5">
+              <Label htmlFor={d.key} className="text-xs">{d.label}</Label>
+              <div className="flex gap-2">
+                <Input id={d.key} value={settings[d.key] ?? ""} onChange={(e) => setSettings({ ...settings, [d.key]: e.target.value })} disabled={!isSuper} />
+                <Button size="icon" variant="outline" onClick={() => saveSetting(d.key)} disabled={!isSuper || savingKey === d.key} title="Save">
+                  <Save className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">{d.help}</p>
+            </div>
+          ))}
+          {!isSuper && <p className="text-xs text-muted-foreground md:col-span-3">Only super admins can edit platform settings.</p>}
+        </CardContent>
+      </Card>
     </div>
   );
 }
