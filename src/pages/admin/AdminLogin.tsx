@@ -19,22 +19,38 @@ export default function AdminLogin() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
     if (error || !data.user) {
       setBusy(false);
-      toast.error(error?.message ?? "Sign-in failed");
+      const msg = error?.message ?? "Sign-in failed";
+      if (/invalid login credentials/i.test(msg)) {
+        toast.error("Wrong email or password, or the email is not confirmed yet.");
+      } else if (/email not confirmed/i.test(msg)) {
+        toast.error("This account's email is not confirmed. Ask a super-admin to recreate the user via Create admin.");
+      } else {
+        toast.error(msg);
+      }
       return;
     }
-    const { data: rd } = await supabase
+    const { data: rd, error: roleErr } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", data.user.id)
+      .in("role", ["admin", "super_admin"])
       .maybeSingle();
-    const r = rd?.role;
-    if (r !== "admin" && r !== "super_admin") {
+    if (roleErr) {
       await supabase.auth.signOut();
       setBusy(false);
-      toast.error("Account does not have admin role");
+      toast.error("Could not verify admin role. Try again.");
+      return;
+    }
+    if (!rd) {
+      await supabase.auth.signOut();
+      setBusy(false);
+      toast.error("This account does not have an admin role. Ask a super-admin to grant it.");
       return;
     }
     await logAudit("admin_login", "user_roles", data.user.id);
