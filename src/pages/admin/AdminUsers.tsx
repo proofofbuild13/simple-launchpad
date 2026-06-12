@@ -1,25 +1,36 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users as UsersIcon, Search, Eye, Flag, Ban, ShieldCheck, Download } from "lucide-react";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Users as UsersIcon, Search, Eye, Flag, Ban, ShieldCheck, Download, UserPlus, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { UserStatusDialog } from "@/components/admin/UserStatusDialog";
 import { downloadCSV } from "@/lib/csvExport";
+import { toast } from "sonner";
 
 type Status = "active" | "flagged" | "suspended" | "banned" | "under_review";
 
 export default function AdminUsers() {
+  const { role: callerRole } = useAuth();
+  const isSuper = (callerRole as string) === "super_admin";
   const [rows, setRows] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [dialog, setDialog] = useState<{ open: boolean; userId: string | null; status: Status | null }>({ open: false, userId: null, status: null });
+
+  // Create-admin dialog state
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createBusy, setCreateBusy] = useState(false);
+  const [form, setForm] = useState({ email: "", password: "", full_name: "", role: "admin" as "admin" | "super_admin" });
 
   const load = async () => {
     setLoading(true);
@@ -56,6 +67,23 @@ export default function AdminUsers() {
     })));
   };
 
+  const createAdmin = async () => {
+    if (!form.email || !form.password) return toast.error("Email and password are required");
+    if (form.password.length < 8) return toast.error("Password must be at least 8 characters");
+    setCreateBusy(true);
+    const { data, error } = await supabase.functions.invoke("admin-create-user", {
+      body: { ...form, email: form.email.trim().toLowerCase() },
+    });
+    setCreateBusy(false);
+    if (error || (data as any)?.error) {
+      return toast.error((data as any)?.error ?? error?.message ?? "Failed to create admin");
+    }
+    toast.success("Admin created. They can sign in immediately.");
+    setCreateOpen(false);
+    setForm({ email: "", password: "", full_name: "", role: "admin" });
+    load();
+  };
+
   const statusBadge = (s: string) => {
     const map: Record<string, "default"|"destructive"|"secondary"|"outline"> = {
       active: "outline", flagged: "secondary", suspended: "destructive", banned: "destructive", under_review: "secondary",
@@ -70,9 +98,16 @@ export default function AdminUsers() {
           <h1 className="text-2xl font-semibold flex items-center gap-2"><UsersIcon className="h-6 w-6" /> User management</h1>
           <p className="text-sm text-muted-foreground">{filtered.length} users</p>
         </div>
-        <Button size="sm" variant="outline" onClick={exportCSV} disabled={!filtered.length}>
-          <Download className="h-4 w-4 mr-1" /> Export CSV
-        </Button>
+        <div className="flex gap-2">
+          {isSuper && (
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <UserPlus className="h-4 w-4 mr-1" /> Create admin
+            </Button>
+          )}
+          <Button size="sm" variant="outline" onClick={exportCSV} disabled={!filtered.length}>
+            <Download className="h-4 w-4 mr-1" /> Export CSV
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -150,6 +185,45 @@ export default function AdminUsers() {
         onOpenChange={(open) => setDialog((d) => ({ ...d, open }))}
         onDone={load}
       />
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create admin user</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="ce">Email</Label>
+              <Input id="ce" type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="admin@yourcompany.com" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="cn">Full name</Label>
+              <Input id="cn" value={form.full_name} onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))} placeholder="Jane Admin" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="cp">Password</Label>
+              <Input id="cp" type="text" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} placeholder="Min 8 characters" />
+              <p className="text-xs text-muted-foreground">Share this password with the new admin out-of-band. They can sign in immediately at /admin/login.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Role</Label>
+              <Select value={form.role} onValueChange={(v) => setForm((f) => ({ ...f, role: v as any }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="super_admin">Super admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button onClick={createAdmin} disabled={createBusy}>
+              {createBusy && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
