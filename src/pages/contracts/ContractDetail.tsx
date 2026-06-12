@@ -123,7 +123,10 @@ export default function ContractDetail() {
   };
 
   const downloadPdf = () => {
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Contract ${c.id.slice(0,8)}</title>
+    const esc = (s: unknown) =>
+      String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Contract ${esc(c.id.slice(0,8))}</title>
       <style>body{font-family:Georgia,serif;max-width:780px;margin:40px auto;color:#111;line-height:1.6}
       h1{font-size:22px;border-bottom:2px solid #111;padding-bottom:8px}
       h2{font-size:15px;margin-top:28px;text-transform:uppercase;letter-spacing:1px}
@@ -131,24 +134,29 @@ export default function ContractDetail() {
       td,th{border:1px solid #999;padding:6px 8px;font-size:13px;text-align:left}
       .sig{margin-top:60px;display:flex;justify-content:space-between}
       .sig div{width:45%;border-top:1px solid #111;padding-top:6px;font-size:12px}</style></head><body>
-      <h1>Service Agreement — ${c.projects?.title ?? ""}</h1>
-      <p><strong>Contract ID:</strong> ${c.id}<br/><strong>Status:</strong> ${c.status}</p>
+      <h1>Service Agreement — ${esc(c.projects?.title ?? "")}</h1>
+      <p><strong>Contract ID:</strong> ${esc(c.id)}<br/><strong>Status:</strong> ${esc(c.status)}</p>
       <h2>Parties</h2>
-      <p>Founder: ${parties.founder ?? c.founder_id}<br/>Builder: ${parties.builder ?? c.builder_id}</p>
+      <p>Founder: ${esc(parties.founder ?? c.founder_id)}<br/>Builder: ${esc(parties.builder ?? c.builder_id)}</p>
       <h2>Terms</h2>
-      <p>Start date: ${c.start_date ?? "—"}<br/>Escrow amount: ₹${c.escrow_amount ?? 0}<br/>
+      <p>Start date: ${esc(c.start_date ?? "—")}<br/>Escrow amount: ₹${esc(c.escrow_amount ?? 0)}<br/>
       IP Assignment: ${c.ip_assignment ? "Yes" : "No"} · NDA: ${c.nda_included ? "Yes" : "No"} · Non-compete: ${c.non_compete ? "Yes" : "No"}</p>
       <h2>Milestones</h2>
       <table><tr><th>#</th><th>Title</th><th>Amount</th><th>Due</th></tr>
-      ${activeMilestones.map((m, i) => `<tr><td>${i+1}</td><td>${m.title}</td><td>₹${m.amount}</td><td>${m.due_date ?? "—"}</td></tr>`).join("")}
+      ${activeMilestones.map((m, i) => `<tr><td>${i+1}</td><td>${esc(m.title)}</td><td>₹${esc(m.amount)}</td><td>${esc(m.due_date ?? "—")}</td></tr>`).join("")}
       </table>
       <div class="sig">
-        <div>Founder<br/>${parties.founder ?? ""}<br/>${founderSigned ? "✓ Signed" : "Pending"}</div>
-        <div>Builder<br/>${parties.builder ?? ""}<br/>${builderSigned ? "✓ Signed" : "Pending"}</div>
+        <div>Founder<br/>${esc(parties.founder ?? "")}<br/>${founderSigned ? "✓ Signed" : "Pending"}</div>
+        <div>Builder<br/>${esc(parties.builder ?? "")}<br/>${builderSigned ? "✓ Signed" : "Pending"}</div>
       </div>
       </body></html>`;
-    const w = window.open("", "_blank");
-    if (w) { w.document.write(html); w.document.close(); w.focus(); w.print(); }
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, "_blank");
+    if (w) {
+      w.addEventListener("load", () => { w.focus(); w.print(); });
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    }
   };
 
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
