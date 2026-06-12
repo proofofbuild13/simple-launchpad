@@ -9,30 +9,20 @@ import { Shield, Loader2, Info } from "lucide-react";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 
-const ADMIN_EMAIL = "vigneshv@admin.local";
-const ADMIN_PASSWORD = "Vig@13";
-
 export default function AdminLogin() {
   const nav = useNavigate();
-  const [adminId, setAdminId] = useState("vigneshv");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [bootstrapBusy, setBootstrapBusy] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (adminId !== "vigneshv" || password !== ADMIN_PASSWORD) {
-      toast.error("Invalid admin credentials");
-      return;
-    }
     setBusy(true);
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: ADMIN_EMAIL,
-      password: ADMIN_PASSWORD,
-    });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error || !data.user) {
       setBusy(false);
-      toast.error("Admin account not provisioned. Use first-time setup below.");
+      toast.error(error?.message ?? "Sign-in failed");
       return;
     }
     const { data: rd } = await supabase
@@ -53,30 +43,16 @@ export default function AdminLogin() {
   };
 
   const bootstrap = async () => {
+    if (!email || !password) {
+      toast.error("Sign in first, then click first-time setup to grant super-admin");
+      return;
+    }
     setBootstrapBusy(true);
-    // Try sign-in first, else sign up
-    let signIn = await supabase.auth.signInWithPassword({
-      email: ADMIN_EMAIL, password: ADMIN_PASSWORD,
-    });
+    const signIn = await supabase.auth.signInWithPassword({ email, password });
     if (signIn.error || !signIn.data.user) {
-      const signUp = await supabase.auth.signUp({
-        email: ADMIN_EMAIL,
-        password: ADMIN_PASSWORD,
-        options: { emailRedirectTo: window.location.origin + "/admin/login" },
-      });
-      if (signUp.error) {
-        setBootstrapBusy(false);
-        toast.error(signUp.error.message);
-        return;
-      }
-      signIn = await supabase.auth.signInWithPassword({
-        email: ADMIN_EMAIL, password: ADMIN_PASSWORD,
-      });
-      if (signIn.error) {
-        setBootstrapBusy(false);
-        toast.error("Account created. Confirm email if required, then login.");
-        return;
-      }
+      setBootstrapBusy(false);
+      toast.error(signIn.error?.message ?? "Sign-in failed");
+      return;
     }
     const { data: granted, error: grantErr } = await supabase.rpc("bootstrap_admin");
     if (grantErr) {
@@ -107,12 +83,12 @@ export default function AdminLogin() {
         <CardContent>
           <form onSubmit={submit} className="space-y-4">
             <div className="space-y-1.5">
-              <Label>Admin ID</Label>
-              <Input value={adminId} onChange={(e) => setAdminId(e.target.value)} placeholder="vigneshv" required />
+              <Label>Email</Label>
+              <Input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
             <div className="space-y-1.5">
               <Label>Password</Label>
-              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <Input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
             <Button type="submit" className="w-full" disabled={busy}>
               {busy && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Sign in
@@ -121,7 +97,7 @@ export default function AdminLogin() {
           <div className="mt-6 pt-6 border-t space-y-3">
             <div className="flex items-start gap-2 text-xs text-muted-foreground">
               <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
-              <p>First-time setup provisions the admin account using the MVP credentials and grants super-admin role.</p>
+              <p>First-time setup signs in with the credentials above and grants super-admin if no admin exists yet.</p>
             </div>
             <Button variant="outline" className="w-full" onClick={bootstrap} disabled={bootstrapBusy}>
               {bootstrapBusy && <Loader2 className="h-4 w-4 animate-spin mr-2" />} First-time setup
