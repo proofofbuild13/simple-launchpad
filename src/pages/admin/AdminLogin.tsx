@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,17 @@ export default function AdminLogin() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createBusy, setCreateBusy] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", full_name: "" });
+  const [adminExists, setAdminExists] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.rpc("any_admin_exists");
+      if (!cancelled) setAdminExists(error ? false : Boolean(data));
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,18 +158,21 @@ export default function AdminLogin() {
             </Button>
           </form>
 
-          <div className="mt-6 pt-6 border-t space-y-3">
-            <div className="flex items-start gap-2 text-xs text-muted-foreground">
-              <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
-              <p>
-                No admin yet? Create the first super-admin account. This only works while the platform has zero admins —
-                afterwards new admins must be added from the admin panel.
-              </p>
+          {adminExists === false && (
+            <div className="mt-6 pt-6 border-t space-y-3">
+              <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                <p>
+                  No admin yet? Create the first super-admin account. This only works while the platform has zero admins —
+                  afterwards new admins must be added from the admin panel.
+                </p>
+              </div>
+              <Button variant="outline" className="w-full" onClick={() => setCreateOpen(true)}>
+                <UserPlus className="h-4 w-4 mr-2" /> Create first admin
+              </Button>
             </div>
-            <Button variant="outline" className="w-full" onClick={() => setCreateOpen(true)}>
-              <UserPlus className="h-4 w-4 mr-2" /> Create first admin
-            </Button>
-          </div>
+          )}
+
         </CardContent>
       </Card>
 
