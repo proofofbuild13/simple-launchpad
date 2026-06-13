@@ -1860,6 +1860,8 @@ export type Database = {
         Args: { _action: string; _invoice_id: string; _notes?: string }
         Returns: undefined
       }
+      admin_delete_user: { Args: { _user_id: string }; Returns: Json }
+      admin_get_user_full: { Args: { _user_id: string }; Returns: Json }
       admin_resolve_escrow: {
         Args: {
           _contract_id: string
@@ -1882,6 +1884,10 @@ export type Database = {
           _status: string
           _user_id: string
         }
+        Returns: undefined
+      }
+      admin_update_user_profile: {
+        Args: { _patch: Json; _user_id: string }
         Returns: undefined
       }
       any_admin_exists: { Args: never; Returns: boolean }
