@@ -158,18 +158,21 @@ export default function AdminLogin() {
             </Button>
           </form>
 
-          <div className="mt-6 pt-6 border-t space-y-3">
-            <div className="flex items-start gap-2 text-xs text-muted-foreground">
-              <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
-              <p>
-                No admin yet? Create the first super-admin account. This only works while the platform has zero admins —
-                afterwards new admins must be added from the admin panel.
-              </p>
+          {adminExists === false && (
+            <div className="mt-6 pt-6 border-t space-y-3">
+              <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                <p>
+                  No admin yet? Create the first super-admin account. This only works while the platform has zero admins —
+                  afterwards new admins must be added from the admin panel.
+                </p>
+              </div>
+              <Button variant="outline" className="w-full" onClick={() => setCreateOpen(true)}>
+                <UserPlus className="h-4 w-4 mr-2" /> Create first admin
+              </Button>
             </div>
-            <Button variant="outline" className="w-full" onClick={() => setCreateOpen(true)}>
-              <UserPlus className="h-4 w-4 mr-2" /> Create first admin
-            </Button>
-          </div>
+          )}
+
         </CardContent>
       </Card>
 
