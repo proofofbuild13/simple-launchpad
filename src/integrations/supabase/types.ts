@@ -1884,6 +1884,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      any_admin_exists: { Args: never; Returns: boolean }
       bootstrap_admin: { Args: never; Returns: boolean }
       builder_payment_status: {
         Args: { _builder_id: string }

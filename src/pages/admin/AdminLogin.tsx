@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,17 @@ export default function AdminLogin() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createBusy, setCreateBusy] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", full_name: "" });
+  const [adminExists, setAdminExists] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.rpc("any_admin_exists");
+      if (!cancelled) setAdminExists(error ? false : Boolean(data));
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
