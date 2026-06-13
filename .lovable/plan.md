@@ -1,69 +1,65 @@
-# Admin Quick Wins
+# Admin user management: fix roles + full detail view
 
-Targeted upgrades to existing admin pages — no new sections, no route changes. Every state-changing action goes through a SECURITY DEFINER RPC with admin-role check and writes to `admin_audit_logs`.
+## Part 1 — Fix missing roles on /admin/users
 
-## 1. User management (AdminUsers + AdminUserDetail)
+**Root cause:** `user_roles` RLS policy `roles_select_own` only allows the row owner or `has_role(auth.uid(),'admin')` to read. A logged-in **super_admin** does NOT satisfy `has_role(...,'admin')`, so `select user_id, role from user_roles` returns only their own row — every other user shows `—` and the role filter (startup/builder) returns nothing.
 
-**a. Suspension/flag reason + notify user**
-- Replace the bare flag/suspend/ban icon buttons with a small dialog: required reason text + checkbox "notify user".
-- New RPC `admin_set_user_status(_user_id, _status, _reason, _notify)` — upserts `user_status` (sets `reason`, `flagged_by=auth.uid()`), inserts a `notifications` row when `_notify`, audits the action.
+**Fix (migration):**
+- Drop and recreate `roles_select_own` to also allow `super_admin`:
+  `using (auth.uid() = user_id OR has_role(auth.uid(),'admin') OR has_role(auth.uid(),'super_admin'))`
+- Same audit for `roles_admin_all` (writes) — extend to `super_admin` so the existing admin tools keep working under either admin tier.
 
-**b. Role change**
-- In `AdminUserDetail`, add a Role card with a Select (`startup`, `builder`, `admin`, `super_admin`) + Save.
-- New RPC `admin_set_user_role(_user_id, _role)` — super_admin only for admin/super_admin assignments; upserts `user_roles`, audits.
+No frontend change needed for the list; rows will populate once the policy is fixed.
 
-**c. Force email verification / send password reset**
-- `AdminUserDetail` gets two buttons that call existing Supabase admin endpoints via a new edge function `admin-user-actions` (uses `SUPABASE_SERVICE_ROLE_KEY`): `mark_email_verified` and `send_password_reset`. Audited.
+## Part 2 — Full user detail page for builders & startups
 
-**d. Bulk CSV export**
-- "Export users" button on `AdminUsers` → client-side CSV of the currently filtered rows (id, name, role, status, joined).
+Today `AdminUserDetail.tsx` shows a thin view (profile name, role, status, a few contract/dispute/payment ids, last 25 audit rows). We will upgrade it into a single **360° admin profile** that works for both builders and startups, plus add edit + delete.
 
-## 2. Financial controls (AdminCommissions + new actions on AdminDisputeDetail)
+### A. Backend: one RPC that returns everything
 
-**a. Waive / adjust commission invoice**
-- In `AdminCommissions`, add a second card "All invoices" with status filter. Each row has "Waive" and "Mark paid" actions.
-- New RPC `admin_adjust_commission_invoice(_invoice_id, _action, _notes)` — `action ∈ ('waive','mark_paid','reopen')`; updates `commission_invoices.status`, propagates to `payment_records` if needed, audits.
+New SECURITY DEFINER RPC `admin_get_user_full(_user_id uuid) returns jsonb`, admin/super_admin only. It aggregates:
 
-**b. Manual escrow refund/release**
-- Already have `admin_resolve_escrow`. Surface it on the dispute detail page with a confirmation dialog and notes field. (Currently only used from contract pages — make it discoverable on `AdminDisputes`.)
+- **Identity:** `profiles` + `auth.users` (email, last_sign_in_at, created_at, email_confirmed_at, banned_until) — auth.users is reachable only from a definer function, which is why we centralize here.
+- **Role & status:** `user_roles`, `user_status`.
+- **Builder side** (if role = builder): `builder_profiles` (excluding raw phone — use mask), `experiences`, `educations`, `certifications`, `payment_methods` (masked via `mask_account`), `saved_projects`, `submissions`.
+- **Startup side** (if role = startup): `startup_profiles`, `projects` (count + recent), `project_invitations`, `followed_startups` (followers).
+- **Shared activity:** `offers` (sent/received), `contracts`, `contract_milestones` (via contracts), `payment_records`, `commission_invoices`, `commission_payments`, `placement_fees`, `disputes`, `interviews`, `messages_v2` count, `notifications` count, `admin_audit_logs` where `actor_id = _user_id` AND where `entity_id = _user_id`.
 
-**c. Revenue export**
-- "Export revenue CSV" on `AdminCommissions` — paid invoices for selectable date range (last 7/30/90d/all).
+Returned as a single JSON blob with sections so the page can render without N round-trips.
 
-## 3. Platform settings + analytics (new tab on AdminDashboard)
+### B. Backend: edit + delete RPCs
 
-**a. Editable platform settings**
-- Add a settings card to `AdminDashboard` (or a small `<Tabs>` next to the activity feed): inputs for `commission_rate` (0.15 default), `placement_fee_percent` (8.33), `escrow_release_grace_days`.
-- Reads/writes `public.platform_settings` (super_admin only via RLS already in place). Values are picked up by existing functions like `release_escrow_for_milestone` that already read from `platform_settings`.
+- `admin_update_user_profile(_user_id, _patch jsonb)` — admin/super_admin. Whitelisted columns on `profiles` (`full_name`, `avatar_url`) and on `builder_profiles` / `startup_profiles` (bio, location, title, links, etc.). Writes an `admin_audit_logs` row with the diff.
+- `admin_delete_user(_user_id)` — **super_admin only**. Refuses if the user has active contracts (`status not in ('cancelled','completed')`), unsettled `payment_records`, open `disputes`, or unpaid `commission_invoices` — returns a structured `{ blocked: true, reasons: [...] }` so the UI can explain. On success: deletes domain rows (profiles, builder/startup_profiles, user_roles, user_status, saved_*, payment_methods, followed_startups) and then calls an **edge function** `admin-delete-user` (service role) to remove the `auth.users` record. Audit-logged.
+- Edge function `admin-delete-user` (`verify_jwt = true`): validates caller is super_admin via JWT → calls `admin_delete_user` RPC → then `auth.admin.deleteUser`.
 
-**b. KPI trend mini-charts**
-- Add a "30-day GMV & revenue" chart using recharts (already in `src/components/ui/chart.tsx`). Two lines: daily declared payments vs daily commission paid. Aggregates client-side from existing tables — no schema change.
+### C. Frontend
 
-## Technical details
+- **`/admin/users` list** — once Part 1 lands, role chips render. Add small "View" CTA already present; no other change.
+- **`/admin/users/:id`** — rewrite `AdminUserDetail.tsx` with tabbed layout:
+  1. **Overview** — avatar, full_name, email, role, status, joined, last sign-in, email confirmation state, status reason.
+  2. **Profile** — builder_profile or startup_profile fields. Inline "Edit" dialog (super_admin + admin) that PATCHes via `admin_update_user_profile`.
+  3. **Activity** — contracts, milestones, offers, interviews, submissions, projects (startup), invitations, follows — paginated tables with deep links.
+  4. **Payments** — payment_records, commission_invoices, commission_payments, placement_fees, escrow ledger entries the user is party to, masked payment_methods.
+  5. **Disputes & moderation** — disputes raised by / against, current user_status, existing flag/suspend/ban controls (already in page).
+  6. **Audit trail** — both actor-side and entity-side entries, full pagination, CSV export.
+- **Header actions:** Edit profile, Change role (existing), Set status (existing), and **Delete user** (super_admin only, confirm dialog showing blockers if any).
+- New route stays at the existing `/admin/users/:id` — no routing change.
 
-**New migration** (one file):
-- `admin_set_user_status(uuid, text, text, boolean)` RPC
-- `admin_set_user_role(uuid, app_role)` RPC, super_admin guard for admin roles
-- `admin_adjust_commission_invoice(uuid, text, text)` RPC
-- Seed `platform_settings` with `commission_rate=0.15`, `placement_fee_percent=8.33`, `escrow_release_grace_days=7` (`ON CONFLICT DO NOTHING`).
-- All RPCs: `SECURITY DEFINER`, `SET search_path=public`, check `has_role(auth.uid(),'admin'|'super_admin')`, write `admin_audit_logs`. Revoke EXECUTE from anon/PUBLIC, grant to authenticated.
+## Technical notes
 
-**New edge function** `admin-user-actions`:
-- Verifies caller JWT, looks up role in `user_roles`, rejects non-admins.
-- Switch on `action`: `mark_email_verified` uses `supabaseAdmin.auth.admin.updateUserById`; `send_password_reset` uses `supabaseAdmin.auth.admin.generateLink({type:'recovery'})`.
-- Writes audit row.
+- All new RPCs: `SECURITY DEFINER`, `SET search_path = public`, `REVOKE EXECUTE FROM public`, `GRANT EXECUTE TO authenticated`, internal `has_role` check.
+- Never expose raw `phone` or full `account_number` — reuse `mask_account` and skip `phone` (already the project convention).
+- Delete is destructive: gated to super_admin, blockers enforced, audit-logged with full snapshot in `metadata`.
+- After the migration runs, `src/integrations/supabase/types.ts` regenerates automatically; the new RPCs become typed before the UI changes are written.
 
-**Frontend files changed:**
-- `src/pages/admin/AdminUsers.tsx` — reason dialog, CSV export
-- `src/pages/admin/AdminUserDetail.tsx` — role editor, account actions
-- `src/pages/dashboard/AdminCommissions.tsx` — invoice list, waive/mark paid, CSV export
-- `src/pages/dashboard/AdminDisputes.tsx` — surface admin escrow resolution
-- `src/pages/admin/AdminDashboard.tsx` — settings card + 30-day trend chart
-- New helper `src/components/admin/UserStatusDialog.tsx`
+## Files touched
 
-## Out of scope (call out for follow-up if you want them later)
-- Impersonation/login-as
-- Bulk dispute triage queue
-- Content/message moderation tools
-- Cohort & funnel analytics
-- Feature flags system
+- New migration: policy fix + 3 RPCs (`admin_get_user_full`, `admin_update_user_profile`, `admin_delete_user`).
+- New edge function: `supabase/functions/admin-delete-user/index.ts` + entry in `supabase/config.toml`.
+- Rewrite: `src/pages/admin/AdminUserDetail.tsx` (tabbed layout, edit dialog, delete button).
+- Minor: `src/pages/admin/AdminUsers.tsx` — no logic change; relies on RLS fix.
+
+## Open question
+
+Should **delete user** be allowed for plain `admin`, or strictly `super_admin` only? Plan currently restricts to super_admin (safer default). Tell me if you want admins to delete too.
