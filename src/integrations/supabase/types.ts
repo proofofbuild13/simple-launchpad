@@ -1944,6 +1944,13 @@ export type Database = {
         Args: { _other_user: string }
         Returns: string
       }
+      get_project_submission_counts: {
+        Args: { _ids: string[] }
+        Returns: {
+          count: number
+          project_id: string
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
