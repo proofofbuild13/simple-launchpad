@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Clock, Briefcase } from "lucide-react";
+import { Users, Clock, Briefcase, Loader2, AlertTriangle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,12 +15,15 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { engagementBadgeClass, engagementLabel, formatCtcRange } from "@/lib/engagement";
 
+
 const OPEN_STATUSES = ["open", "open_for_submissions", "reviewing_submissions", "hiring_in_progress"];
 
 export default function BrowseProjects() {
   const { user } = useAuth();
   const [projects, setProjects] = useState<any[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [countsLoading, setCountsLoading] = useState(false);
+  const [countsError, setCountsError] = useState(false);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
@@ -39,10 +42,20 @@ export default function BrowseProjects() {
       setProjects(list);
       if (list.length) {
         const ids = list.map((p) => p.id);
-        const { data: subs } = await supabase.rpc("get_project_submission_counts", { _ids: ids });
-        const map: Record<string, number> = {};
-        (subs ?? []).forEach((s: any) => { map[s.project_id] = Number(s.count) || 0; });
-        setCounts(map);
+        setCountsLoading(true);
+        setCountsError(false);
+        try {
+          const { data: subs, error } = await supabase.rpc("get_project_submission_counts", { _ids: ids });
+          if (error) throw error;
+          const map: Record<string, number> = {};
+          (subs ?? []).forEach((s: any) => { map[s.project_id] = Number(s.count) || 0; });
+          setCounts(map);
+        } catch (err) {
+          setCountsError(true);
+          console.error("Failed to load submission counts:", err);
+        } finally {
+          setCountsLoading(false);
+        }
         if (user) {
           const { data: saved } = await supabase
             .from("saved_projects").select("project_id").eq("user_id", user.id).in("project_id", ids);
@@ -151,7 +164,18 @@ export default function BrowseProjects() {
                       {p.category && <Badge variant="outline">{p.category}</Badge>}
                       {h2b && p.location_type && <Badge variant="outline">{p.location_type}</Badge>}
                       {!h2b && p.difficulty && <Badge variant="outline">{p.difficulty}</Badge>}
-                      <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {counts[p.id] ?? 0} {h2b ? "applicants" : "submissions"}</span>
+                      <span className="flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        {countsLoading ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : countsError ? (
+                          <span className="flex items-center gap-1 text-destructive" title="Failed to load count">
+                            <AlertTriangle className="h-3 w-3" /> —
+                          </span>
+                        ) : (
+                          <>{counts[p.id] ?? 0} {h2b ? "applicants" : "submissions"}</>
+                        )}
+                      </span>
                       {!h2b && p.deadline && (
                         <span className={`flex items-center gap-1 ${closed ? "text-destructive" : ""}`}>
                           <Clock className="h-3 w-3" /> {closed ? "Closed" : formatDistanceToNow(new Date(p.deadline), { addSuffix: true })}
