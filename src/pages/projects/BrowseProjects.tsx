@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Clock, Briefcase } from "lucide-react";
+import { Users, Clock, Briefcase, Loader2, AlertTriangle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,6 +14,7 @@ import { Bookmark, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { engagementBadgeClass, engagementLabel, formatCtcRange } from "@/lib/engagement";
+
 
 const OPEN_STATUSES = ["open", "open_for_submissions", "reviewing_submissions", "hiring_in_progress"];
 
