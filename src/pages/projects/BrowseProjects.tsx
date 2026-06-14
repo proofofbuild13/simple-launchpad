@@ -42,10 +42,20 @@ export default function BrowseProjects() {
       setProjects(list);
       if (list.length) {
         const ids = list.map((p) => p.id);
-        const { data: subs } = await supabase.rpc("get_project_submission_counts", { _ids: ids });
-        const map: Record<string, number> = {};
-        (subs ?? []).forEach((s: any) => { map[s.project_id] = Number(s.count) || 0; });
-        setCounts(map);
+        setCountsLoading(true);
+        setCountsError(false);
+        try {
+          const { data: subs, error } = await supabase.rpc("get_project_submission_counts", { _ids: ids });
+          if (error) throw error;
+          const map: Record<string, number> = {};
+          (subs ?? []).forEach((s: any) => { map[s.project_id] = Number(s.count) || 0; });
+          setCounts(map);
+        } catch (err) {
+          setCountsError(true);
+          console.error("Failed to load submission counts:", err);
+        } finally {
+          setCountsLoading(false);
+        }
         if (user) {
           const { data: saved } = await supabase
             .from("saved_projects").select("project_id").eq("user_id", user.id).in("project_id", ids);
