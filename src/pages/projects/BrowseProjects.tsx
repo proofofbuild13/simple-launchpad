@@ -164,7 +164,18 @@ export default function BrowseProjects() {
                       {p.category && <Badge variant="outline">{p.category}</Badge>}
                       {h2b && p.location_type && <Badge variant="outline">{p.location_type}</Badge>}
                       {!h2b && p.difficulty && <Badge variant="outline">{p.difficulty}</Badge>}
-                      <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {counts[p.id] ?? 0} {h2b ? "applicants" : "submissions"}</span>
+                      <span className="flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        {countsLoading ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : countsError ? (
+                          <span className="flex items-center gap-1 text-destructive" title="Failed to load count">
+                            <AlertTriangle className="h-3 w-3" /> —
+                          </span>
+                        ) : (
+                          <>{counts[p.id] ?? 0} {h2b ? "applicants" : "submissions"}</>
+                        )}
+                      </span>
                       {!h2b && p.deadline && (
                         <span className={`flex items-center gap-1 ${closed ? "text-destructive" : ""}`}>
                           <Clock className="h-3 w-3" /> {closed ? "Closed" : formatDistanceToNow(new Date(p.deadline), { addSuffix: true })}
