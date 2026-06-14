@@ -22,6 +22,8 @@ export default function BrowseProjects() {
   const { user } = useAuth();
   const [projects, setProjects] = useState<any[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [countsLoading, setCountsLoading] = useState(false);
+  const [countsError, setCountsError] = useState(false);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
