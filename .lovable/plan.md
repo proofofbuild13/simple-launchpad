@@ -1,65 +1,78 @@
-# Admin user management: fix roles + full detail view
+## Escrow Payment System: Audit Findings & Remediation Plan
 
-## Part 1 — Fix missing roles on /admin/users
+Below is a deep audit of the end-to-end escrow flow (DB functions, RLS, UI components). I found 22 issues across 3 severity tiers. This plan groups them into one DB migration + frontend fixes so the system is safe before any real money moves.
 
-**Root cause:** `user_roles` RLS policy `roles_select_own` only allows the row owner or `has_role(auth.uid(),'admin')` to read. A logged-in **super_admin** does NOT satisfy `has_role(...,'admin')`, so `select user_id, role from user_roles` returns only their own row — every other user shows `—` and the role filter (startup/builder) returns nothing.
+### End-to-end flow (verified working)
 
-**Fix (migration):**
-- Drop and recreate `roles_select_own` to also allow `super_admin`:
-  `using (auth.uid() = user_id OR has_role(auth.uid(),'admin') OR has_role(auth.uid(),'super_admin'))`
-- Same audit for `roles_admin_all` (writes) — extend to `super_admin` so the existing admin tools keep working under either admin tier.
+```
+Offer accepted → create_contract_from_offer → contracts(drafted) + milestones
+   ↓ both parties sign → contract_signatures
+   ↓ founder funds → fund_escrow → contract_active + ledger(funded)
+   ↓ builder submits milestone → status=submitted
+   ↓ founder approves+releases → release_escrow_for_milestone
+        → ledger(released), payment_record(confirmed), commission_invoice(generated)
+        → milestone=escrow_released
+   ↓ startup pays platform commission → commission_payments(submitted)
+   ↓ admin verifies → verify_commission_payment
+        → invoice=paid, PR=settled, milestone=fully_settled ✓
+   (Dispute branch at any step → admin_resolve_escrow)
+```
 
-No frontend change needed for the list; rows will populate once the policy is fixed.
+### Critical issues to fix (🔴)
 
-## Part 2 — Full user detail page for builders & startups
+1. **Race condition / negative escrow balance** — `release_escrow_for_milestone` reads `escrow_balance` then updates; two concurrent releases can both pass the check. Add `SELECT … FOR UPDATE` on the contracts row + a `CHECK (escrow_balance >= 0)` constraint.
+2. **Founders can forge ledger entries** — `el_insert_system` RLS lets founders/admins INSERT directly into `escrow_ledger`. Drop the policy; only SECURITY DEFINER functions should write.
+3. **Under-funding accepted** — `fund_escrow` allows any positive amount. Reject `_amount < escrow_amount`.
+4. **Admin refund zeroes whole balance** — `admin_resolve_escrow.refund_to_founder` wipes `escrow_balance` even when only one milestone is disputed. Deduct only the milestone amount.
+5. **Hardcoded 0.15 in `confirm_payment_record`** — manual flow ignores `platform_settings.commission_rate`. Read from settings (escrow path already does).
+6. **Escrow releasable on unreviewed `submitted` milestone** — tighten guard back to `m.status = 'approved'` only.
+7. **Founder can self-accept own offer in `create_contract_from_offer`** — restrict to builder only.
+8. **Duplicate commission payments per invoice** — add partial unique index on `commission_payments(invoice_id) WHERE status <> 'rejected'`.
+9. **Escrow PR can be "re-confirmed" by builder** — guard `confirm_payment_record` to reject `payment_method = 'escrow'`.
 
-Today `AdminUserDetail.tsx` shows a thin view (profile name, role, status, a few contract/dispute/payment ids, last 25 audit rows). We will upgrade it into a single **360° admin profile** that works for both builders and startups, plus add edit + delete.
+### High-priority issues (🟠)
 
-### A. Backend: one RPC that returns everything
+10. **Non-atomic dispute creation** in `Workspace.tsx` — wrap into a new `raise_dispute(milestone_id, reason)` SECURITY DEFINER RPC that inserts dispute + updates milestone + notifies admins.
+11. **`AdminDisputeDetail` bypasses `admin_resolve_escrow`** — wire the resolve UI to call the RPC (release-to-builder / refund-to-founder) along with the disputes UPDATE.
+12. **`RecordPaymentModal` silently empty** — founder query of `payment_methods` returns nothing due to RLS. Switch to existing `get_builder_default_payment` RPC.
+13. **Hardcoded 15% in Workspace UI** — fetch rate from `platform_settings`.
+14. **No admin notification on dispute** — `raise_dispute` RPC + `confirm_payment_record` mismatch path should notify all admin/super_admin users.
 
-New SECURITY DEFINER RPC `admin_get_user_full(_user_id uuid) returns jsonb`, admin/super_admin only. It aggregates:
+### Medium issues (🟡)
 
-- **Identity:** `profiles` + `auth.users` (email, last_sign_in_at, created_at, email_confirmed_at, banned_until) — auth.users is reachable only from a definer function, which is why we centralize here.
-- **Role & status:** `user_roles`, `user_status`.
-- **Builder side** (if role = builder): `builder_profiles` (excluding raw phone — use mask), `experiences`, `educations`, `certifications`, `payment_methods` (masked via `mask_account`), `saved_projects`, `submissions`.
-- **Startup side** (if role = startup): `startup_profiles`, `projects` (count + recent), `project_invitations`, `followed_startups` (followers).
-- **Shared activity:** `offers` (sent/received), `contracts`, `contract_milestones` (via contracts), `payment_records`, `commission_invoices`, `commission_payments`, `placement_fees`, `disputes`, `interviews`, `messages_v2` count, `notifications` count, `admin_audit_logs` where `actor_id = _user_id` AND where `entity_id = _user_id`.
+15. Explicit `GRANT USAGE ON SEQUENCE commission_invoice_seq` to roles used by RPCs.
+16. Replace placeholder payee credentials in `src/config/platformPayee.ts` with values pulled from `platform_settings` (or document clearly they're placeholders and gate the modal in non-prod).
+17. Cron/edge function (out of scope here) to transition `generated → overdue` invoices. Recommend adding later.
 
-Returned as a single JSON blob with sections so the page can render without N round-trips.
+### What I'll ship in build mode
 
-### B. Backend: edit + delete RPCs
+**One DB migration** containing:
+- `ALTER TABLE contracts ADD CONSTRAINT escrow_balance_nonneg CHECK (escrow_balance >= 0)`
+- Rewrite `release_escrow_for_milestone`: `SELECT … FOR UPDATE` on contract; require `m.status='approved'`; reject `payment_method='escrow'` already PR'd; minor comments
+- Rewrite `fund_escrow`: enforce `_amount >= c.escrow_amount`
+- Rewrite `admin_resolve_escrow.refund_to_founder`: deduct only milestone amount; insert ledger; require milestone amount > 0
+- Rewrite `confirm_payment_record`: read `commission_rate` from `platform_settings`; reject escrow-method PRs
+- Rewrite `create_contract_from_offer`: only builder can call
+- Drop policy `el_insert_system`; revoke INSERT on `escrow_ledger` from authenticated
+- New `raise_dispute(milestone_id, reason)` SECURITY DEFINER RPC (atomic insert + milestone update + admin notifications)
+- New `resolve_dispute(dispute_id, resolution, direction, milestone_id)` SECURITY DEFINER RPC that calls escrow resolution logic and updates the dispute row in one transaction
+- `CREATE UNIQUE INDEX commission_payments_one_active_per_invoice ON commission_payments(invoice_id) WHERE status <> 'rejected'`
+- `GRANT USAGE ON SEQUENCE commission_invoice_seq TO authenticated, service_role`
 
-- `admin_update_user_profile(_user_id, _patch jsonb)` — admin/super_admin. Whitelisted columns on `profiles` (`full_name`, `avatar_url`) and on `builder_profiles` / `startup_profiles` (bio, location, title, links, etc.). Writes an `admin_audit_logs` row with the diff.
-- `admin_delete_user(_user_id)` — **super_admin only**. Refuses if the user has active contracts (`status not in ('cancelled','completed')`), unsettled `payment_records`, open `disputes`, or unpaid `commission_invoices` — returns a structured `{ blocked: true, reasons: [...] }` so the UI can explain. On success: deletes domain rows (profiles, builder/startup_profiles, user_roles, user_status, saved_*, payment_methods, followed_startups) and then calls an **edge function** `admin-delete-user` (service role) to remove the `auth.users` record. Audit-logged.
-- Edge function `admin-delete-user` (`verify_jwt = true`): validates caller is super_admin via JWT → calls `admin_delete_user` RPC → then `auth.admin.deleteUser`.
+**Frontend edits**:
+- `src/pages/workspace/Workspace.tsx`
+  - Replace direct disputes `INSERT` + milestone `UPDATE` with `raise_dispute` RPC
+  - Replace hardcoded `* 0.15` with `commission_rate` fetched once from `platform_settings`
+- `src/components/payments/RecordPaymentModal.tsx`
+  - Replace `from("payment_methods")` query with `rpc("get_builder_default_payment", { _builder_id })`
+- `src/pages/admin/AdminDisputeDetail.tsx`
+  - Replace direct disputes `UPDATE` with new `resolve_dispute` RPC (taking direction + milestone_id)
+- (Optional, document only) Flag `src/config/platformPayee.ts` placeholder so the user knows to update before going live.
 
-### C. Frontend
+### What this plan does NOT cover (recommend follow-ups)
 
-- **`/admin/users` list** — once Part 1 lands, role chips render. Add small "View" CTA already present; no other change.
-- **`/admin/users/:id`** — rewrite `AdminUserDetail.tsx` with tabbed layout:
-  1. **Overview** — avatar, full_name, email, role, status, joined, last sign-in, email confirmation state, status reason.
-  2. **Profile** — builder_profile or startup_profile fields. Inline "Edit" dialog (super_admin + admin) that PATCHes via `admin_update_user_profile`.
-  3. **Activity** — contracts, milestones, offers, interviews, submissions, projects (startup), invitations, follows — paginated tables with deep links.
-  4. **Payments** — payment_records, commission_invoices, commission_payments, placement_fees, escrow ledger entries the user is party to, masked payment_methods.
-  5. **Disputes & moderation** — disputes raised by / against, current user_status, existing flag/suspend/ban controls (already in page).
-  6. **Audit trail** — both actor-side and entity-side entries, full pagination, CSV export.
-- **Header actions:** Edit profile, Change role (existing), Set status (existing), and **Delete user** (super_admin only, confirm dialog showing blockers if any).
-- New route stays at the existing `/admin/users/:id` — no routing change.
+- Overdue-invoice automation (needs pg_cron or scheduled edge function).
+- Replacing manual UPI escrow with a real PSP / Razorpay Route / Stripe Connect.
+- Refactor of placeholder UPI/bank credentials into `platform_settings`-driven config.
 
-## Technical notes
-
-- All new RPCs: `SECURITY DEFINER`, `SET search_path = public`, `REVOKE EXECUTE FROM public`, `GRANT EXECUTE TO authenticated`, internal `has_role` check.
-- Never expose raw `phone` or full `account_number` — reuse `mask_account` and skip `phone` (already the project convention).
-- Delete is destructive: gated to super_admin, blockers enforced, audit-logged with full snapshot in `metadata`.
-- After the migration runs, `src/integrations/supabase/types.ts` regenerates automatically; the new RPCs become typed before the UI changes are written.
-
-## Files touched
-
-- New migration: policy fix + 3 RPCs (`admin_get_user_full`, `admin_update_user_profile`, `admin_delete_user`).
-- New edge function: `supabase/functions/admin-delete-user/index.ts` + entry in `supabase/config.toml`.
-- Rewrite: `src/pages/admin/AdminUserDetail.tsx` (tabbed layout, edit dialog, delete button).
-- Minor: `src/pages/admin/AdminUsers.tsx` — no logic change; relies on RLS fix.
-
-## Open question
-
-Should **delete user** be allowed for plain `admin`, or strictly `super_admin` only? Plan currently restricts to super_admin (safer default). Tell me if you want admins to delete too.
+Once you approve, I'll switch to build mode and ship the migration + frontend changes in one pass.
