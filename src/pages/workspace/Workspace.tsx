@@ -190,13 +190,13 @@ export default function Workspace() {
 
   const openDispute = async (m: any) => {
     if (!user || !disputeReason) return;
-    await supabase.from("disputes").insert({ contract_id: contract.id, milestone_id: m.id, raised_by: user.id, reason: disputeReason });
-    await supabase.from("contract_milestones").update({ status: "dispute" }).eq("id", m.id);
-    await notifyOther("milestone_dispute", "Dispute opened", `On "${m.title}": ${disputeReason}`);
+    const { error } = await supabase.rpc("raise_dispute", { _milestone_id: m.id, _reason: disputeReason });
+    if (error) { toast.error(error.message); return; }
     setDisputeReason(""); setActive(null);
     toast.success("Dispute opened");
     load();
   };
+
 
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   if (!contract) return <p className="py-20 text-center text-muted-foreground">Not found.</p>;
