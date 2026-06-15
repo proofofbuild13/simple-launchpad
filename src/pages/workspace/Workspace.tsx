@@ -110,6 +110,14 @@ export default function Workspace() {
     setLoading(false);
   };
   useEffect(() => { load(); }, [id]);
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("platform_settings").select("value").eq("key", "commission_rate").maybeSingle();
+      const v = data?.value ? Number(data.value) : NaN;
+      if (!Number.isNaN(v) && v > 0 && v < 1) setCommissionRate(v);
+    })();
+  }, []);
+
 
   const isFounder = user?.id === contract?.founder_id;
   const isBuilder = user?.id === contract?.builder_id;
