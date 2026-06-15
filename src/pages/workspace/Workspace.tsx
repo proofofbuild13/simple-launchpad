@@ -385,8 +385,9 @@ export default function Workspace() {
                     </div>
                     <div className="grid grid-cols-3 gap-2 pt-1">
                       <div><span className="text-muted-foreground">Gross</span><div className="font-mono">${Number(m.amount).toLocaleString()}</div></div>
-                      <div><span className="text-muted-foreground">Commission (15%)</span><div className="font-mono">-${(Number(m.amount) * 0.15).toFixed(2)}</div></div>
-                      <div><span className="text-muted-foreground">Builder receives</span><div className="font-mono">${(Number(m.amount) * 0.85).toFixed(2)}</div></div>
+                      <div><span className="text-muted-foreground">Commission ({(commissionRate * 100).toFixed(0)}%)</span><div className="font-mono">-${(Number(m.amount) * commissionRate).toFixed(2)}</div></div>
+                      <div><span className="text-muted-foreground">Builder receives</span><div className="font-mono">${(Number(m.amount) * (1 - commissionRate)).toFixed(2)}</div></div>
+
                     </div>
                   </div>
                 )}
