@@ -41,18 +41,25 @@ export function RecordPaymentModal({ open, onOpenChange, milestone, contract, on
     if (!open || !contract?.builder_id) return;
     (async () => {
       setFetchingMethods(true);
-      const { data } = await supabase
-        .from("payment_methods")
-        .select("*")
-        .eq("user_id", contract.builder_id)
-        .order("is_default", { ascending: false });
-      setBuilderMethods(data ?? []);
+      const { data } = await supabase.rpc("get_builder_default_payment", { _builder_id: contract.builder_id });
+      const rows = (data ?? []).map((r: any) => ({
+        method_type: r.method_type,
+        upi_id: r.upi_id,
+        bank_name: r.bank_name,
+        account_number: r.account_number_masked,
+        ifsc: r.ifsc,
+        account_holder: r.account_holder,
+        verified: r.verified,
+        is_default: true,
+      }));
+      setBuilderMethods(rows);
       setFetchingMethods(false);
-      if (data && data.length > 0) {
-        setMethod(data[0].method_type);
+      if (rows.length > 0) {
+        setMethod(rows[0].method_type);
       }
     })();
   }, [open, contract]);
+
 
   if (!milestone || !contract) return null;
   const commission = (Number(amount || 0) * COMMISSION_RATE).toFixed(2);

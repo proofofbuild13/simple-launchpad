@@ -1976,9 +1976,17 @@ export type Database = {
         Returns: string
       }
       mask_account: { Args: { _acc: string }; Returns: string }
+      raise_dispute: {
+        Args: { _milestone_id: string; _reason: string }
+        Returns: string
+      }
       release_escrow_for_milestone: {
         Args: { _milestone_id: string }
         Returns: string
+      }
+      resolve_dispute: {
+        Args: { _direction: string; _dispute_id: string; _resolution: string }
+        Returns: undefined
       }
       send_notification: {
         Args: {

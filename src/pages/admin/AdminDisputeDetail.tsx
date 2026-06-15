@@ -38,16 +38,26 @@ export default function AdminDisputeDetail() {
   const setStatus = async (status: string, resolution?: string) => {
     if (!d) return;
     setBusy(true);
-    const { error } = await supabase.from("disputes").update({
-      status, resolution: resolution ?? note ?? null,
-      resolved_at: ["resolved","closed","resolved_founder","resolved_builder"].includes(status) ? new Date().toISOString() : null,
-    }).eq("id", d.id);
+    let error: any = null;
+    if (status === "resolved_builder") {
+      ({ error } = await supabase.rpc("resolve_dispute", { _dispute_id: d.id, _direction: "release_to_builder", _resolution: resolution ?? note ?? null }));
+    } else if (status === "resolved_founder") {
+      ({ error } = await supabase.rpc("resolve_dispute", { _dispute_id: d.id, _direction: "refund_to_founder", _resolution: resolution ?? note ?? null }));
+    } else if (status === "closed") {
+      ({ error } = await supabase.rpc("resolve_dispute", { _dispute_id: d.id, _direction: "close_no_action", _resolution: resolution ?? note ?? null }));
+    } else {
+      // under_review / mediation — non-terminal status change
+      ({ error } = await supabase.from("disputes").update({
+        status, resolution: resolution ?? note ?? null,
+      }).eq("id", d.id));
+    }
     setBusy(false);
     if (error) return toast.error(error.message);
     await logAudit(`dispute_${status}`, "disputes", d.id, { resolution: resolution ?? note });
     toast.success("Updated");
     load();
   };
+
 
   if (!d) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
 

@@ -53,6 +53,8 @@ export default function Workspace() {
   const [delForm, setDelForm] = useState({ demo_url: "", write_up: "", file_urls: "" });
   const [revReason, setRevReason] = useState("");
   const [disputeReason, setDisputeReason] = useState("");
+  const [commissionRate, setCommissionRate] = useState<number>(0.15);
+
 
   // payment modal state
   const [recordOpen, setRecordOpen] = useState(false);
@@ -108,6 +110,14 @@ export default function Workspace() {
     setLoading(false);
   };
   useEffect(() => { load(); }, [id]);
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("platform_settings").select("value").eq("key", "commission_rate").maybeSingle();
+      const v = data?.value ? Number(data.value) : NaN;
+      if (!Number.isNaN(v) && v > 0 && v < 1) setCommissionRate(v);
+    })();
+  }, []);
+
 
   const isFounder = user?.id === contract?.founder_id;
   const isBuilder = user?.id === contract?.builder_id;
@@ -125,11 +135,11 @@ export default function Workspace() {
     const revisions = (deliverables[m.id] ?? []).length + 1;
     if (revisions > 3) {
       toast.error("Max revisions reached — opening dispute");
-      await supabase.from("disputes").insert({ contract_id: contract.id, milestone_id: m.id, raised_by: user.id, reason: "Max revisions exceeded" });
-      await supabase.from("contract_milestones").update({ status: "dispute" }).eq("id", m.id);
-      await notifyOther("milestone_dispute", "Milestone in dispute", `Max revisions exceeded on "${m.title}".`);
+      const { error: dErr } = await supabase.rpc("raise_dispute", { _milestone_id: m.id, _reason: "Max revisions exceeded" });
+      if (dErr) { toast.error(dErr.message); return; }
       load(); return;
     }
+
     await supabase.from("deliverables").insert({
       milestone_id: m.id,
       submitted_by: user.id,
@@ -180,13 +190,13 @@ export default function Workspace() {
 
   const openDispute = async (m: any) => {
     if (!user || !disputeReason) return;
-    await supabase.from("disputes").insert({ contract_id: contract.id, milestone_id: m.id, raised_by: user.id, reason: disputeReason });
-    await supabase.from("contract_milestones").update({ status: "dispute" }).eq("id", m.id);
-    await notifyOther("milestone_dispute", "Dispute opened", `On "${m.title}": ${disputeReason}`);
+    const { error } = await supabase.rpc("raise_dispute", { _milestone_id: m.id, _reason: disputeReason });
+    if (error) { toast.error(error.message); return; }
     setDisputeReason(""); setActive(null);
     toast.success("Dispute opened");
     load();
   };
+
 
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   if (!contract) return <p className="py-20 text-center text-muted-foreground">Not found.</p>;
@@ -375,8 +385,9 @@ export default function Workspace() {
                     </div>
                     <div className="grid grid-cols-3 gap-2 pt-1">
                       <div><span className="text-muted-foreground">Gross</span><div className="font-mono">${Number(m.amount).toLocaleString()}</div></div>
-                      <div><span className="text-muted-foreground">Commission (15%)</span><div className="font-mono">-${(Number(m.amount) * 0.15).toFixed(2)}</div></div>
-                      <div><span className="text-muted-foreground">Builder receives</span><div className="font-mono">${(Number(m.amount) * 0.85).toFixed(2)}</div></div>
+                      <div><span className="text-muted-foreground">Commission ({(commissionRate * 100).toFixed(0)}%)</span><div className="font-mono">-${(Number(m.amount) * commissionRate).toFixed(2)}</div></div>
+                      <div><span className="text-muted-foreground">Builder receives</span><div className="font-mono">${(Number(m.amount) * (1 - commissionRate)).toFixed(2)}</div></div>
+
                     </div>
                   </div>
                 )}
