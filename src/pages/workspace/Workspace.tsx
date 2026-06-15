@@ -135,11 +135,11 @@ export default function Workspace() {
     const revisions = (deliverables[m.id] ?? []).length + 1;
     if (revisions > 3) {
       toast.error("Max revisions reached — opening dispute");
-      await supabase.from("disputes").insert({ contract_id: contract.id, milestone_id: m.id, raised_by: user.id, reason: "Max revisions exceeded" });
-      await supabase.from("contract_milestones").update({ status: "dispute" }).eq("id", m.id);
-      await notifyOther("milestone_dispute", "Milestone in dispute", `Max revisions exceeded on "${m.title}".`);
+      const { error: dErr } = await supabase.rpc("raise_dispute", { _milestone_id: m.id, _reason: "Max revisions exceeded" });
+      if (dErr) { toast.error(dErr.message); return; }
       load(); return;
     }
+
     await supabase.from("deliverables").insert({
       milestone_id: m.id,
       submitted_by: user.id,
