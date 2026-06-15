@@ -53,6 +53,8 @@ export default function Workspace() {
   const [delForm, setDelForm] = useState({ demo_url: "", write_up: "", file_urls: "" });
   const [revReason, setRevReason] = useState("");
   const [disputeReason, setDisputeReason] = useState("");
+  const [commissionRate, setCommissionRate] = useState<number>(0.15);
+
 
   // payment modal state
   const [recordOpen, setRecordOpen] = useState(false);
