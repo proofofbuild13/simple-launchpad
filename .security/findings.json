@@ -1,0 +1,4 @@
+{
+  "$schema": "Pre-deploy security findings manifest. Each entry must have status of 'resolved' or 'ignored'. 'ignored' entries require a non-empty 'reason'. Scanner names should match what the security scanner reports (e.g. 'connector_security_scan', 'supabase_security_scan').",
+  "findings": []
+}
