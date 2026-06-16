@@ -13,8 +13,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "predeploy": "bunx tsx scripts/check-security-findings.ts",
-    "check:security": "bunx tsx scripts/check-security-findings.ts"
+    "predeploy": "bunx tsx scripts/check-security-findings.ts && bunx tsx scripts/generate-security-report.ts",
+    "check:security": "bunx tsx scripts/check-security-findings.ts",
+    "report:security": "bunx tsx scripts/generate-security-report.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "3.10.0",
