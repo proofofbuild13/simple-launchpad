@@ -50,6 +50,77 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_submission_evaluations: {
+        Row: {
+          created_at: string
+          error: string | null
+          evaluated_at: string | null
+          gaps: string[] | null
+          id: string
+          model_used: string | null
+          project_id: string
+          prompt_version: number | null
+          recommendation: string | null
+          score_execution: number | null
+          score_feasibility: number | null
+          score_innovation: number | null
+          score_problem_fit: number | null
+          score_ux: number | null
+          strengths: string[] | null
+          submission_id: string
+          summary_verdict: string | null
+          total_score: number | null
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          evaluated_at?: string | null
+          gaps?: string[] | null
+          id?: string
+          model_used?: string | null
+          project_id: string
+          prompt_version?: number | null
+          recommendation?: string | null
+          score_execution?: number | null
+          score_feasibility?: number | null
+          score_innovation?: number | null
+          score_problem_fit?: number | null
+          score_ux?: number | null
+          strengths?: string[] | null
+          submission_id: string
+          summary_verdict?: string | null
+          total_score?: number | null
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          evaluated_at?: string | null
+          gaps?: string[] | null
+          id?: string
+          model_used?: string | null
+          project_id?: string
+          prompt_version?: number | null
+          recommendation?: string | null
+          score_execution?: number | null
+          score_feasibility?: number | null
+          score_innovation?: number | null
+          score_problem_fit?: number | null
+          score_ux?: number | null
+          strengths?: string[] | null
+          submission_id?: string
+          summary_verdict?: string | null
+          total_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_submission_evaluations_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: true
+            referencedRelation: "submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       builder_profiles: {
         Row: {
           available: boolean | null
@@ -1740,6 +1811,8 @@ export type Database = {
       }
       submissions: {
         Row: {
+          ai_recommendation: string | null
+          ai_score: number | null
           builder_id: string
           created_at: string
           demo_url: string | null
@@ -1759,6 +1832,8 @@ export type Database = {
           video_url: string | null
         }
         Insert: {
+          ai_recommendation?: string | null
+          ai_score?: number | null
           builder_id: string
           created_at?: string
           demo_url?: string | null
@@ -1778,6 +1853,8 @@ export type Database = {
           video_url?: string | null
         }
         Update: {
+          ai_recommendation?: string | null
+          ai_score?: number | null
           builder_id?: string
           created_at?: string
           demo_url?: string | null
