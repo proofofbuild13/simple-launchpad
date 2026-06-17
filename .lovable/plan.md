@@ -1,78 +1,84 @@
-## Escrow Payment System: Audit Findings & Remediation Plan
+## AI submission evaluator — implementation plan
 
-Below is a deep audit of the end-to-end escrow flow (DB functions, RLS, UI components). I found 22 issues across 3 severity tiers. This plan groups them into one DB migration + frontend fixes so the system is safe before any real money moves.
+Build an AI agent that auto-evaluates every new submission against the project brief, stores a scored verdict, and surfaces it to founders (and partially to builders) in the review and leaderboard screens.
 
-### End-to-end flow (verified working)
+### 1. Database (migration)
 
-```
-Offer accepted → create_contract_from_offer → contracts(drafted) + milestones
-   ↓ both parties sign → contract_signatures
-   ↓ founder funds → fund_escrow → contract_active + ledger(funded)
-   ↓ builder submits milestone → status=submitted
-   ↓ founder approves+releases → release_escrow_for_milestone
-        → ledger(released), payment_record(confirmed), commission_invoice(generated)
-        → milestone=escrow_released
-   ↓ startup pays platform commission → commission_payments(submitted)
-   ↓ admin verifies → verify_commission_payment
-        → invoice=paid, PR=settled, milestone=fully_settled ✓
-   (Dispute branch at any step → admin_resolve_escrow)
-```
+New table `public.ai_submission_evaluations`:
+- `submission_id` (FK → submissions, on delete cascade, unique)
+- `project_id` (uuid)
+- Five rubric ints `score_problem_fit / execution / ux / feasibility / innovation`, each `CHECK BETWEEN 0 AND 20`
+- `total_score` generated column = sum of the five
+- `summary_verdict` text, `strengths text[]`, `gaps text[]`
+- `recommendation` text `CHECK IN ('shortlist','review_manually','pass')`
+- `model_used`, `prompt_version`, `evaluated_at`, `created_at`, `error` (nullable, for failed runs)
 
-### Critical issues to fix (🔴)
+Grants + RLS:
+- `GRANT SELECT ON ... TO authenticated; GRANT ALL TO service_role;`
+- SELECT policy: founder of the project OR builder of the submission OR admin/super_admin
+- No INSERT/UPDATE policy (only edge function via service role writes)
+- Indexes on `submission_id`, `project_id`, `total_score DESC`
 
-1. **Race condition / negative escrow balance** — `release_escrow_for_milestone` reads `escrow_balance` then updates; two concurrent releases can both pass the check. Add `SELECT … FOR UPDATE` on the contracts row + a `CHECK (escrow_balance >= 0)` constraint.
-2. **Founders can forge ledger entries** — `el_insert_system` RLS lets founders/admins INSERT directly into `escrow_ledger`. Drop the policy; only SECURITY DEFINER functions should write.
-3. **Under-funding accepted** — `fund_escrow` allows any positive amount. Reject `_amount < escrow_amount`.
-4. **Admin refund zeroes whole balance** — `admin_resolve_escrow.refund_to_founder` wipes `escrow_balance` even when only one milestone is disputed. Deduct only the milestone amount.
-5. **Hardcoded 0.15 in `confirm_payment_record`** — manual flow ignores `platform_settings.commission_rate`. Read from settings (escrow path already does).
-6. **Escrow releasable on unreviewed `submitted` milestone** — tighten guard back to `m.status = 'approved'` only.
-7. **Founder can self-accept own offer in `create_contract_from_offer`** — restrict to builder only.
-8. **Duplicate commission payments per invoice** — add partial unique index on `commission_payments(invoice_id) WHERE status <> 'rejected'`.
-9. **Escrow PR can be "re-confirmed" by builder** — guard `confirm_payment_record` to reject `payment_method = 'escrow'`.
+`ALTER TABLE submissions ADD COLUMN ai_score int, ADD COLUMN ai_recommendation text;`
 
-### High-priority issues (🟠)
+Enable Realtime on `ai_submission_evaluations` so the review screen receives the result live.
 
-10. **Non-atomic dispute creation** in `Workspace.tsx` — wrap into a new `raise_dispute(milestone_id, reason)` SECURITY DEFINER RPC that inserts dispute + updates milestone + notifies admins.
-11. **`AdminDisputeDetail` bypasses `admin_resolve_escrow`** — wire the resolve UI to call the RPC (release-to-builder / refund-to-founder) along with the disputes UPDATE.
-12. **`RecordPaymentModal` silently empty** — founder query of `payment_methods` returns nothing due to RLS. Switch to existing `get_builder_default_payment` RPC.
-13. **Hardcoded 15% in Workspace UI** — fetch rate from `platform_settings`.
-14. **No admin notification on dispute** — `raise_dispute` RPC + `confirm_payment_record` mismatch path should notify all admin/super_admin users.
+### 2. Edge function `evaluate-submission`
 
-### Medium issues (🟡)
+Located at `supabase/functions/evaluate-submission/index.ts`. Public (`verify_jwt = false`) so the Supabase Database Webhook can call it; it validates a shared `WEBHOOK_SECRET` header instead.
 
-15. Explicit `GRANT USAGE ON SEQUENCE commission_invoice_seq` to roles used by RPCs.
-16. Replace placeholder payee credentials in `src/config/platformPayee.ts` with values pulled from `platform_settings` (or document clearly they're placeholders and gate the modal in non-prod).
-17. Cron/edge function (out of scope here) to transition `generated → overdue` invoices. Recommend adding later.
+Flow:
+1. Verify header `x-webhook-secret` matches `EVALUATE_SUBMISSION_WEBHOOK_SECRET`
+2. Parse Supabase webhook payload `{ type, record }`; require `type === 'INSERT'` and `record.id`
+3. Idempotency: skip if a row already exists for `submission_id`
+4. Fetch submission with `projects(title, description, requirements, deliverables, category, tags, founder_id)`
+5. Build the rubric prompt (problem fit / execution / UX / feasibility / innovation, each 0–20; penalties for missing demo; recommendation thresholds shortlist ≥65, pass <40)
+6. Call **Lovable AI Gateway** at `https://ai.gateway.lovable.dev/v1/chat/completions` using `LOVABLE_API_KEY` in `Lovable-API-Key` header. Model: `google/gemini-3-flash-preview` (default for chat; cheap, fast, JSON-capable). Use `response_format: { type: "json_object" }` and a strict system prompt
+7. Handle gateway errors: surface 429 (rate limit) and 402 (credits exhausted) explicitly, store an error row with `error` set and recommendation `review_manually`
+8. Parse JSON; insert evaluation row; update `submissions.ai_score` and `submissions.ai_recommendation`
+9. Insert notification to `project.founder_id` with the score + recommendation linking to the review page
 
-### What I'll ship in build mode
+### 3. Trigger wiring (Supabase Database Webhook)
 
-**One DB migration** containing:
-- `ALTER TABLE contracts ADD CONSTRAINT escrow_balance_nonneg CHECK (escrow_balance >= 0)`
-- Rewrite `release_escrow_for_milestone`: `SELECT … FOR UPDATE` on contract; require `m.status='approved'`; reject `payment_method='escrow'` already PR'd; minor comments
-- Rewrite `fund_escrow`: enforce `_amount >= c.escrow_amount`
-- Rewrite `admin_resolve_escrow.refund_to_founder`: deduct only milestone amount; insert ledger; require milestone amount > 0
-- Rewrite `confirm_payment_record`: read `commission_rate` from `platform_settings`; reject escrow-method PRs
-- Rewrite `create_contract_from_offer`: only builder can call
-- Drop policy `el_insert_system`; revoke INSERT on `escrow_ledger` from authenticated
-- New `raise_dispute(milestone_id, reason)` SECURITY DEFINER RPC (atomic insert + milestone update + admin notifications)
-- New `resolve_dispute(dispute_id, resolution, direction, milestone_id)` SECURITY DEFINER RPC that calls escrow resolution logic and updates the dispute row in one transaction
-- `CREATE UNIQUE INDEX commission_payments_one_active_per_invoice ON commission_payments(invoice_id) WHERE status <> 'rejected'`
-- `GRANT USAGE ON SEQUENCE commission_invoice_seq TO authenticated, service_role`
+You wire this manually in the dashboard (since you chose webhooks):
+- Table `submissions`, event `INSERT`
+- URL `https://nvnvyzxzjezlgzgpniyt.supabase.co/functions/v1/evaluate-submission`
+- Header `x-webhook-secret: <value of EVALUATE_SUBMISSION_WEBHOOK_SECRET>`
 
-**Frontend edits**:
-- `src/pages/workspace/Workspace.tsx`
-  - Replace direct disputes `INSERT` + milestone `UPDATE` with `raise_dispute` RPC
-  - Replace hardcoded `* 0.15` with `commission_rate` fetched once from `platform_settings`
-- `src/components/payments/RecordPaymentModal.tsx`
-  - Replace `from("payment_methods")` query with `rpc("get_builder_default_payment", { _builder_id })`
-- `src/pages/admin/AdminDisputeDetail.tsx`
-  - Replace direct disputes `UPDATE` with new `resolve_dispute` RPC (taking direction + milestone_id)
-- (Optional, document only) Flag `src/config/platformPayee.ts` placeholder so the user knows to update before going live.
+I'll surface the URL + header value in chat after the function deploys and the secret is set. I'll also add an **admin "Re-run AI evaluation"** button in `SubmissionReview` (for founder/admin only) that invokes the function directly with the same secret header via an authenticated proxy route — fallback for failed/missed evaluations.
 
-### What this plan does NOT cover (recommend follow-ups)
+### 4. Secrets
 
-- Overdue-invoice automation (needs pg_cron or scheduled edge function).
-- Replacing manual UPI escrow with a real PSP / Razorpay Route / Stripe Connect.
-- Refactor of placeholder UPI/bank credentials into `platform_settings`-driven config.
+- `LOVABLE_API_KEY` — auto-provisioned (call `lovable_api_key--create` if missing)
+- `EVALUATE_SUBMISSION_WEBHOOK_SECRET` — random string, requested via `add_secret`
 
-Once you approve, I'll switch to build mode and ship the migration + frontend changes in one pass.
+### 5. Frontend
+
+**`src/components/submissions/AIEvaluationCard.tsx`** (new)
+- Fetches the row from `ai_submission_evaluations` by `submission_id`
+- Subscribes via Realtime (`postgres_changes` INSERT filtered by `submission_id`) inside `useEffect` with proper cleanup
+- States: loading, pending (no row yet), error, ready
+- Renders: total score (big), per-rubric `Progress` bars, recommendation badge with color (shortlist=emerald, review=amber, pass=muted), summary verdict, strengths (always), gaps (founder/admin only), advisory footer
+- Uses only design-system tokens (no hardcoded `text-white` / hex)
+
+**`src/pages/submissions/SubmissionReview.tsx`**
+- Determine `isFounder` from already-loaded submission/project context
+- Mount `<AIEvaluationCard submissionId={id} isFounder={isFounder} />` in the right sidebar above the manual scoring panel
+- Add "Re-run AI evaluation" button for founder/admin that calls a small new function or the same evaluator with a force flag
+
+**`src/pages/projects/Leaderboard.tsx`**
+- Change ordering to `.order("ai_score", { ascending: false, nullsFirst: false }).order("created_at", { ascending: true })`
+- Add an "AI Score" column showing `ai_score` (or "pending" badge when null) and a small recommendation pill
+
+### 6. Out of scope (MVP)
+
+- Scraping demo / GitHub URLs (the model gets only the metadata the builder provided)
+- Backfill of historical submissions — handled later with a one-off admin script
+- Multi-version prompt A/B — `prompt_version` column is in place but only v1 is used
+
+### Technical notes
+
+- All AI calls go through Lovable AI Gateway, never client-side
+- The evaluator function is the only writer to `ai_submission_evaluations` (RLS enforces this)
+- Notifications go through the existing `notifications` table (no schema change needed)
+- The leaderboard ordering change is additive: rows with `ai_score IS NULL` fall to the bottom but remain visible
