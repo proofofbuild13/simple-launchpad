@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Edit2, Trash2 } from "lucide-react";
+import { Edit2, Trash2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 export default function MySubmissions() {
@@ -16,10 +16,10 @@ export default function MySubmissions() {
   const loadSubmissions = async () => {
     if (!user) return;
     if (role === "builder") {
-      const { data } = await supabase.from("submissions").select("*, projects(id, title)").eq("builder_id", user.id).order("created_at", { ascending: false });
+      const { data } = await supabase.from("submissions").select("*, projects(id, title), ai_submission_evaluations(total_score, recommendation)").eq("builder_id", user.id).order("created_at", { ascending: false });
       setItems(data ?? []);
     } else {
-      const { data } = await supabase.from("submissions").select("*, projects!inner(id, title, founder_id)").eq("projects.founder_id", user.id).order("created_at", { ascending: false });
+      const { data } = await supabase.from("submissions").select("*, projects!inner(id, title, founder_id), ai_submission_evaluations(total_score, recommendation)").eq("projects.founder_id", user.id).order("created_at", { ascending: false });
       setItems(data ?? []);
     }
   };
@@ -65,8 +65,25 @@ export default function MySubmissions() {
                     <div className="text-xs text-muted-foreground mt-1">on {s.projects?.title}</div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {(() => {
+                      const ev = s.ai_submission_evaluations?.[0];
+                      if (!ev) return null;
+                      const rec = ev.recommendation;
+                      const cls =
+                        rec === "shortlist"
+                          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                          : rec === "pass"
+                          ? "bg-destructive/15 text-destructive border-destructive/30"
+                          : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30";
+                      return (
+                        <Badge className={`${cls} border gap-1`} variant="outline">
+                          <Sparkles className="h-3 w-3" /> AI {ev.total_score}/100
+                        </Badge>
+                      );
+                    })()}
                     {s.score != null && <Badge variant="secondary">Score {s.score}</Badge>}
                     <Badge variant="outline">{s.status}</Badge>
+                    
                     
                     {role === "builder" && (
                       <div className="flex items-center gap-1 ml-2">
