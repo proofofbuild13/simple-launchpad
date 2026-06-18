@@ -87,11 +87,12 @@ export default function ContractDetail() {
 
   const sendForSigning = async () => {
     await supabase.from("contracts").update({ status: "sent_for_signing" }).eq("id", id);
-    await supabase.from("notifications").insert({
-      user_id: c.builder_id, type: "contract_sent",
-      title: "Contract ready for signing",
-      body: "The founder has sent the contract for your signature.",
-      link: `/contracts/${id}`,
+    await supabase.rpc("send_notification", {
+      _user_id: c.builder_id,
+      _type: "contract_sent",
+      _title: "Contract ready for signing",
+      _body: "The founder has sent the contract for your signature.",
+      _link: `/contracts/${id}`,
     });
     toast.success("Sent for signing");
     load();
@@ -109,14 +110,14 @@ export default function ContractDetail() {
       .eq("id", id);
 
     const otherId = role === "founder" ? c.builder_id : c.founder_id;
-    await supabase.from("notifications").insert({
-      user_id: otherId,
-      type: "contract_signed",
-      title: `${role === "founder" ? "Founder" : "Builder"} signed the contract`,
-      body: otherSigned
+    await supabase.rpc("send_notification", {
+      _user_id: otherId,
+      _type: "contract_signed",
+      _title: `${role === "founder" ? "Founder" : "Builder"} signed the contract`,
+      _body: otherSigned
         ? "Both parties signed. Waiting for founder to fund escrow to activate."
         : "Awaiting the other party's signature.",
-      link: `/contracts/${id}`,
+      _link: `/contracts/${id}`,
     });
     toast.success("Signed");
     load();
