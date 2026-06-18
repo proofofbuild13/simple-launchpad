@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FolderKanban, FileCheck2, Users, FileSignature, PlusCircle } from "lucide-react";
+import { FolderKanban, FileCheck2, Users, FileSignature, PlusCircle, Sparkles } from "lucide-react";
 
 interface Stats { projects: number; submissions: number; contracts: number; }
 
@@ -16,6 +16,7 @@ export default function StartupDashboard() {
   const [recentProjects, setRecentProjects] = useState<any[]>([]);
   const [recentSubs, setRecentSubs] = useState<any[]>([]);
   const [shortlisted, setShortlisted] = useState(0);
+  const [aiPicks, setAiPicks] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -33,6 +34,16 @@ export default function StartupDashboard() {
         .from("submissions").select("*, projects!inner(title, founder_id)")
         .eq("projects.founder_id", user.id).order("created_at", { ascending: false }).limit(5);
       setRecentSubs(subs ?? []);
+
+      const { data: picks } = await supabase
+        .from("submissions")
+        .select("id, title, ai_score, ai_recommendation, projects!inner(title, founder_id)")
+        .eq("projects.founder_id", user.id)
+        .eq("ai_recommendation", "shortlist")
+        .not("ai_score", "is", null)
+        .order("ai_score", { ascending: false })
+        .limit(5);
+      setAiPicks(picks ?? []);
     })();
   }, [user]);
 
@@ -85,6 +96,34 @@ export default function StartupDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" /> AI-recommended submissions
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {aiPicks.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              No AI-shortlisted submissions yet. Open a submission and run the AI evaluation to see picks here.
+            </p>
+          )}
+          {aiPicks.map((s) => (
+            <Link key={s.id} to={`/submissions/${s.id}`} className="block p-3 rounded-md border hover:bg-muted/40 transition-colors">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-medium text-sm truncate">{s.title}</div>
+                  <div className="text-xs text-muted-foreground mt-1 truncate">on {s.projects?.title}</div>
+                </div>
+                <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 font-mono shrink-0">
+                  {s.ai_score}/100
+                </Badge>
+              </div>
+            </Link>
+          ))}
+        </CardContent>
+      </Card>
     </div>
   );
 }
