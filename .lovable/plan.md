@@ -1,84 +1,50 @@
-## AI submission evaluator — implementation plan
+## Current state
 
-Build an AI agent that auto-evaluates every new submission against the project brief, stores a scored verdict, and surfaces it to founders (and partially to builders) in the review and leaderboard screens.
+The AI evaluation backend is fully built but unused:
 
-### 1. Database (migration)
+- Table `ai_submission_evaluations` exists with 5 scores (problem_fit, execution, ux, feasibility, innovation, each 0–20), generated `total_score`, `summary_verdict`, `strengths[]`, `gaps[]`, `recommendation` (shortlist / review_manually / pass).
+- RLS already permits the project's founder, the submission's builder, and admins to read evaluations.
+- Edge function `evaluate-submission` is deployed and calls Lovable AI (Gemini 3 Flash) with a strict JSON schema, mirrors `ai_score` and `ai_recommendation` back onto `submissions`.
+- The 8 existing submissions in the DB have **no evaluations yet** (`ai_score` and `eval_id` are all null).
+- **No UI surfaces results anywhere** — `SubmissionReview.tsx`, `MySubmissions.tsx`, and the dashboards don't render any AI fields.
 
-New table `public.ai_submission_evaluations`:
-- `submission_id` (FK → submissions, on delete cascade, unique)
-- `project_id` (uuid)
-- Five rubric ints `score_problem_fit / execution / ux / feasibility / innovation`, each `CHECK BETWEEN 0 AND 20`
-- `total_score` generated column = sum of the five
-- `summary_verdict` text, `strengths text[]`, `gaps text[]`
-- `recommendation` text `CHECK IN ('shortlist','review_manually','pass')`
-- `model_used`, `prompt_version`, `evaluated_at`, `created_at`, `error` (nullable, for failed runs)
+## What I'll build
 
-Grants + RLS:
-- `GRANT SELECT ON ... TO authenticated; GRANT ALL TO service_role;`
-- SELECT policy: founder of the project OR builder of the submission OR admin/super_admin
-- No INSERT/UPDATE policy (only edge function via service role writes)
-- Indexes on `submission_id`, `project_id`, `total_score DESC`
+### 1. Reusable component `AIEvaluationCard`
+`src/components/submissions/AIEvaluationCard.tsx`
 
-`ALTER TABLE submissions ADD COLUMN ai_score int, ADD COLUMN ai_recommendation text;`
+- Fetches the evaluation for a given `submission_id` (RLS filters automatically).
+- States: loading, no-evaluation-yet (with a "Run AI evaluation" button when the viewer is founder/admin), evaluation-present.
+- When present, renders:
+  - Total score (e.g. `82 / 100`) with a colored badge based on recommendation.
+  - Recommendation pill: Shortlist (green), Review manually (amber), Pass (red).
+  - 5 sub-scores as small progress bars (0–20 each).
+  - One-line `summary_verdict`.
+  - Two columns: Strengths (check icons) and Gaps (alert icons).
+  - Footer: model used, evaluated timestamp, prompt version, "Re-run evaluation" button (founder/admin only) that calls the edge function with `{ submission_id }`.
+- Subscribes to realtime updates on `ai_submission_evaluations` for that submission so the card flips from "evaluating…" to results without a refresh.
 
-Enable Realtime on `ai_submission_evaluations` so the review screen receives the result live.
+### 2. Integrate the card into the existing flows
+- `src/pages/submissions/SubmissionReview.tsx` — show the card prominently above the manual scoring form so founders see the AI verdict while reviewing.
+- `src/pages/submissions/MySubmissions.tsx` — show a compact summary (total score + recommendation pill) on each submission row so builders can see their AI evaluation result.
+- `src/pages/dashboard/StartupDashboard.tsx` — add a small "AI-recommended submissions" widget that lists the top 5 submissions across the founder's projects sorted by `ai_score` desc (only those with `recommendation = 'shortlist'`).
 
-### 2. Edge function `evaluate-submission`
+### 3. "Run AI evaluation" trigger
+A small helper `src/lib/aiEvaluation.ts` that invokes the `evaluate-submission` edge function via `supabase.functions.invoke('evaluate-submission', { body: { submission_id } })`. The card uses this for first-time runs and re-runs. Toast feedback on success/failure.
 
-Located at `supabase/functions/evaluate-submission/index.ts`. Public (`verify_jwt = false`) so the Supabase Database Webhook can call it; it validates a shared `WEBHOOK_SECRET` header instead.
+### 4. Backfill existing submissions
+Run the edge function once per existing submission (8 rows). I'll do this from the sandbox using a small Deno/Node script that calls `supabase.functions.invoke` with the service role key, then read the resulting rows back from `ai_submission_evaluations` and show you the per-submission scores and recommendations in the chat as a table.
 
-Flow:
-1. Verify header `x-webhook-secret` matches `EVALUATE_SUBMISSION_WEBHOOK_SECRET`
-2. Parse Supabase webhook payload `{ type, record }`; require `type === 'INSERT'` and `record.id`
-3. Idempotency: skip if a row already exists for `submission_id`
-4. Fetch submission with `projects(title, description, requirements, deliverables, category, tags, founder_id)`
-5. Build the rubric prompt (problem fit / execution / UX / feasibility / innovation, each 0–20; penalties for missing demo; recommendation thresholds shortlist ≥65, pass <40)
-6. Call **Lovable AI Gateway** at `https://ai.gateway.lovable.dev/v1/chat/completions` using `LOVABLE_API_KEY` in `Lovable-API-Key` header. Model: `google/gemini-3-flash-preview` (default for chat; cheap, fast, JSON-capable). Use `response_format: { type: "json_object" }` and a strict system prompt
-7. Handle gateway errors: surface 429 (rate limit) and 402 (credits exhausted) explicitly, store an error row with `error` set and recommendation `review_manually`
-8. Parse JSON; insert evaluation row; update `submissions.ai_score` and `submissions.ai_recommendation`
-9. Insert notification to `project.founder_id` with the score + recommendation linking to the review page
+This covers all 8 regardless of current status (the status gate only applies to webhook-triggered runs, not direct invokes).
 
-### 3. Trigger wiring (Supabase Database Webhook)
+## Out of scope (ask if you want any of this)
+- A dedicated "/projects/:id/ai-leaderboard" page ranking all submissions for a project.
+- Founder-facing prompt customization (per-project rubric weights).
+- Email/notification when a new AI evaluation completes.
+- Bulk re-run UI for admins.
 
-You wire this manually in the dashboard (since you chose webhooks):
-- Table `submissions`, event `INSERT`
-- URL `https://nvnvyzxzjezlgzgpniyt.supabase.co/functions/v1/evaluate-submission`
-- Header `x-webhook-secret: <value of EVALUATE_SUBMISSION_WEBHOOK_SECRET>`
-
-I'll surface the URL + header value in chat after the function deploys and the secret is set. I'll also add an **admin "Re-run AI evaluation"** button in `SubmissionReview` (for founder/admin only) that invokes the function directly with the same secret header via an authenticated proxy route — fallback for failed/missed evaluations.
-
-### 4. Secrets
-
-- `LOVABLE_API_KEY` — auto-provisioned (call `lovable_api_key--create` if missing)
-- `EVALUATE_SUBMISSION_WEBHOOK_SECRET` — random string, requested via `add_secret`
-
-### 5. Frontend
-
-**`src/components/submissions/AIEvaluationCard.tsx`** (new)
-- Fetches the row from `ai_submission_evaluations` by `submission_id`
-- Subscribes via Realtime (`postgres_changes` INSERT filtered by `submission_id`) inside `useEffect` with proper cleanup
-- States: loading, pending (no row yet), error, ready
-- Renders: total score (big), per-rubric `Progress` bars, recommendation badge with color (shortlist=emerald, review=amber, pass=muted), summary verdict, strengths (always), gaps (founder/admin only), advisory footer
-- Uses only design-system tokens (no hardcoded `text-white` / hex)
-
-**`src/pages/submissions/SubmissionReview.tsx`**
-- Determine `isFounder` from already-loaded submission/project context
-- Mount `<AIEvaluationCard submissionId={id} isFounder={isFounder} />` in the right sidebar above the manual scoring panel
-- Add "Re-run AI evaluation" button for founder/admin that calls a small new function or the same evaluator with a force flag
-
-**`src/pages/projects/Leaderboard.tsx`**
-- Change ordering to `.order("ai_score", { ascending: false, nullsFirst: false }).order("created_at", { ascending: true })`
-- Add an "AI Score" column showing `ai_score` (or "pending" badge when null) and a small recommendation pill
-
-### 6. Out of scope (MVP)
-
-- Scraping demo / GitHub URLs (the model gets only the metadata the builder provided)
-- Backfill of historical submissions — handled later with a one-off admin script
-- Multi-version prompt A/B — `prompt_version` column is in place but only v1 is used
-
-### Technical notes
-
-- All AI calls go through Lovable AI Gateway, never client-side
-- The evaluator function is the only writer to `ai_submission_evaluations` (RLS enforces this)
-- Notifications go through the existing `notifications` table (no schema change needed)
-- The leaderboard ordering change is additive: rows with `ai_score IS NULL` fall to the bottom but remain visible
+## Technical notes
+- No new tables or migrations are needed — schema and RLS are already in place.
+- No new secrets are needed — `LOVABLE_API_KEY` and `EVALUATE_SUBMISSION_WEBHOOK_SECRET` already exist.
+- Realtime is already enabled on `ai_submission_evaluations`.
+- All color usage in the new card will use semantic tokens from `index.css` (no hardcoded colors).

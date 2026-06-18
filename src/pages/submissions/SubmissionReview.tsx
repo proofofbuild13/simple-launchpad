@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { StarRating } from "@/components/workflow/StarRating";
 import { WorkflowStatusTracker } from "@/components/workflow/WorkflowStatusTracker";
 import { ResumeViewModal } from "@/components/profile/ResumeViewModal";
+import { AIEvaluationCard } from "@/components/submissions/AIEvaluationCard";
 
 const CRITERIA = [
   { key: "problem_fit", label: "Problem fit" },
@@ -212,6 +213,9 @@ export default function SubmissionReview() {
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+          {(isFounder || isBuilder) && (
+            <AIEvaluationCard submissionId={sub.id} canRun={isFounder} />
+          )}
           <Card>
             <CardHeader><CardTitle className="text-base">Description</CardTitle></CardHeader>
             <CardContent className="text-sm whitespace-pre-wrap">{sub.description || "—"}</CardContent>
