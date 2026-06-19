@@ -9,4 +9,8 @@ verify_jwt = true
 [functions.evaluate-submission]
 verify_jwt = false
 
+[functions.generate-project-brief]
+verify_jwt = true
+
+
 
