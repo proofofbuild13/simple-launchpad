@@ -1,50 +1,44 @@
-## Current state
+## AI-Assisted Project Brief Generator
 
-The AI evaluation backend is fully built but unused:
+Adds a "Generate with AI" action on Step 2 (Problem) of `PostProject.tsx`. The founder enters a title + short description (already collected on Step 0/1); clicking the button fills `description`, `requirements`, and `deliverables` with editable AI-drafted text. Never auto-advances, never auto-submits.
 
-- Table `ai_submission_evaluations` exists with 5 scores (problem_fit, execution, ux, feasibility, innovation, each 0–20), generated `total_score`, `summary_verdict`, `strengths[]`, `gaps[]`, `recommendation` (shortlist / review_manually / pass).
-- RLS already permits the project's founder, the submission's builder, and admins to read evaluations.
-- Edge function `evaluate-submission` is deployed and calls Lovable AI (Gemini 3 Flash) with a strict JSON schema, mirrors `ai_score` and `ai_recommendation` back onto `submissions`.
-- The 8 existing submissions in the DB have **no evaluations yet** (`ai_score` and `eval_id` are all null).
-- **No UI surfaces results anywhere** — `SubmissionReview.tsx`, `MySubmissions.tsx`, and the dashboards don't render any AI fields.
+### Deviations from your spec (intentional)
 
-## What I'll build
+1. **Use Lovable AI Gateway (Gemini 3 Flash), not Anthropic directly.** This project already uses `LOVABLE_API_KEY` for the `evaluate-submission` function and follows the platform's standard pattern. Avoids asking you for an `ANTHROPIC_API_KEY` and a new billing relationship. If you specifically want Claude, say so and I'll swap it.
+2. **Skip the `ai_generation_log` table for MVP.** You said "no new table needed for MVP" in your own brief, then included one for rate-limiting. I'll skip it to keep scope tight; if abuse appears we add it later. Lovable AI Gateway already enforces per-workspace rate limits and returns 429.
+3. **Keep the "overwrite confirm" UX you proposed** (`userEditedBrief` flag + `window.confirm`).
 
-### 1. Reusable component `AIEvaluationCard`
-`src/components/submissions/AIEvaluationCard.tsx`
+### Edge function: `supabase/functions/generate-project-brief/index.ts`
 
-- Fetches the evaluation for a given `submission_id` (RLS filters automatically).
-- States: loading, no-evaluation-yet (with a "Run AI evaluation" button when the viewer is founder/admin), evaluation-present.
-- When present, renders:
-  - Total score (e.g. `82 / 100`) with a colored badge based on recommendation.
-  - Recommendation pill: Shortlist (green), Review manually (amber), Pass (red).
-  - 5 sub-scores as small progress bars (0–20 each).
-  - One-line `summary_verdict`.
-  - Two columns: Strengths (check icons) and Gaps (alert icons).
-  - Footer: model used, evaluated timestamp, prompt version, "Re-run evaluation" button (founder/admin only) that calls the edge function with `{ submission_id }`.
-- Subscribes to realtime updates on `ai_submission_evaluations` for that submission so the card flips from "evaluating…" to results without a refresh.
+- `verify_jwt = true` (founder-only; reject anon).
+- Validates input with Zod: `title` (1–200), `short_description` (1–1000), optional `category`, `engagement_type`, `job_title`, `timeline`, `difficulty`.
+- Calls Lovable AI Gateway (`google/gemini-3-flash-preview`) with structured-output JSON schema for `{ description, requirements, deliverables }` — no fragile markdown stripping.
+- Handles 429 (rate limit) and 402 (credits) explicitly and forwards a clean error message.
+- CORS headers on every response.
+- Registered in `supabase/config.toml`.
 
-### 2. Integrate the card into the existing flows
-- `src/pages/submissions/SubmissionReview.tsx` — show the card prominently above the manual scoring form so founders see the AI verdict while reviewing.
-- `src/pages/submissions/MySubmissions.tsx` — show a compact summary (total score + recommendation pill) on each submission row so builders can see their AI evaluation result.
-- `src/pages/dashboard/StartupDashboard.tsx` — add a small "AI-recommended submissions" widget that lists the top 5 submissions across the founder's projects sorted by `ai_score` desc (only those with `recommendation = 'shortlist'`).
+### Prompt
 
-### 3. "Run AI evaluation" trigger
-A small helper `src/lib/aiEvaluation.ts` that invokes the `evaluate-submission` edge function via `supabase.functions.invoke('evaluate-submission', { body: { submission_id } })`. The card uses this for first-time runs and re-runs. Toast feedback on success/failure.
+Same shape as your spec: second/third person, 3–5 sentence description, 4–7 requirement lines, 3–5 deliverable lines, no invented budgets/dates, engagement-type-aware (hire_to_build vs project_hire).
 
-### 4. Backfill existing submissions
-Run the edge function once per existing submission (8 rows). I'll do this from the sandbox using a small Deno/Node script that calls `supabase.functions.invoke` with the service role key, then read the resulting rows back from `ai_submission_evaluations` and show you the per-submission scores and recommendations in the chat as a table.
+### Frontend: `src/pages/projects/PostProject.tsx`
 
-This covers all 8 regardless of current status (the status gate only applies to webhook-triggered runs, not direct invokes).
+- Add `generating`, `userEditedBrief` state; import `Sparkles` from `lucide-react`.
+- Add `generateWithAI()` calling `supabase.functions.invoke("generate-project-brief", { body: {...} })`.
+  - Pre-checks: title + short_description present.
+  - If `userEditedBrief`, `window.confirm` before overwriting.
+  - On success: merge into `description`/`requirements`/`deliverables`; toast.
+  - On error: distinguish 429 (rate-limit message) from generic failure.
+- In the Step 2 block:
+  - Header row with title + "Generate with AI" button (disabled while generating; spinner inside).
+  - Helper line below button: "AI draft — edit freely before publishing. Nothing is saved until you finish posting."
+  - If `short_description` empty, show an inline hint pointing back to Step 1.
+  - Textareas' `onChange` set `userEditedBrief = true`.
 
-## Out of scope (ask if you want any of this)
-- A dedicated "/projects/:id/ai-leaderboard" page ranking all submissions for a project.
-- Founder-facing prompt customization (per-project rubric weights).
-- Email/notification when a new AI evaluation completes.
-- Bulk re-run UI for admins.
+### Out of scope
+- `ai_generation_log` table, admin usage dashboard, regeneration history, per-field regeneration, streaming UI, saving drafts server-side.
 
-## Technical notes
-- No new tables or migrations are needed — schema and RLS are already in place.
-- No new secrets are needed — `LOVABLE_API_KEY` and `EVALUATE_SUBMISSION_WEBHOOK_SECRET` already exist.
-- Realtime is already enabled on `ai_submission_evaluations`.
-- All color usage in the new card will use semantic tokens from `index.css` (no hardcoded colors).
+### Files touched
+- new: `supabase/functions/generate-project-brief/index.ts`
+- edit: `supabase/config.toml` (register function)
+- edit: `src/pages/projects/PostProject.tsx` (button + handler + state)
