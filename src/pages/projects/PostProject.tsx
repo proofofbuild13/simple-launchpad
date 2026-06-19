@@ -84,6 +84,43 @@ export default function PostProject() {
     return true;
   };
 
+  const generateWithAI = async () => {
+    if (!form.title || !form.short_description) {
+      toast.error("Add a title and short description in Step 1 first");
+      return;
+    }
+    if (userEditedBrief && !window.confirm("This will overwrite your edits to description, requirements, and deliverables. Continue?")) {
+      return;
+    }
+    setGenerating(true);
+    const { data, error } = await supabase.functions.invoke("generate-project-brief", {
+      body: {
+        title: form.title,
+        category: form.category,
+        engagement_type: form.engagement_type,
+        short_description: form.short_description,
+        job_title: isH2B ? form.job_title : undefined,
+        timeline: !isH2B ? form.timeline : undefined,
+        difficulty: form.difficulty,
+      },
+    });
+    setGenerating(false);
+    if (error || !data || data.error) {
+      const msg = (data as any)?.message || (data as any)?.error || error?.message || "Generation failed";
+      toast.error(msg === "rate_limited" ? "AI is busy. Try again shortly." : msg);
+      return;
+    }
+    setForm((p: any) => ({
+      ...p,
+      description: data.description ?? p.description,
+      requirements: data.requirements ?? p.requirements,
+      deliverables: data.deliverables ?? p.deliverables,
+    }));
+    setUserEditedBrief(false);
+    toast.success("Draft generated — review and edit before continuing");
+  };
+
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
@@ -140,11 +177,31 @@ export default function PostProject() {
 
           {step === 2 && (
             <>
-              <Field label="Detailed description / challenge"><Textarea rows={5} value={form.description} onChange={(e) => set("description", e.target.value)} /></Field>
-              <Field label="Requirements"><Textarea rows={3} value={form.requirements} onChange={(e) => set("requirements", e.target.value)} /></Field>
-              <Field label="Deliverables"><Textarea rows={3} value={form.deliverables} onChange={(e) => set("deliverables", e.target.value)} /></Field>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1">
+                  <p className="text-sm text-muted-foreground">
+                    Draft the problem statement, requirements, and deliverables. Builders submit against this brief.
+                  </p>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={generateWithAI} disabled={generating}>
+                  {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                  {generating ? "Generating…" : "Generate with AI"}
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground -mt-2">
+                AI draft — edit freely before publishing. Nothing is saved until you finish posting.
+              </p>
+              {!form.short_description && (
+                <p className="text-xs text-amber-600 dark:text-amber-500">
+                  Add a short description in Step 1 so AI has something to work from.
+                </p>
+              )}
+              <Field label="Detailed description / challenge"><Textarea rows={5} value={form.description} onChange={(e) => { set("description", e.target.value); setUserEditedBrief(true); }} /></Field>
+              <Field label="Requirements"><Textarea rows={3} value={form.requirements} onChange={(e) => { set("requirements", e.target.value); setUserEditedBrief(true); }} /></Field>
+              <Field label="Deliverables"><Textarea rows={3} value={form.deliverables} onChange={(e) => { set("deliverables", e.target.value); setUserEditedBrief(true); }} /></Field>
             </>
           )}
+
 
           {step === 3 && !isH2B && (
             <>
