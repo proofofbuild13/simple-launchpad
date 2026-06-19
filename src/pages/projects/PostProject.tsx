@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Briefcase, Hammer, Check } from "lucide-react";
+import { Loader2, Briefcase, Hammer, Check, Sparkles } from "lucide-react";
 
 const steps = ["Basics", "Engagement", "Problem", "Settings", "Privacy", "Review"];
 
@@ -23,6 +23,9 @@ export default function PostProject() {
   const { t } = useTranslation();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [userEditedBrief, setUserEditedBrief] = useState(false);
+
   const [form, setForm] = useState<any>({
     title: "", category: "", short_description: "",
     description: "", requirements: "", deliverables: "",
