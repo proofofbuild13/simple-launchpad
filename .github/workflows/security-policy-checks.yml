@@ -1,0 +1,56 @@
+# CI: Security Policy Checks
+#
+# Drop-in GitHub Actions job that runs the static manifest gate and the
+# live SQL policy assertions against the Supabase database.
+#
+# Required repo secret:
+#   SUPABASE_DB_URL — pooler connection string from Supabase dashboard
+#                     (Settings → Database → Connection string → URI)
+
+name: security-policy-checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - ".security/**"
+      - "scripts/check-*.ts"
+      - "scripts/generate-security-report.ts"
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install psql
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+
+      - name: Install deps
+        run: bun install --frozen-lockfile
+
+      - name: Findings manifest gate
+        run: bun run check:security
+
+      - name: Live RLS / policy assertions
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: bun run check:policies
+
+      - name: Regenerate report
+        run: bun run report:security
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: .security/report.md
