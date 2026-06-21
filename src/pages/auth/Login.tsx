@@ -27,26 +27,14 @@ export default function Login() {
       return;
     }
     toast.success("Welcome back");
-
-    // Honor an explicit ?redirect= if one was passed.
-    if (sp.get("redirect")) {
-      navigate(redirect);
-      return;
+    if (!sp.get("redirect")) {
+      const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id).single();
+      if (roleData?.role === "builder") {
+        navigate("/browse");
+        return;
+      }
     }
-
-    // Otherwise route by role. Use maybeSingle so a missing row doesn't throw;
-    // only truly role-less users should be sent to /register.
-    const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", data.user.id)
-      .maybeSingle();
-
-    const role = roleData?.role;
-    if (role === "builder") return navigate("/browse");
-    if (role === "startup") return navigate("/dashboard");
-    if (role === "admin" || role === "super_admin") return navigate("/admin");
-    navigate("/register");
+    navigate(redirect);
   };
 
   return (
