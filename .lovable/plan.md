@@ -1,44 +1,88 @@
-## AI-Assisted Project Brief Generator
+# Platform Audit — Findings & Fix Plan
 
-Adds a "Generate with AI" action on Step 2 (Problem) of `PostProject.tsx`. The founder enters a title + short description (already collected on Step 0/1); clicking the button fills `description`, `requirements`, and `deliverables` with editable AI-drafted text. Never auto-advances, never auto-submits.
+Scans run: `security--run_security_scan`, `supabase--linter`, `security--get_scan_results`. Console/runtime logs: clean. Findings group into 6 buckets — all fixable in one migration plus 1 dashboard task you'll do yourself.
 
-### Deviations from your spec (intentional)
+## Findings
 
-1. **Use Lovable AI Gateway (Gemini 3 Flash), not Anthropic directly.** This project already uses `LOVABLE_API_KEY` for the `evaluate-submission` function and follows the platform's standard pattern. Avoids asking you for an `ANTHROPIC_API_KEY` and a new billing relationship. If you specifically want Claude, say so and I'll swap it.
-2. **Skip the `ai_generation_log` table for MVP.** You said "no new table needed for MVP" in your own brief, then included one for rate-limiting. I'll skip it to keep scope tight; if abuse appears we add it later. Lovable AI Gateway already enforces per-workspace rate limits and returns 429.
-3. **Keep the "overwrite confirm" UX you proposed** (`userEditedBrief` flag + `window.confirm`).
+### 1. PII exposure — `builder_profiles.phone` (ERROR)
+Policy `bp_select_all` uses `USING (true)`, so any signed-in user can `SELECT phone` from any builder. A prior migration revoked the column grant, but the broad SELECT policy + table-level grant still allow it. Confirmed via `connector_security_scan` history + current `supabase_lov` scan.
 
-### Edge function: `supabase/functions/generate-project-brief/index.ts`
+### 2. Missing admin visibility — `payments` (WARN)
+`pay_select_parties` only allows founder/builder. No admin SELECT, unlike `payment_records` / `escrow_ledger`. Blocks dispute resolution.
 
-- `verify_jwt = true` (founder-only; reject anon).
-- Validates input with Zod: `title` (1–200), `short_description` (1–1000), optional `category`, `engagement_type`, `job_title`, `timeline`, `difficulty`.
-- Calls Lovable AI Gateway (`google/gemini-3-flash-preview`) with structured-output JSON schema for `{ description, requirements, deliverables }` — no fragile markdown stripping.
-- Handles 429 (rate limit) and 402 (credits) explicitly and forwards a clean error message.
-- CORS headers on every response.
-- Registered in `supabase/config.toml`.
+### 3. Over-broad read — `platform_settings` (WARN)
+`ps_select_all` returns every settings row (including `commission_rate` and any future internal flags) to every authenticated user.
 
-### Prompt
+### 4. Realtime authorization missing (WARN)
+No RLS on `realtime.messages` → any signed-in user can subscribe to any channel topic (notifications, conversations, AI evals).
 
-Same shape as your spec: second/third person, 3–5 sentence description, 4–7 requirement lines, 3–5 deliverable lines, no invented budgets/dates, engagement-type-aware (hire_to_build vs project_hire).
+### 5. SECURITY DEFINER functions executable by `authenticated` (34 WARN)
+Lint flags every `SECURITY DEFINER` callable by signed-in users. Many are **internal-only** (triggers + helpers) and should have `EXECUTE` revoked from `public`/`authenticated`. The rest are legitimate user RPCs (fund_escrow, raise_dispute, etc.) and stay callable — but we'll re-grant explicitly so intent is clear.
 
-### Frontend: `src/pages/projects/PostProject.tsx`
+Internal-only (revoke EXECUTE):
+`on_new_message`, `touch_updated_at`, `handle_new_user`, `enforce_single_default_pm`, `notify_payment_method_change`, `handle_employment_offer_accepted`, `log_audit`, `is_conversation_participant` (used by RLS only), `mask_account`, `get_user_role`, `user_has_any_role`, `any_admin_exists`, `has_role` (RLS-only), `admin_*` family (called via SECURITY DEFINER from edge fns / specific UI — keep but explicit grants).
 
-- Add `generating`, `userEditedBrief` state; import `Sparkles` from `lucide-react`.
-- Add `generateWithAI()` calling `supabase.functions.invoke("generate-project-brief", { body: {...} })`.
-  - Pre-checks: title + short_description present.
-  - If `userEditedBrief`, `window.confirm` before overwriting.
-  - On success: merge into `description`/`requirements`/`deliverables`; toast.
-  - On error: distinguish 429 (rate-limit message) from generic failure.
-- In the Step 2 block:
-  - Header row with title + "Generate with AI" button (disabled while generating; spinner inside).
-  - Helper line below button: "AI draft — edit freely before publishing. Nothing is saved until you finish posting."
-  - If `short_description` empty, show an inline hint pointing back to Step 1.
-  - Textareas' `onChange` set `userEditedBrief = true`.
+### 6. Dashboard-only — Leaked Password Protection disabled (WARN)
+Cannot be fixed via SQL. Requires toggle in Supabase Auth dashboard.
 
-### Out of scope
-- `ai_generation_log` table, admin usage dashboard, regeneration history, per-field regeneration, streaming UI, saving drafts server-side.
+## Fixes (one consolidated migration)
 
-### Files touched
-- new: `supabase/functions/generate-project-brief/index.ts`
-- edit: `supabase/config.toml` (register function)
-- edit: `src/pages/projects/PostProject.tsx` (button + handler + state)
+```text
+1. builder_profiles
+   - DROP POLICY bp_select_all
+   - CREATE POLICY bp_select_public_fields  (USING true) — used together with
+     column-level REVOKE on phone (already in place) so the column is invisible
+     to anon/authenticated even though rows are returned
+   - Re-assert REVOKE SELECT(phone) FROM anon, authenticated
+   - Keep get_my_builder_phone() / set_my_builder_phone() for owner access
+   - Keep admin_get_user_full() (already strips phone except for admins)
+
+2. payments
+   - CREATE POLICY pay_select_admin FOR SELECT
+     USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'super_admin'))
+
+3. platform_settings
+   - DROP POLICY ps_select_all
+   - CREATE POLICY ps_select_admin (admin/super_admin full read)
+   - CREATE POLICY ps_select_public_keys
+     USING (key IN ('commission_rate'))  -- only keys the app actually needs client-side
+   (commission_rate is already used by client display; everything else stays admin-only)
+
+4. realtime.messages
+   - ALTER TABLE realtime.messages ENABLE ROW LEVEL SECURITY
+   - Policies scoping topic to user resources:
+       * topic = 'user:' || auth.uid()                       (personal notifications)
+       * topic LIKE 'conversation:%' AND is_conversation_participant(uuid, auth.uid())
+       * admins: full access via has_role()
+
+5. SECURITY DEFINER hardening
+   - REVOKE EXECUTE ... FROM PUBLIC, anon, authenticated on every internal/trigger
+     function listed above
+   - GRANT EXECUTE on user-callable RPCs explicitly to authenticated:
+     fund_escrow, release_escrow_for_milestone, raise_dispute,
+     confirm_payment_record, create_contract_from_offer,
+     get_or_create_direct_conversation, get_builder_default_payment,
+     builder_payment_status, get_escrow_summary, get_my_builder_phone,
+     set_my_builder_phone, send_notification, bootstrap_admin,
+     can_delete_project
+   - GRANT EXECUTE on admin RPCs to authenticated (they self-gate via has_role):
+     admin_adjust_commission_invoice, verify_commission_payment,
+     admin_resolve_escrow, admin_update_user_profile, admin_delete_user,
+     admin_set_user_status, admin_set_user_role, admin_get_user_full
+```
+
+## Dashboard task for you
+Enable **Leaked Password Protection** in Supabase → Auth → Providers → Email → "Password strength & leaked password protection". Cannot be done from SQL.
+
+## Out of scope (no issues found)
+- Runtime errors: none recorded
+- Console errors: none
+- `connector_security_scan` (Wiz): 0 findings
+- Edge functions `admin-create-user` / `admin-delete-user`: gated correctly (admin/super_admin role checks present)
+- Auth context, ProtectedRoute, AdminGuard: correct role checks
+
+## Verification after migration
+- Re-run `supabase--linter` → expect only "Leaked Password Protection" remaining
+- Re-run `security--run_security_scan` → expect 0 errors, 0 warns
+- Existing `.security/policy-checks.sql` still passes
+- Smoke test: builder reads own phone via RPC, non-owner builder cannot, admin sees phone via `admin_get_user_full`, founder funds escrow, admin lists payments
