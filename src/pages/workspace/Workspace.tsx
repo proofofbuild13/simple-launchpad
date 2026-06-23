@@ -34,6 +34,7 @@ const COLUMNS: [string, string][] = [
   ["submitted", "Submitted"],
   ["revision_requested", "Revisions"],
   ["approved", "Approved"],
+  ["awaiting_release", "Awaiting release"],
   ["escrow_released", "Escrow released"],
   ["fully_settled", "Settled"],
 ];

@@ -149,6 +149,25 @@ describe("Contract lifecycle — status transitions", () => {
     await assertStage("Completed");
   });
 
+  it("8) builder signs after escrow funded → trigger sets contract_active → resolver shows 'Milestone work'", async () => {
+    // Simulates post-trigger DB state: both signatures present, escrow funded, status flipped to contract_active.
+    resetDb("contract_active", true);
+    db.contract_milestones = [
+      { id: "m1", contract_id: CONTRACT_ID, status: "in_progress" },
+    ];
+    await assertStage("Milestone work");
+  });
+
+  it("9) all milestones fully_settled → auto-complete trigger sets contract_completed → resolver shows 'Completed'", async () => {
+    // Simulates post-trigger DB state.
+    resetDb("contract_completed", true);
+    db.contract_milestones = [
+      { id: "m1", contract_id: CONTRACT_ID, status: "fully_settled" },
+      { id: "m2", contract_id: CONTRACT_ID, status: "fully_settled" },
+    ];
+    await assertStage("Completed");
+  });
+
   it("walks the whole lifecycle in order", async () => {
     const sequence: Array<[() => void, string]> = [
       [() => resetDb("contract_drafted"), "Contract drafted"],

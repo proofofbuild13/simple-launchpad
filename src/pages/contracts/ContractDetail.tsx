@@ -103,12 +103,9 @@ export default function ContractDetail() {
     const role = isFounder ? "founder" : "builder";
     await supabase.from("contract_signatures").insert({ contract_id: id, signed_by: user.id, role });
 
+    // Status transitions are handled by the contract_on_signature DB trigger:
+    //   first signature → partially_signed; both signed + escrow funded → contract_active
     const otherSigned = role === "founder" ? builderSigned : founderSigned;
-    // Always move to partially_signed — escrow funding is what activates the contract
-    await supabase.from("contracts")
-      .update({ status: "partially_signed" })
-      .eq("id", id);
-
     const otherId = role === "founder" ? c.builder_id : c.founder_id;
     await supabase.rpc("send_notification", {
       _user_id: otherId,
