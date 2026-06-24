@@ -6,6 +6,8 @@ import { MetricsBand } from "@/components/site/MetricsBand";
 import { ProjectShowcase } from "@/components/site/ProjectShowcase";
 import { Pillars } from "@/components/site/Pillars";
 import { AudienceSplit } from "@/components/site/AudienceSplit";
+import { BuildersSection } from "@/components/site/BuildersSection";
+import { Pricing } from "@/components/site/Pricing";
 import { FAQ } from "@/components/site/FAQ";
 import { CTA } from "@/components/site/CTA";
 import { Footer } from "@/components/site/Footer";
@@ -51,8 +53,10 @@ const Index = () => {
         <HowItWorks />
         <MetricsBand />
         <ProjectShowcase />
+        <BuildersSection />
         <Pillars />
         <AudienceSplit />
+        <Pricing />
         <FAQ />
         <CTA />
       </main>
