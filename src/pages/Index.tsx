@@ -58,6 +58,7 @@ const Index = () => {
         <Pillars />
         <AudienceSplit />
         <Pricing />
+        <TrustSection />
         <FAQ />
         <CTA />
       </main>
