@@ -3,31 +3,34 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 
 const includes = [
-  "Unlimited project posts",
-  "Unlimited builder submissions",
+  "Unlimited project posts & submissions",
+  "AI-scored evaluation on every submission",
   "Side-by-side prototype review",
-  "Milestone escrow & contracts",
-  "NDA + IP assignment automation",
-  "Built-in messaging & interviews",
-  "Dispute mediation by our admin team",
-  "Convert builders to long-term contracts",
+  "Milestone escrow with admin-mediated disputes",
+  "Auto-generated 3 / 6 / 12-milestone contracts",
+  "NDA + IP-assignment built into signing",
+  "In-platform messaging, interviews & offers",
+  "One-click conversion to long-term or full-time",
 ];
 
 const tiers = [
   {
-    type: "Short-term contract",
-    fee: "8%",
-    desc: "On fixed-price and milestone contracts under 3 months.",
+    type: "Posting & submissions",
+    fee: "Free",
+    unit: "",
+    desc: "Post unlimited challenges, receive unlimited submissions, run AI evaluation and interviews — all at no cost. You only pay when you successfully onboard a builder.",
   },
   {
-    type: "Long-term hire",
-    fee: "12%",
-    desc: "One-time fee on first-month value when you convert a builder to a 3+ month engagement.",
-  },
-  {
-    type: "Full-time conversion",
+    type: "Milestone contracts",
     fee: "15%",
-    desc: "One-time placement fee on first-year base salary for full-time hires.",
+    unit: "per release",
+    desc: "Flat platform commission deducted from each milestone escrow release. Shown on every offer before you accept — invoiced automatically with a 7-day due window.",
+  },
+  {
+    type: "Full-time placement",
+    fee: "8.33%",
+    unit: "one-time",
+    desc: "One-month equivalent of first-year base salary, charged once when a builder accepts a full-time employment offer. No fee if the offer isn't accepted.",
   },
 ];
 
@@ -36,11 +39,11 @@ export const Pricing = () => (
     <div className="max-w-3xl mb-14">
       <div className="font-mono text-xs text-signal uppercase tracking-widest mb-3">Pricing</div>
       <h2 className="font-display text-5xl md:text-6xl text-balance leading-[1.02]">
-        Free to post. <em className="text-signal not-italic italic font-light">Pay only when you hire.</em>
+        Free to post. <em className="text-signal not-italic italic font-light">Pay only when a builder is onboarded.</em>
       </h2>
       <p className="mt-6 text-muted-foreground max-w-2xl text-lg">
-        No subscriptions, no seat fees, no listing charges. The platform earns only on successful builder
-        onboarding — a transparent commission on the contract value, deducted automatically at escrow release.
+        No subscriptions. No per-seat fees. No charge to post, review, or interview. The platform earns a
+        transparent commission only when work is signed off and money actually moves to the builder.
       </p>
     </div>
 
@@ -59,14 +62,16 @@ export const Pricing = () => (
               Most common
             </span>
           )}
-          <div className={`font-mono text-[11px] uppercase tracking-widest mb-3 ${i === 1 ? "text-signal" : "text-signal"}`}>
+          <div className="font-mono text-[11px] uppercase tracking-widest mb-3 text-signal">
             {t.type}
           </div>
           <div className="flex items-baseline gap-2 mb-4">
             <span className="font-display text-6xl md:text-7xl leading-none">{t.fee}</span>
-            <span className={`font-mono text-xs ${i === 1 ? "text-ink-foreground/60" : "text-muted-foreground"}`}>
-              commission
-            </span>
+            {t.unit && (
+              <span className={`font-mono text-xs ${i === 1 ? "text-ink-foreground/60" : "text-muted-foreground"}`}>
+                {t.unit}
+              </span>
+            )}
           </div>
           <p className={`text-sm leading-relaxed ${i === 1 ? "text-ink-foreground/70" : "text-muted-foreground"}`}>
             {t.desc}
@@ -81,8 +86,8 @@ export const Pricing = () => (
           What every contract includes.
         </h3>
         <p className="text-muted-foreground mb-8">
-          One commission covers the whole lifecycle — from posting the challenge to closing the contract.
-          No hidden processing, no add-ons.
+          One commission covers the whole lifecycle — from posting the challenge through escrow release,
+          dispute mediation, and conversion. No hidden processing fees, no add-ons.
         </p>
         <div className="flex flex-wrap gap-3">
           <Link to="/register/startup">
