@@ -167,7 +167,8 @@ export const BuildersSection = () => (
         </h2>
       </div>
       <p className="text-muted-foreground max-w-sm">
-        A snapshot of the people shipping on the platform — every rating and review tied to a signed-off contract.
+        Every profile here has shipped on the platform. Ratings come from founders who signed off real
+        milestones — not anonymous résumé reviews.
       </p>
     </div>
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

@@ -10,14 +10,15 @@ export const Hero = () => (
       <div className="max-w-4xl">
         <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 backdrop-blur px-3 py-1 text-xs font-mono text-muted-foreground animate-fade-up">
           <Sparkles className="h-3 w-3 text-signal" />
-          <span>Execution-based hiring · invite-only beta</span>
+          <span>AI-scored submissions · milestone escrow · invite-only beta</span>
         </div>
         <h1 className="mt-6 font-display text-6xl md:text-8xl leading-[0.95] text-balance animate-fade-up" style={{ animationDelay: '60ms' }}>
-          Build <em className="text-signal not-italic font-light italic">before</em> you hire.
+          Hire the builder whose <em className="text-signal not-italic font-light italic">prototype</em> already works.
         </h1>
         <p className="mt-8 max-w-2xl text-lg md:text-xl text-muted-foreground text-balance animate-fade-up" style={{ animationDelay: '120ms' }}>
-          Founders post a real challenge. Builders ship working prototypes. You hire the people whose work
-          you've already seen — with escrow, contracts, and conversion to long-term roles built in.
+          Post a real challenge. Builders ship working solutions. Gemini-powered evaluation surfaces the best
+          submissions in minutes — then sign a milestone contract, fund escrow, and convert your winner to
+          a long-term or full-time hire when you're ready.
         </p>
         <div className="mt-10 flex flex-wrap gap-3 animate-fade-up" style={{ animationDelay: '180ms' }}>
           <Link to="/register/startup">
@@ -27,16 +28,16 @@ export const Hero = () => (
           </Link>
           <Link to="/browse">
             <Button size="lg" variant="outline" className="h-12 px-6 text-base border-foreground/20 hover:bg-secondary">
-              Find projects
+              Browse open challenges
             </Button>
           </Link>
         </div>
         <div className="mt-12 flex items-center gap-6 text-xs font-mono text-muted-foreground animate-fade-up" style={{ animationDelay: '240ms' }}>
-          <div><span className="text-foreground font-semibold">2,400+</span> builders</div>
+          <div><span className="text-foreground font-semibold">2,400+</span> vetted builders</div>
           <div className="h-3 w-px bg-border" />
-          <div><span className="text-foreground font-semibold">$1.2M</span> in escrow paid</div>
+          <div><span className="text-foreground font-semibold">$1.2M</span> released from escrow</div>
           <div className="h-3 w-px bg-border" />
-          <div><span className="text-foreground font-semibold">96%</span> on-time</div>
+          <div><span className="text-foreground font-semibold">96%</span> milestones on-time</div>
         </div>
       </div>
     </div>

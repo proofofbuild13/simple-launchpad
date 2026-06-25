@@ -9,6 +9,7 @@ import { AudienceSplit } from "@/components/site/AudienceSplit";
 import { BuildersSection } from "@/components/site/BuildersSection";
 import { Pricing } from "@/components/site/Pricing";
 import { FAQ } from "@/components/site/FAQ";
+import { TrustSection } from "@/components/site/TrustSection";
 import { CTA } from "@/components/site/CTA";
 import { Footer } from "@/components/site/Footer";
 
@@ -57,6 +58,7 @@ const Index = () => {
         <Pillars />
         <AudienceSplit />
         <Pricing />
+        <TrustSection />
         <FAQ />
         <CTA />
       </main>
