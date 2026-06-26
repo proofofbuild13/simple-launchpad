@@ -3,7 +3,7 @@
 // or invoked directly with { submission_id } for re-runs.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const PROMPT_VERSION = 1;
+const PROMPT_VERSION = 2;
 const MODEL = "google/gemini-3-flash-preview";
 
 const corsHeaders = {
