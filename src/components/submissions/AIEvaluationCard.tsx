@@ -235,7 +235,7 @@ export function AIEvaluationCard({ submissionId, canRun = false }: Props) {
           <div className="grid sm:grid-cols-2 gap-4 pt-2">
             {evalData.strengths && evalData.strengths.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Strengths</p>
+                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Edges</p>
                 <ul className="space-y-1.5">
                   {evalData.strengths.map((s, i) => (
                     <li key={i} className="flex gap-2 text-sm">
