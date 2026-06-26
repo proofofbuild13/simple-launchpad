@@ -66,6 +66,7 @@ export type Database = {
           score_innovation: number | null
           score_problem_fit: number | null
           score_ux: number | null
+          startup_grade: string | null
           strengths: string[] | null
           submission_id: string
           summary_verdict: string | null
@@ -86,6 +87,7 @@ export type Database = {
           score_innovation?: number | null
           score_problem_fit?: number | null
           score_ux?: number | null
+          startup_grade?: string | null
           strengths?: string[] | null
           submission_id: string
           summary_verdict?: string | null
@@ -106,6 +108,7 @@ export type Database = {
           score_innovation?: number | null
           score_problem_fit?: number | null
           score_ux?: number | null
+          startup_grade?: string | null
           strengths?: string[] | null
           submission_id?: string
           summary_verdict?: string | null
