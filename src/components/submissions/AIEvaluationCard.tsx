@@ -29,7 +29,8 @@ interface Evaluation {
   summary_verdict: string | null;
   strengths: string[] | null;
   gaps: string[] | null;
-  recommendation: "shortlist" | "review_manually" | "pass" | null;
+  recommendation: "fundable" | "iterate" | "pass" | null;
+  startup_grade: "A" | "B" | "C" | "D" | "F" | null;
   model_used: string | null;
   prompt_version: number | null;
   evaluated_at: string | null;
@@ -37,18 +38,18 @@ interface Evaluation {
 }
 
 const CRITERIA: Array<{ key: keyof Evaluation; label: string }> = [
-  { key: "score_problem_fit", label: "Problem fit" },
-  { key: "score_execution", label: "Execution" },
-  { key: "score_ux", label: "UX" },
-  { key: "score_feasibility", label: "Feasibility" },
-  { key: "score_innovation", label: "Innovation" },
+  { key: "score_problem_fit", label: "Market & demand" },
+  { key: "score_execution", label: "Business model" },
+  { key: "score_ux", label: "Moat & differentiation" },
+  { key: "score_feasibility", label: "GTM & traction" },
+  { key: "score_innovation", label: "Investability" },
 ];
 
 function RecommendationBadge({ rec }: { rec: Evaluation["recommendation"] }) {
-  if (rec === "shortlist") {
+  if (rec === "fundable") {
     return (
       <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20">
-        <ThumbsUp className="h-3 w-3 mr-1" /> Shortlist
+        <ThumbsUp className="h-3 w-3 mr-1" /> Fundable
       </Badge>
     );
   }
@@ -61,7 +62,26 @@ function RecommendationBadge({ rec }: { rec: Evaluation["recommendation"] }) {
   }
   return (
     <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/20">
-      <HelpCircle className="h-3 w-3 mr-1" /> Review manually
+      <HelpCircle className="h-3 w-3 mr-1" /> Iterate
+    </Badge>
+  );
+}
+
+function GradeBadge({ grade }: { grade: Evaluation["startup_grade"] }) {
+  if (!grade) return null;
+  const tone =
+    grade === "A"
+      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+      : grade === "B"
+      ? "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30"
+      : grade === "C"
+      ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+      : grade === "D"
+      ? "bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/30"
+      : "bg-destructive/15 text-destructive border-destructive/30";
+  return (
+    <Badge variant="outline" className={`${tone} font-mono text-base px-2.5`}>
+      {grade}
     </Badge>
   );
 }
@@ -180,10 +200,11 @@ export function AIEvaluationCard({ submissionId, canRun = false }: Props) {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <CardTitle className="text-base flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" /> AI evaluation
+            <Sparkles className="h-4 w-4 text-primary" /> Startup viability evaluation
           </CardTitle>
           <div className="flex items-center gap-2">
             <RecommendationBadge rec={evalData.recommendation} />
+            <GradeBadge grade={evalData.startup_grade} />
             <Badge variant="outline" className="font-mono">
               {total}<span className="text-muted-foreground">/100</span>
             </Badge>
@@ -214,7 +235,7 @@ export function AIEvaluationCard({ submissionId, canRun = false }: Props) {
           <div className="grid sm:grid-cols-2 gap-4 pt-2">
             {evalData.strengths && evalData.strengths.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Strengths</p>
+                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Edges</p>
                 <ul className="space-y-1.5">
                   {evalData.strengths.map((s, i) => (
                     <li key={i} className="flex gap-2 text-sm">
@@ -227,7 +248,7 @@ export function AIEvaluationCard({ submissionId, canRun = false }: Props) {
             )}
             {evalData.gaps && evalData.gaps.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-xs font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wider">Gaps</p>
+                <p className="text-xs font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wider">Risks</p>
                 <ul className="space-y-1.5">
                   {evalData.gaps.map((g, i) => (
                     <li key={i} className="flex gap-2 text-sm">

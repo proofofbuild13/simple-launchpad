@@ -3,7 +3,7 @@
 // or invoked directly with { submission_id } for re-runs.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const PROMPT_VERSION = 1;
+const PROMPT_VERSION = 2;
 const MODEL = "google/gemini-3-flash-preview";
 
 const corsHeaders = {
@@ -77,18 +77,23 @@ Deno.serve(async (req) => {
     .eq("id", sub.project_id)
     .maybeSingle();
 
-  const system = `You are an expert technical reviewer evaluating builder submissions for a startup challenge.
-Score the submission across 5 dimensions (0-20 each). Be critical and consistent.
-- problem_fit: Does the submission directly solve the project's stated problem and requirements?
-- execution: Quality of build, code, and craftsmanship evident from links/description.
-- ux: Clarity, usability, polish of the user experience.
-- feasibility: Realistic, deployable, and maintainable approach.
-- innovation: Originality and thoughtful approach vs generic implementation.
-Provide a concise verdict (1-2 sentences), 2-4 strengths, 2-4 gaps, and a recommendation:
-- "shortlist" (>=75 total or standout work)
-- "review_manually" (45-74 or mixed signal)
-- "pass" (<45 or off-brief).
-Respond ONLY with valid JSON matching the schema. No prose.`;
+  const system = `You are a pre-seed startup analyst grading a builder's submission as a STARTUP / BUSINESS, not as a code review.
+Read the submission and the parent project as if reviewing an early-stage pitch. Score 0-20 on each of the 5 dimensions below.
+Map each score field to its business meaning:
+- score_problem_fit  -> MARKET & DEMAND: TAM/SAM signal, urgency of pain, clarity of target customer, "why now".
+- score_execution    -> BUSINESS MODEL & MONETIZATION: revenue model, pricing logic, unit economics, willingness-to-pay.
+- score_ux           -> MOAT & DIFFERENTIATION: defensibility vs incumbents/copycats, originality of approach, data/network/brand edge.
+- score_feasibility  -> GTM & TRACTION POTENTIAL: distribution plan, first-100-users feasibility, channel-fit, partnerships.
+- score_innovation   -> INVESTABILITY: founder/builder execution signal, pre-seed/seed readiness, overall startup grade.
+
+Then provide:
+- summary_verdict: 1-2 sentence investor-style verdict.
+- strengths: 2-4 business EDGES (market, moat, GTM, monetisation).
+- gaps: 2-4 business RISKS (not engineering bugs).
+- recommendation: one of "fundable" (>=80 or standout business case), "iterate" (50-79 or mixed/early), "pass" (<50 or no real business).
+- startup_grade: letter grade from total score: A (>=85), B (70-84), C (55-69), D (40-54), F (<40).
+
+Be candid; do not inflate. Respond ONLY with valid JSON matching the schema. No prose.`;
 
   const user = JSON.stringify({
     project: project ?? null,
@@ -107,11 +112,12 @@ Respond ONLY with valid JSON matching the schema. No prose.`;
       summary_verdict: { type: "string" },
       strengths: { type: "array", items: { type: "string" } },
       gaps: { type: "array", items: { type: "string" } },
-      recommendation: { type: "string", enum: ["shortlist", "review_manually", "pass"] },
+      recommendation: { type: "string", enum: ["fundable", "iterate", "pass"] },
+      startup_grade: { type: "string", enum: ["A", "B", "C", "D", "F"] },
     },
     required: [
       "score_problem_fit","score_execution","score_ux","score_feasibility","score_innovation",
-      "summary_verdict","strengths","gaps","recommendation",
+      "summary_verdict","strengths","gaps","recommendation","startup_grade",
     ],
   };
 
@@ -160,6 +166,7 @@ Respond ONLY with valid JSON matching the schema. No prose.`;
     strengths: aiResult?.strengths ?? [],
     gaps: aiResult?.gaps ?? [],
     recommendation: aiResult?.recommendation ?? null,
+    startup_grade: aiResult?.startup_grade ?? null,
     error: aiError,
     model_used: MODEL,
     prompt_version: PROMPT_VERSION,
