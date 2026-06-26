@@ -29,7 +29,8 @@ interface Evaluation {
   summary_verdict: string | null;
   strengths: string[] | null;
   gaps: string[] | null;
-  recommendation: "shortlist" | "review_manually" | "pass" | null;
+  recommendation: "fundable" | "iterate" | "pass" | null;
+  startup_grade: "A" | "B" | "C" | "D" | "F" | null;
   model_used: string | null;
   prompt_version: number | null;
   evaluated_at: string | null;
@@ -37,18 +38,18 @@ interface Evaluation {
 }
 
 const CRITERIA: Array<{ key: keyof Evaluation; label: string }> = [
-  { key: "score_problem_fit", label: "Problem fit" },
-  { key: "score_execution", label: "Execution" },
-  { key: "score_ux", label: "UX" },
-  { key: "score_feasibility", label: "Feasibility" },
-  { key: "score_innovation", label: "Innovation" },
+  { key: "score_problem_fit", label: "Market & demand" },
+  { key: "score_execution", label: "Business model" },
+  { key: "score_ux", label: "Moat & differentiation" },
+  { key: "score_feasibility", label: "GTM & traction" },
+  { key: "score_innovation", label: "Investability" },
 ];
 
 function RecommendationBadge({ rec }: { rec: Evaluation["recommendation"] }) {
-  if (rec === "shortlist") {
+  if (rec === "fundable") {
     return (
       <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20">
-        <ThumbsUp className="h-3 w-3 mr-1" /> Shortlist
+        <ThumbsUp className="h-3 w-3 mr-1" /> Fundable
       </Badge>
     );
   }
@@ -61,7 +62,26 @@ function RecommendationBadge({ rec }: { rec: Evaluation["recommendation"] }) {
   }
   return (
     <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/20">
-      <HelpCircle className="h-3 w-3 mr-1" /> Review manually
+      <HelpCircle className="h-3 w-3 mr-1" /> Iterate
+    </Badge>
+  );
+}
+
+function GradeBadge({ grade }: { grade: Evaluation["startup_grade"] }) {
+  if (!grade) return null;
+  const tone =
+    grade === "A"
+      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+      : grade === "B"
+      ? "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30"
+      : grade === "C"
+      ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+      : grade === "D"
+      ? "bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/30"
+      : "bg-destructive/15 text-destructive border-destructive/30";
+  return (
+    <Badge variant="outline" className={`${tone} font-mono text-base px-2.5`}>
+      {grade}
     </Badge>
   );
 }
