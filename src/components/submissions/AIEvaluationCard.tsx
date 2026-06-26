@@ -200,10 +200,11 @@ export function AIEvaluationCard({ submissionId, canRun = false }: Props) {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <CardTitle className="text-base flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" /> AI evaluation
+            <Sparkles className="h-4 w-4 text-primary" /> Startup viability evaluation
           </CardTitle>
           <div className="flex items-center gap-2">
             <RecommendationBadge rec={evalData.recommendation} />
+            <GradeBadge grade={evalData.startup_grade} />
             <Badge variant="outline" className="font-mono">
               {total}<span className="text-muted-foreground">/100</span>
             </Badge>
