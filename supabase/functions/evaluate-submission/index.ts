@@ -112,11 +112,12 @@ Be candid; do not inflate. Respond ONLY with valid JSON matching the schema. No 
       summary_verdict: { type: "string" },
       strengths: { type: "array", items: { type: "string" } },
       gaps: { type: "array", items: { type: "string" } },
-      recommendation: { type: "string", enum: ["shortlist", "review_manually", "pass"] },
+      recommendation: { type: "string", enum: ["fundable", "iterate", "pass"] },
+      startup_grade: { type: "string", enum: ["A", "B", "C", "D", "F"] },
     },
     required: [
       "score_problem_fit","score_execution","score_ux","score_feasibility","score_innovation",
-      "summary_verdict","strengths","gaps","recommendation",
+      "summary_verdict","strengths","gaps","recommendation","startup_grade",
     ],
   };
 
