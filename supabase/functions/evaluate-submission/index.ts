@@ -166,6 +166,7 @@ Be candid; do not inflate. Respond ONLY with valid JSON matching the schema. No 
     strengths: aiResult?.strengths ?? [],
     gaps: aiResult?.gaps ?? [],
     recommendation: aiResult?.recommendation ?? null,
+    startup_grade: aiResult?.startup_grade ?? null,
     error: aiError,
     model_used: MODEL,
     prompt_version: PROMPT_VERSION,
