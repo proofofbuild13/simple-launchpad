@@ -248,7 +248,7 @@ export function AIEvaluationCard({ submissionId, canRun = false }: Props) {
             )}
             {evalData.gaps && evalData.gaps.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-xs font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wider">Gaps</p>
+                <p className="text-xs font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wider">Risks</p>
                 <ul className="space-y-1.5">
                   {evalData.gaps.map((g, i) => (
                     <li key={i} className="flex gap-2 text-sm">
