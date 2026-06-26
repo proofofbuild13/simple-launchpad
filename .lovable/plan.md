@@ -1,62 +1,58 @@
-## Landing page analysis
+# Rework AI evaluator → Startup Viability Agent
 
-Current sections (top → bottom): `Nav → Hero → HowItWorks → ProjectShowcase → Pillars → CTA → Footer`.
+Repurpose the existing `evaluate-submission` agent. It currently scores builder submissions on 5 technical dimensions (problem fit, execution, UX, feasibility, innovation). We'll **replace** those with business/startup-viability dimensions, keep the same pipeline (DB webhook → edge function → `ai_submission_evaluations` table → realtime UI card), and update the founder-facing card to display the new grade.
 
-What's missing:
-- No dedicated **metrics / impact** band (only 3 tiny inline stats in the Hero).
-- No **for-founders vs for-builders** split — visitors can't quickly see what's in it for them.
-- No **trust signals** (categories, payout volume, time-to-hire, security/compliance).
-- No **FAQ** to answer pricing/escrow/IP questions before signup.
-- Footer is thin (no real link columns, no contact).
+## New scoring rubric (replaces the 5 technical scores)
 
-## Plan
+Each scored 0–20, total 0–100:
 
-Add two new sections and upgrade the footer — no business-logic changes, presentation-only.
+1. **Market size & demand** — TAM/SAM signal, urgency of the pain, clarity of the target customer.
+2. **Business model & monetization** — revenue model, pricing logic, unit-economics signal, willingness-to-pay.
+3. **Moat & differentiation** — defensibility vs incumbents/copycats, originality of approach.
+4. **GTM & traction potential** — distribution plan, first-100-users feasibility, channel fit.
+5. **Investability** — pre-seed/seed readiness, founder/builder execution signal, overall startup grade.
 
-### 1. New `MetricsBand.tsx` (inserted after `HowItWorks`)
-A bold, dark, full-bleed band with 4–6 headline metrics in a large display font, plus a one-line caption per metric. Numbers animate up on scroll (CountUp via simple `requestAnimationFrame`, no new deps).
+Plus:
+- `summary_verdict` — 1–2 sentence investor-style verdict.
+- `strengths` (2–4) and `gaps` (2–4) — reframed as market/business risks and edges, not engineering.
+- `recommendation` enum: **`fundable`** | **`iterate`** | **`pass`** (replaces `shortlist` / `review_manually` / `pass`).
+- `startup_grade` — A / B / C / D / F derived from total score.
 
-Metrics:
-- `2,400+` active builders
-- `$1.2M` paid through escrow
-- `96%` on-time delivery
-- `7 days` median time-to-first-prototype
-- `48 hrs` median founder response
-- `38` countries represented
+## Changes
 
-Below the metric grid: a 3-column **"By the numbers, in practice"** strip explaining what each metric means for founders (e.g. "Faster than a recruiter cycle", "Backed by milestone escrow", "Vetted by shipped work, not résumés").
+### 1. Database (migration)
+- Add `recommendation` enum value `'fundable'` and `'iterate'` (keep `'pass'`); existing rows with old values get mapped via update statement.
+  - Simpler: change `recommendation` column from enum to `text` with CHECK constraint for the 3 new values, migrating old data (`shortlist`→`fundable`, `review_manually`→`iterate`, `pass`→`pass`).
+- Add `startup_grade text` column (A–F) to `ai_submission_evaluations`.
+- Bump prompt version (handled in code, not SQL).
+- No new tables, no new RLS — reuses existing table grants/policies.
 
-### 2. New `AudienceSplit.tsx` (inserted after `Pillars`)
-Two side-by-side cards — **For founders** / **For builders** — each with: a tagline, 4 bullet outcomes, and a CTA button (`/register/startup`, `/register/builder`). Uses the existing `bg-card`, `signal`, and `ink` tokens already in `index.css`.
+### 2. Edge function `supabase/functions/evaluate-submission/index.ts`
+- `PROMPT_VERSION` → `2` (forces re-evaluation of existing rows on next trigger).
+- Rewrite `system` prompt as a startup/VC analyst persona scoring the 5 new dimensions; instruct it to read the submission as a *startup pitch* (problem, who pays, why now, why this team) rather than as a code review. Project context (category, description, requirements) still passed in.
+- Update `schema` keys to keep the same column names (`score_problem_fit`, `score_execution`, `score_ux`, `score_feasibility`, `score_innovation`) **but** redefine their meaning in the prompt as the 5 business dimensions — avoids a DB rename. (Alternative: add 5 new columns. Going with reuse to keep scope tight; labels in UI carry the new meaning.)
+- Add `startup_grade` to the JSON schema and persist it.
+- Update `recommendation` enum values in the JSON schema to `fundable | iterate | pass`.
+- Threshold guidance in the prompt: ≥80 fundable+A, 65–79 iterate+B, 50–64 iterate+C, 35–49 pass+D, <35 pass+F.
 
-### 3. New `FAQ.tsx` (inserted before `CTA`)
-Uses the existing `@/components/ui/accordion` shadcn component. 6 questions covering:
-- How does escrow work?
-- Who owns the IP of submitted prototypes?
-- What does it cost?
-- What if no submission is good enough?
-- How are builders vetted?
-- Can I convert a builder to a full-time hire?
+### 3. UI `src/components/submissions/AIEvaluationCard.tsx`
+- Rename header to "Startup viability evaluation".
+- Update `CRITERIA` labels to: Market & demand, Business model, Moat & differentiation, GTM & traction, Investability.
+- Update `RecommendationBadge` for the 3 new values (`fundable` green, `iterate` amber, `pass` red).
+- Show `startup_grade` as a large letter badge next to the `/100` total.
+- Tweak strengths/gaps headers to "Edges" / "Risks".
 
-### 4. Upgrade `Footer.tsx`
-Expand to a 4-column footer: brand blurb · Product (Browse, Post, Pricing, Leaderboard) · Company (About, Blog, Contact) · Legal (Privacy, Terms, Admin). Keep current bottom bar with copyright + social.
+### 4. Library
+- `src/lib/aiEvaluation.ts` unchanged (same edge function).
+- `Evaluation` type in `AIEvaluationCard.tsx` updated for new `recommendation` literals and `startup_grade`.
 
-### 5. `Index.tsx` wiring
-Update `<main>` to:
-```
-<Hero /> <HowItWorks /> <MetricsBand /> <ProjectShowcase /> <Pillars /> <AudienceSplit /> <FAQ /> <CTA />
-```
-Also tighten `<title>` / `<meta description>` (keep < 60 / < 160 chars) and add `<meta name="keywords">` + JSON-LD `Organization` schema for SEO.
+## Out of scope
+- No new agent for grading project briefs (founder side) — that was the "Both" option and is not chosen.
+- No changes to commission, contracts, escrow, or any other flows.
+- No model change; stays on `google/gemini-3-flash-preview` via Lovable AI Gateway.
+- Landing page copy stays as-is (the platform-overview Trust/Hero sections already say "AI-scored submissions" which still holds).
 
-### Technical notes
-- All new components use existing semantic tokens (`bg-card`, `text-signal`, `bg-ink`, `font-display`, `font-mono`) — no hardcoded colors, no new fonts.
-- Count-up animation is a tiny inline hook (no `react-countup` install).
-- Accordion is already in `src/components/ui/accordion.tsx` — no new deps.
-- No DB, RLS, or route changes.
-
-### Files
-- create `src/components/site/MetricsBand.tsx`
-- create `src/components/site/AudienceSplit.tsx`
-- create `src/components/site/FAQ.tsx`
-- edit `src/components/site/Footer.tsx`
-- edit `src/pages/Index.tsx`
+## Verification
+- Type-check passes.
+- Manually trigger a re-evaluation on an existing submission via the "Re-run" button → new row has `prompt_version=2`, `startup_grade` populated, recommendation is one of the 3 new values.
+- Card renders all 5 new dimension labels, grade badge, and color-correct recommendation badge.
