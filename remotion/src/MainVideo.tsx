@@ -30,11 +30,11 @@ export const MainVideo: React.FC = () => {
       <Sequence from={375} durationInFrames={150}><Scene4AI /></Sequence>
       <Sequence from={525} durationInFrames={195}><Scene5Escrow /></Sequence>
 
-      <Chrome />
       <Grain opacity={0.06} />
       {/* Cinematic letterbox */}
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: bar, background: "#000", zIndex: 50 }} />
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: bar, background: "#000", zIndex: 50 }} />
+      <div style={{ position: "absolute", inset: 0, zIndex: 60 }}><Chrome /></div>
     </AbsoluteFill>
   );
 };
