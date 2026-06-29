@@ -50,6 +50,82 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_messages: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          parts: Json
+          role: string
+          thread_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          parts?: Json
+          role: string
+          thread_id: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          parts?: Json
+          role?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "agent_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_threads: {
+        Row: {
+          created_at: string
+          current_stage: number
+          founder_id: string
+          id: string
+          project_id: string | null
+          stats: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_stage?: number
+          founder_id: string
+          id?: string
+          project_id?: string | null
+          stats?: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_stage?: number
+          founder_id?: string
+          id?: string
+          project_id?: string | null
+          stats?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_threads_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_submission_evaluations: {
         Row: {
           created_at: string
