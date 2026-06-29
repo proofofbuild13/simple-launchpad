@@ -9,6 +9,8 @@
     /* Core palette — warm ink on bone */
     --background: 38 30% 96%;
     --foreground: 220 25% 10%;
+    --agent-accent: 247 56% 67%;
+
 
     --card: 38 30% 98%;
     --card-foreground: 220 25% 10%;
