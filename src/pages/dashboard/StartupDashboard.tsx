@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FolderKanban, FileCheck2, Users, FileSignature, PlusCircle, Sparkles } from "lucide-react";
+import { FolderKanban, FileCheck2, Users, FileSignature, PlusCircle, Sparkles, Bot } from "lucide-react";
 
 interface Stats { projects: number; submissions: number; contracts: number; }
 
