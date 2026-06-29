@@ -54,7 +54,10 @@ export default function StartupDashboard() {
           <h1 className="text-2xl font-semibold">Founder dashboard</h1>
           <p className="text-sm text-muted-foreground">Validate ideas. Hire on proof-of-work.</p>
         </div>
-        <Link to="/projects/new"><Button><PlusCircle className="h-4 w-4 mr-2" />Post a project</Button></Link>
+        <div className="flex gap-2">
+          <Link to="/agent"><Button><Bot className="h-4 w-4 mr-2" />Open agent</Button></Link>
+          <Link to="/projects/new"><Button variant="outline"><PlusCircle className="h-4 w-4 mr-2" />Classic form</Button></Link>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
