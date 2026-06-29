@@ -21,6 +21,7 @@ import {
   Users as UsersIcon,
   ScrollText,
   Bookmark,
+  Bot,
 } from "lucide-react";
 import {
   Sidebar,
@@ -40,6 +41,7 @@ type Item = { title: string; url: string; icon: any };
 
 const startupItems: Item[] = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Agent", url: "/agent", icon: Bot },
   { title: "Post Project", url: "/projects/new", icon: PlusCircle },
   { title: "My Projects", url: "/projects", icon: FolderKanban },
   { title: "Submissions", url: "/submissions", icon: FileCheck2 },
@@ -51,6 +53,7 @@ const startupItems: Item[] = [
   { title: "Saved Builders", url: "/saved-builders", icon: Bookmark },
   { title: "Payments", url: "/payments/startup", icon: Wallet },
 ];
+
 
 const builderItems: Item[] = [
   { title: "Browse Projects", url: "/browse", icon: Search },

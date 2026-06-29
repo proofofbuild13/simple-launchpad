@@ -58,6 +58,7 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminUserDetail from "./pages/admin/AdminUserDetail";
 import AdminAuditLogs from "./pages/admin/AdminAuditLogs";
 import AdminDisputeDetail from "./pages/admin/AdminDisputeDetail";
+import FounderAgent from "./pages/agent/FounderAgent";
 
 const queryClient = new QueryClient();
 
@@ -91,6 +92,8 @@ const App = () => (
 
             <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<DashboardRouter />} />
+              <Route path="/agent" element={<FounderAgent />} />
+
 
               <Route path="/projects" element={<MyProjects />} />
               <Route path="/projects/new" element={<PostProject />} />

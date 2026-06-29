@@ -12,5 +12,11 @@ verify_jwt = false
 [functions.generate-project-brief]
 verify_jwt = true
 
+[functions.founder-agent]
+verify_jwt = true
+
+
+
+
 
 
