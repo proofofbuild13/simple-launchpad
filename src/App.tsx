@@ -58,6 +58,7 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminUserDetail from "./pages/admin/AdminUserDetail";
 import AdminAuditLogs from "./pages/admin/AdminAuditLogs";
 import AdminDisputeDetail from "./pages/admin/AdminDisputeDetail";
+import FounderAgent from "./pages/agent/FounderAgent";
 
 const queryClient = new QueryClient();
 
