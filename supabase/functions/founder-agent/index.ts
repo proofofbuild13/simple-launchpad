@@ -1,6 +1,6 @@
 // Founder AI Agent — conversational project posting.
-// Handles: parse brief, draft project, post, match builders, send invites,
-// fetch shortlist. Persists chat to agent_threads / agent_messages.
+// Intents: chat, approve_post, send_invites, broaden_match,
+//          fetch_shortlist, evaluate_new_submission, refresh_stats, reset.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const MODEL = "google/gemini-3-flash-preview";
@@ -22,8 +22,8 @@ type ThreadStats = {
   invited?: number;
   submissions?: number;
   shortlisted?: number;
+  evaluated?: number;
   project_draft?: any;
-  matched_builders?: any[];
   awaiting?: "post_project" | "send_invites" | null;
 };
 
@@ -56,6 +56,31 @@ async function callAI(systemPrompt: string, userPrompt: string, jsonSchema?: any
   return content ?? "";
 }
 
+function classifyIntent(msg: string): "shortlist" | "broaden" | "invite_more" | "status" | "chat" {
+  const m = msg.toLowerCase();
+  if (/(shortlist|top picks?|rank|best builders?|who's best)/.test(m)) return "shortlist";
+  if (/(broaden|widen|more builders?|other builders?|expand)/.test(m)) return "broaden";
+  if (/(invite more|send more invites?)/.test(m)) return "invite_more";
+  if (/(status|progress|how(\s+is|'s)|what'?s happening)/.test(m)) return "status";
+  return "chat";
+}
+
+function rankBuilders(builders: any[], skills: string[]) {
+  return (builders ?? [])
+    .map((b: any) => {
+      const overlap = (b.skills ?? []).filter((s: string) =>
+        skills.some((q) => q.toLowerCase() === String(s).toLowerCase()),
+      ).length;
+      const expBoost = b.experience_level === "senior" ? 8 : b.experience_level === "mid" ? 4 : 0;
+      const ratingBoost = Math.round(Number(b.rating ?? 0) * 2);
+      const max = Math.max(skills.length, 1);
+      const match_score = Math.min(98, Math.round((overlap / max) * 70 + expBoost + ratingBoost + 15));
+      return { ...b, overlap, match_score };
+    })
+    .sort((a, b) => b.match_score - a.match_score)
+    .slice(0, 10);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
@@ -81,7 +106,6 @@ Deno.serve(async (req) => {
   const intent = String(body?.intent ?? "chat");
   let threadId: string | undefined = body?.thread_id;
 
-  // Resolve or create active thread
   if (!threadId) {
     const { data: existing } = await admin
       .from("agent_threads")
@@ -110,32 +134,42 @@ Deno.serve(async (req) => {
   const stats: ThreadStats = (thread.stats as ThreadStats) || {};
 
   async function appendMessage(role: string, content: string, parts: any[] = []) {
-    await admin.from("agent_messages").insert({
-      thread_id: threadId, role, content, parts,
-    });
+    await admin.from("agent_messages").insert({ thread_id: threadId, role, content, parts });
   }
   async function updateThread(patch: any) {
     await admin.from("agent_threads").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", threadId);
   }
 
+  // Recompute counts directly from the source tables (single source of truth).
+  async function recomputeStats(projectId: string | null, base: ThreadStats): Promise<ThreadStats> {
+    const next: ThreadStats = { ...base };
+    if (!projectId) return next;
+    const [{ count: subCount }, { data: evals }] = await Promise.all([
+      admin.from("submissions").select("id", { count: "exact", head: true }).eq("project_id", projectId),
+      admin.from("ai_submission_evaluations").select("recommendation").eq("project_id", projectId),
+    ]);
+    next.submissions = subCount ?? 0;
+    next.evaluated = evals?.length ?? 0;
+    next.shortlisted = (evals ?? []).filter(
+      (e: any) => e.recommendation === "fundable" || e.recommendation === "iterate",
+    ).length;
+    return next;
+  }
+
   try {
-    // ============ INTENT: chat ============
+    // ============ chat ============
     if (intent === "chat") {
       const userMsg = String(body?.message ?? "").trim();
       if (!userMsg) return json({ error: "message required" }, 400);
       await appendMessage("user", userMsg);
 
-      // First-ever brief OR no project_draft yet → parse + draft
+      // No draft, no project → parse + draft
       if (!stats.project_draft && !thread.project_id) {
-        // Stage 1: parse
         await updateThread({ current_stage: 1 });
-
         const parseSchema = {
-          type: "object",
-          additionalProperties: false,
+          type: "object", additionalProperties: false,
           properties: {
-            title: { type: "string" },
-            category: { type: "string" },
+            title: { type: "string" }, category: { type: "string" },
             skills: { type: "array", items: { type: "string" } },
             duration: { type: "string" },
             difficulty: { type: "string", enum: ["junior", "mid", "senior"] },
@@ -147,41 +181,32 @@ Deno.serve(async (req) => {
         };
         const parsed = await callAI(
           `You are ProofBuild's project intake agent. Extract structured fields from the founder's brief. If the brief is too vague (no clear deliverable, no tech stack hint, no domain), set clarification_needed=true with a short clarification_question. Otherwise set clarification_needed=false and clarification_question="". Infer reasonable defaults for missing fields.`,
-          userMsg,
-          parseSchema,
+          userMsg, parseSchema,
         );
-
         if (parsed.clarification_needed) {
           await appendMessage("assistant", parsed.clarification_question, [{ type: "text", text: parsed.clarification_question }]);
-          await updateThread({ current_stage: 1, stats });
           return json({ ok: true, thread_id: threadId });
         }
 
-        // Stage 2: draft
         await updateThread({ current_stage: 2 });
         const draftSchema = {
-          type: "object",
-          additionalProperties: false,
+          type: "object", additionalProperties: false,
           properties: {
-            title: { type: "string" },
-            category: { type: "string" },
-            short_description: { type: "string" },
-            description: { type: "string" },
-            requirements: { type: "string" },
-            deliverables: { type: "string" },
+            title: { type: "string" }, category: { type: "string" },
+            short_description: { type: "string" }, description: { type: "string" },
+            requirements: { type: "string" }, deliverables: { type: "string" },
             skills: { type: "array", items: { type: "string" } },
-            difficulty: { type: "string" },
-            duration: { type: "string" },
+            difficulty: { type: "string" }, duration: { type: "string" },
           },
           required: ["title", "category", "short_description", "description", "requirements", "deliverables", "skills", "difficulty", "duration"],
         };
         const draft = await callAI(
-          `You write builder-ready project briefs for a build-to-hire platform. Output JSON only.
-- description: 3-5 sentences explaining the problem and why it matters. Third person, never "I".
-- requirements: 4-7 newline-separated bullet lines (no markdown bullets, just newlines).
-- deliverables: 3-5 newline-separated bullet lines.
-Keep it realistic. No invented budgets or company names.`,
-          `Parsed brief: ${JSON.stringify(parsed)}\n\nOriginal founder message: ${userMsg}`,
+          `You write builder-ready project briefs. Output JSON only.
+- description: 3-5 sentences, third person.
+- requirements: 4-7 newline-separated lines (no markdown bullets).
+- deliverables: 3-5 newline-separated lines.
+No invented budgets or company names.`,
+          `Parsed brief: ${JSON.stringify(parsed)}\n\nOriginal: ${userMsg}`,
           draftSchema,
         );
 
@@ -192,33 +217,28 @@ Keep it realistic. No invented budgets or company names.`,
         const reply = `Here's the draft for **${draft.title}**. Review it, then I can post it and start matching builders.`;
         await appendMessage("assistant", reply, [
           { type: "text", text: reply },
-          { type: "project_preview", project: draft, awaiting_approval: true },
+          { type: "project_preview", project: draft },
         ]);
         return json({ ok: true, thread_id: threadId });
       }
 
-      // Subsequent chat with an existing draft → refine the draft
+      // Has draft, not posted → refine
       if (stats.project_draft && !thread.project_id) {
         const refineSchema = {
-          type: "object",
-          additionalProperties: false,
+          type: "object", additionalProperties: false,
           properties: {
-            title: { type: "string" },
-            category: { type: "string" },
-            short_description: { type: "string" },
-            description: { type: "string" },
-            requirements: { type: "string" },
-            deliverables: { type: "string" },
+            title: { type: "string" }, category: { type: "string" },
+            short_description: { type: "string" }, description: { type: "string" },
+            requirements: { type: "string" }, deliverables: { type: "string" },
             skills: { type: "array", items: { type: "string" } },
-            difficulty: { type: "string" },
-            duration: { type: "string" },
+            difficulty: { type: "string" }, duration: { type: "string" },
             changes_summary: { type: "string" },
           },
           required: ["title", "category", "short_description", "description", "requirements", "deliverables", "skills", "difficulty", "duration", "changes_summary"],
         };
         const refined = await callAI(
-          `You refine an existing project brief based on the founder's edit request. Apply only the requested changes; keep everything else. Output JSON with the full updated brief and a 1-sentence changes_summary.`,
-          `Current draft: ${JSON.stringify(stats.project_draft)}\n\nFounder's edit request: ${userMsg}`,
+          `Refine an existing project brief based on the founder's edit request. Apply only the requested changes; keep everything else. Output JSON with the full updated brief and a 1-sentence changes_summary.`,
+          `Current draft: ${JSON.stringify(stats.project_draft)}\n\nFounder's edit: ${userMsg}`,
           refineSchema,
         );
         const { changes_summary, ...newDraft } = refined as any;
@@ -229,21 +249,36 @@ Keep it realistic. No invented budgets or company names.`,
         const reply = `Updated. ${changes_summary} Ready to post when you are.`;
         await appendMessage("assistant", reply, [
           { type: "text", text: reply },
-          { type: "project_preview", project: newDraft, awaiting_approval: true },
+          { type: "project_preview", project: newDraft },
         ]);
         return json({ ok: true, thread_id: threadId });
       }
 
-      // Project already posted → general chat
+      // Project already posted → simple intent routing
+      const sub = classifyIntent(userMsg);
+      if (sub === "shortlist") {
+        return await runFetchShortlist();
+      }
+      if (sub === "broaden") {
+        return await runBroaden();
+      }
+      if (sub === "status") {
+        const fresh = await recomputeStats(thread.project_id, stats);
+        await updateThread({ stats: fresh });
+        const reply = `Status: **${fresh.matched ?? 0}** matched · **${fresh.invited ?? 0}** invited · **${fresh.submissions ?? 0}** submission(s) · **${fresh.shortlisted ?? 0}** in shortlist.`;
+        await appendMessage("assistant", reply, [{ type: "text", text: reply }]);
+        return json({ ok: true, thread_id: threadId });
+      }
+
       const reply = await callAI(
-        `You are ProofBuild's founder agent. The project is already posted (id ${thread.project_id}). Help the founder navigate next steps: matching, invites, evaluations, shortlist. Keep replies under 3 sentences.`,
+        `You are ProofBuild's founder agent. A project is already posted. Keep replies under 3 sentences and steer toward: review shortlist, broaden matching, or invite more builders.`,
         userMsg,
       );
       await appendMessage("assistant", reply, [{ type: "text", text: reply }]);
       return json({ ok: true, thread_id: threadId });
     }
 
-    // ============ INTENT: approve_post ============
+    // ============ approve_post ============
     if (intent === "approve_post") {
       const draft = stats.project_draft;
       if (!draft) return json({ error: "no draft to post" }, 400);
@@ -275,61 +310,55 @@ Keep it realistic. No invented budgets or company names.`,
         return json({ error: pErr.message }, 500);
       }
 
-      // Match builders by skills overlap
       const skills: string[] = Array.isArray(draft.skills) ? draft.skills : [];
       const { data: builders } = await admin
         .from("builder_profiles")
         .select("id, full_name, username, title, skills, experience_level, location, avatar_url, rating, total_projects, available")
         .eq("available", true)
-        .overlaps("skills", skills.length ? skills : ["x"])
+        .overlaps("skills", skills.length ? skills : ["__none__"])
         .limit(20);
 
-      const scored = (builders ?? [])
-        .map((b: any) => {
-          const overlap = (b.skills ?? []).filter((s: string) =>
-            skills.some((q) => q.toLowerCase() === String(s).toLowerCase()),
-          ).length;
-          const expBoost = b.experience_level === "senior" ? 8 : b.experience_level === "mid" ? 4 : 0;
-          const ratingBoost = Math.round(Number(b.rating ?? 0) * 2);
-          const max = Math.max(skills.length, 1);
-          const match_score = Math.min(98, Math.round((overlap / max) * 70 + expBoost + ratingBoost + 15));
-          return { ...b, overlap, match_score };
-        })
-        .sort((a, b) => b.match_score - a.match_score)
-        .slice(0, 10);
+      const scored = rankBuilders(builders ?? [], skills);
 
       stats.project_draft = null as any;
-      stats.matched_builders = scored;
       stats.matched = scored.length;
       stats.awaiting = scored.length ? "send_invites" : null;
-      await updateThread({ current_stage: scored.length ? 3 : 4, project_id: proj.id, stats });
+      await updateThread({ current_stage: 3, project_id: proj.id, stats });
 
       const reply = scored.length
-        ? `Project posted. I scanned the database and found **${scored.length} matched builders** based on your skill stack. Review the top picks below, then I can send invitations.`
-        : `Project posted. No strong matches in the database for those exact skills — want me to broaden the criteria?`;
-      await appendMessage("assistant", reply, [
+        ? `Project posted. I scanned the database and found **${scored.length} matched builders**. Review the top picks below — I can send invitations.`
+        : `Project posted. No exact skill matches in the database. Want me to broaden the search?`;
+      const parts: any[] = [
         { type: "text", text: reply },
         { type: "project_posted", project_id: proj.id, title: proj.title },
-        ...(scored.length ? [{ type: "builders", builders: scored, awaiting_approval: true }] : []),
-      ]);
+      ];
+      if (scored.length) parts.push({ type: "builders", builders: scored });
+      else parts.push({ type: "broaden_prompt" });
+      await appendMessage("assistant", reply, parts);
       return json({ ok: true, thread_id: threadId, project_id: proj.id });
     }
 
-    // ============ INTENT: send_invites ============
+    // ============ send_invites ============
     if (intent === "send_invites") {
-      const limit = Number(body?.limit ?? 0) || (stats.matched_builders?.length ?? 0);
-      const builders = (stats.matched_builders ?? []).slice(0, limit);
-      if (!builders.length || !thread.project_id) {
-        return json({ error: "no builders or project to invite" }, 400);
+      const builderIds: string[] = Array.isArray(body?.builder_ids) ? body.builder_ids : [];
+      if (!builderIds.length || !thread.project_id) {
+        return json({ error: "builder_ids and active project required" }, 400);
       }
-      await appendMessage("user", `Send invitations to ${limit} builders.`);
+      await appendMessage("user", `Send invitations to ${builderIds.length} builders.`);
       await updateThread({ current_stage: 4 });
 
-      const rows = builders.map((b: any) => ({
-        project_id: thread.project_id,
-        founder_id: user.id,
-        builder_id: b.id,
-        message: `You're a strong match for "${stats.project_draft?.title ?? "this project"}". Take a look and submit your work.`,
+      const { data: builders } = await admin
+        .from("builder_profiles")
+        .select("id, full_name")
+        .in("id", builderIds);
+      const validIds = (builders ?? []).map((b: any) => b.id);
+      if (!validIds.length) return json({ error: "no valid builders" }, 400);
+
+      const projectTitle = (await admin.from("projects").select("title").eq("id", thread.project_id).single()).data?.title ?? "this project";
+
+      const rows = validIds.map((id) => ({
+        project_id: thread.project_id, founder_id: user.id, builder_id: id,
+        message: `You're a strong match for "${projectTitle}". Take a look and submit your work.`,
         status: "sent",
       }));
       const { error: invErr } = await admin.from("project_invitations").insert(rows);
@@ -339,30 +368,111 @@ Keep it realistic. No invented budgets or company names.`,
         return json({ error: invErr.message }, 500);
       }
 
-      // Send notifications
-      const notifRows = builders.map((b: any) => ({
-        user_id: b.id,
-        type: "project_invitation",
-        title: "New project invitation",
-        body: `A founder invited you to submit on "${stats.project_draft?.title ?? "a project"}".`,
+      await admin.from("notifications").insert(validIds.map((id) => ({
+        user_id: id, type: "project_invitation", title: "New project invitation",
+        body: `A founder invited you to submit on "${projectTitle}".`,
         link: `/projects/${thread.project_id}`,
-      }));
-      await admin.from("notifications").insert(notifRows);
+      })));
 
-      stats.invited = builders.length;
+      stats.invited = (stats.invited ?? 0) + validIds.length;
       stats.awaiting = null;
       await updateThread({ current_stage: 5, stats });
 
-      const reply = `Invitations sent to **${builders.length} builders**. I'll watch for submissions and auto-evaluate each one as it comes in. Check back here — I'll surface the ranked shortlist below as evaluations land.`;
+      const reply = `Invitations sent to **${validIds.length} builders**. As they submit, I'll auto-evaluate each one and surface the shortlist here.`;
       await appendMessage("assistant", reply, [
         { type: "text", text: reply },
-        { type: "invites_sent", count: builders.length },
+        { type: "invites_sent", count: validIds.length },
       ]);
-      return json({ ok: true, thread_id: threadId, invited: builders.length });
+      return json({ ok: true, thread_id: threadId, invited: validIds.length });
     }
 
-    // ============ INTENT: fetch_shortlist ============
+    // ============ broaden_match ============
+    if (intent === "broaden_match") {
+      return await runBroaden();
+    }
+
+    // ============ fetch_shortlist ============
     if (intent === "fetch_shortlist") {
+      return await runFetchShortlist();
+    }
+
+    // ============ evaluate_new_submission ============
+    if (intent === "evaluate_new_submission") {
+      const submissionId = String(body?.submission_id ?? "");
+      if (!submissionId || !thread.project_id) return json({ error: "submission_id and project required" }, 400);
+
+      // Skip if already evaluated.
+      const { data: existing } = await admin
+        .from("ai_submission_evaluations")
+        .select("submission_id, total_score, startup_grade")
+        .eq("submission_id", submissionId)
+        .maybeSingle();
+
+      let scoreLine = "";
+      let builderName = "Builder";
+      if (existing) {
+        scoreLine = `${existing.total_score ?? "—"}/100 (${existing.startup_grade ?? "—"})`;
+      } else {
+        // Trigger evaluation via the existing edge function (service-role bearer).
+        const resp = await fetch(`${SUPABASE_URL}/functions/v1/evaluate-submission`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${SERVICE_KEY}`,
+          },
+          body: JSON.stringify({ submission_id: submissionId }),
+        });
+        if (!resp.ok) {
+          console.error("evaluate-submission failed", resp.status, await resp.text());
+          return json({ ok: false, skipped: true });
+        }
+        const { data: ev } = await admin
+          .from("ai_submission_evaluations")
+          .select("total_score, startup_grade")
+          .eq("submission_id", submissionId)
+          .maybeSingle();
+        scoreLine = ev ? `${ev.total_score ?? "—"}/100 (${ev.startup_grade ?? "—"})` : "evaluation queued";
+      }
+
+      const { data: sub } = await admin
+        .from("submissions")
+        .select("builder_id, builder_profiles!inner(full_name)")
+        .eq("id", submissionId)
+        .maybeSingle();
+      if (sub?.builder_profiles?.full_name) builderName = sub.builder_profiles.full_name;
+
+      const fresh = await recomputeStats(thread.project_id, stats);
+      await updateThread({ stats: fresh, current_stage: Math.max(thread.current_stage ?? 5, 5) });
+
+      const reply = `Evaluated **${builderName}** — ${scoreLine}`;
+      await appendMessage("assistant", reply, [
+        { type: "text", text: reply },
+        { type: "evaluation_pinged", submission_id: submissionId },
+      ]);
+      return json({ ok: true, thread_id: threadId });
+    }
+
+    // ============ refresh_stats ============
+    if (intent === "refresh_stats") {
+      const fresh = await recomputeStats(thread.project_id, stats);
+      await updateThread({ stats: fresh });
+      return json({ ok: true, stats: fresh });
+    }
+
+    // ============ reset ============
+    if (intent === "reset") {
+      await admin.from("agent_threads").update({ status: "archived" }).eq("id", threadId);
+      const { data: created } = await admin
+        .from("agent_threads")
+        .insert({ founder_id: user.id, status: "active", current_stage: 0, stats: {} })
+        .select("id").single();
+      return json({ ok: true, thread_id: created?.id });
+    }
+
+    return json({ error: "unknown intent" }, 400);
+
+    // ---- helpers that close over thread/stats ----
+    async function runFetchShortlist() {
       if (!thread.project_id) return json({ error: "no project on thread" }, 400);
       const { data: evals } = await admin
         .from("ai_submission_evaluations")
@@ -379,13 +489,12 @@ Keep it realistic. No invented budgets or company names.`,
       const list = evals ?? [];
       const shortlist = list.filter((e: any) => e.recommendation === "fundable" || e.recommendation === "iterate").slice(0, 5);
 
-      stats.submissions = list.length;
-      stats.shortlisted = shortlist.length;
-      await updateThread({ current_stage: list.length ? 6 : (thread.current_stage ?? 5), stats });
+      const fresh = await recomputeStats(thread.project_id, stats);
+      await updateThread({ stats: fresh, current_stage: shortlist.length ? 6 : (thread.current_stage ?? 5) });
 
       const reply = list.length
-        ? `**${list.length} submission(s)** evaluated so far. Top ${shortlist.length} ranked below.`
-        : `No evaluated submissions yet. As builders submit and the AI evaluator runs, I'll surface them here.`;
+        ? `**${list.length} submission(s)** evaluated. Top ${shortlist.length} ranked below.`
+        : `No evaluated submissions yet. As builders submit, I'll auto-evaluate and surface them here.`;
       await appendMessage("assistant", reply, [
         { type: "text", text: reply },
         ...(shortlist.length ? [{ type: "shortlist", shortlist }] : []),
@@ -393,18 +502,34 @@ Keep it realistic. No invented budgets or company names.`,
       return json({ ok: true, thread_id: threadId, evaluations: list, shortlist });
     }
 
-    // ============ INTENT: reset ============
-    if (intent === "reset") {
-      await admin.from("agent_threads").update({ status: "archived" }).eq("id", threadId);
-      const { data: created } = await admin
-        .from("agent_threads")
-        .insert({ founder_id: user.id, status: "active", current_stage: 0, stats: {} })
-        .select("id")
-        .single();
-      return json({ ok: true, thread_id: created?.id });
-    }
+    async function runBroaden() {
+      if (!thread.project_id) return json({ error: "no project on thread" }, 400);
+      const skills: string[] = Array.isArray(stats.project_draft?.skills)
+        ? stats.project_draft.skills
+        : ((await admin.from("projects").select("tags").eq("id", thread.project_id).single()).data?.tags ?? []);
 
-    return json({ error: "unknown intent" }, 400);
+      // Drop overlap filter: any available builder, ranked.
+      const { data: builders } = await admin
+        .from("builder_profiles")
+        .select("id, full_name, username, title, skills, experience_level, location, avatar_url, rating, total_projects, available")
+        .eq("available", true)
+        .order("rating", { ascending: false, nullsFirst: false })
+        .limit(30);
+
+      const scored = rankBuilders(builders ?? [], skills);
+      stats.matched = scored.length;
+      stats.awaiting = scored.length ? "send_invites" : null;
+      await updateThread({ stats });
+
+      const reply = scored.length
+        ? `Broadened the search — here are **${scored.length} more builders** ranked by rating and partial skill fit.`
+        : `Still no available builders in the database. Try again later.`;
+      await appendMessage("assistant", reply, [
+        { type: "text", text: reply },
+        ...(scored.length ? [{ type: "builders", builders: scored }] : []),
+      ]);
+      return json({ ok: true, thread_id: threadId });
+    }
   } catch (e: any) {
     const msg = e?.message ?? String(e);
     if (msg === "rate_limited") return json({ error: "rate_limited", message: "AI is busy. Try again shortly." }, 429);
