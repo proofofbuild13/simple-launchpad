@@ -10,16 +10,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
   Send, Bot, User as UserIcon, Check, Clock, ExternalLink,
-  Loader2, RotateCcw, Sparkles, ArrowRight, Trophy,
+  Loader2, RotateCcw, Sparkles, ArrowRight, Trophy, Search, Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Part =
   | { type: "text"; text: string }
-  | { type: "project_preview"; project: any; awaiting_approval?: boolean }
+  | { type: "project_preview"; project: any }
   | { type: "project_posted"; project_id: string; title: string }
-  | { type: "builders"; builders: any[]; awaiting_approval?: boolean }
+  | { type: "builders"; builders: any[] }
+  | { type: "broaden_prompt" }
   | { type: "invites_sent"; count: number }
+  | { type: "evaluation_pinged"; submission_id: string }
   | { type: "shortlist"; shortlist: any[] };
 
 type Message = {
@@ -40,14 +42,7 @@ type Thread = {
   stats: any;
 };
 
-const STAGES = [
-  "Parse brief",
-  "Draft project",
-  "Match builders",
-  "Send invitations",
-  "Evaluate submissions",
-  "Shortlist",
-];
+const STAGES = ["Parse brief", "Draft project", "Match builders", "Send invitations", "Evaluate submissions", "Shortlist"];
 
 const STARTERS = [
   "I need a full-stack dev to build an MVP SaaS dashboard with real-time analytics, user auth, and Stripe payments. React + Node. 3 months.",
@@ -65,6 +60,7 @@ export default function FounderAgent() {
   const [loadingThread, setLoadingThread] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const refreshTimer = useRef<number | null>(null);
 
   // Load or create active thread
   useEffect(() => {
@@ -107,7 +103,7 @@ export default function FounderAgent() {
     return () => { mounted = false; };
   }, [user]);
 
-  // Realtime subscriptions on thread + messages + evaluations
+  // Realtime: thread + messages
   useEffect(() => {
     if (!thread) return;
     const chan = supabase
@@ -129,7 +125,23 @@ export default function FounderAgent() {
     return () => { supabase.removeChannel(chan); };
   }, [thread?.id]);
 
-  // Realtime evaluation watcher → bump submissions/shortlisted counts
+  // Realtime: submissions for the active project → auto-evaluate.
+  useEffect(() => {
+    if (!thread?.project_id) return;
+    const pid = thread.project_id;
+    const chan = supabase
+      .channel(`agent_subs_${pid}`)
+      .on("postgres_changes",
+        { event: "INSERT", schema: "public", table: "submissions", filter: `project_id=eq.${pid}` },
+        (payload) => {
+          const sid = (payload.new as any)?.id;
+          if (sid) void invokeAgent("evaluate_new_submission", { submission_id: sid });
+        })
+      .subscribe();
+    return () => { supabase.removeChannel(chan); };
+  }, [thread?.project_id]);
+
+  // Realtime: evaluation rows → just refresh stats (debounced), no chat appends.
   useEffect(() => {
     if (!thread?.project_id) return;
     const pid = thread.project_id;
@@ -138,11 +150,16 @@ export default function FounderAgent() {
       .on("postgres_changes",
         { event: "*", schema: "public", table: "ai_submission_evaluations", filter: `project_id=eq.${pid}` },
         () => {
-          // Pull fresh shortlist via the edge function
-          void invokeAgent("fetch_shortlist");
+          if (refreshTimer.current) window.clearTimeout(refreshTimer.current);
+          refreshTimer.current = window.setTimeout(() => {
+            void invokeAgent("refresh_stats");
+          }, 2000);
         })
       .subscribe();
-    return () => { supabase.removeChannel(chan); };
+    return () => {
+      supabase.removeChannel(chan);
+      if (refreshTimer.current) window.clearTimeout(refreshTimer.current);
+    };
   }, [thread?.project_id]);
 
   // Auto-scroll
@@ -155,6 +172,22 @@ export default function FounderAgent() {
 
   const stats = thread?.stats ?? {};
   const stage = thread?.current_stage ?? 0;
+  const awaiting: "post_project" | "send_invites" | null = stats.awaiting ?? null;
+
+  // Index of the latest message that contains a `builders` part (the live one).
+  const latestBuildersIdx = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if ((messages[i].parts ?? []).some((p) => p.type === "builders")) return i;
+    }
+    return -1;
+  }, [messages]);
+
+  const latestPreviewIdx = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if ((messages[i].parts ?? []).some((p) => p.type === "project_preview")) return i;
+    }
+    return -1;
+  }, [messages]);
 
   async function invokeAgent(intent: string, payload: any = {}) {
     if (!thread) return;
@@ -165,7 +198,6 @@ export default function FounderAgent() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.message || data.error);
-      // Refresh thread + messages
       const [{ data: t }, { data: m }] = await Promise.all([
         supabase.from("agent_threads").select("*").eq("id", thread.id).single(),
         supabase.from("agent_messages").select("*").eq("thread_id", thread.id).order("created_at", { ascending: true }),
@@ -173,7 +205,9 @@ export default function FounderAgent() {
       if (t) setThread(t as Thread);
       if (m) setMessages(m as Message[]);
     } catch (e: any) {
-      toast.error(e?.message ?? "Agent failed");
+      if (intent !== "refresh_stats" && intent !== "evaluate_new_submission") {
+        toast.error(e?.message ?? "Agent failed");
+      }
     } finally {
       setBusy(null);
     }
@@ -184,16 +218,6 @@ export default function FounderAgent() {
     if (!text || sending || !thread) return;
     setInput("");
     setSending(true);
-    // Optimistic user message
-    const optimistic: Message = {
-      id: `tmp-${Date.now()}`,
-      thread_id: thread.id,
-      role: "user",
-      content: text,
-      parts: [{ type: "text", text }],
-      created_at: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, optimistic]);
     try {
       const { data, error } = await supabase.functions.invoke("founder-agent", {
         body: { thread_id: thread.id, intent: "chat", message: text },
@@ -208,7 +232,7 @@ export default function FounderAgent() {
       if (m) setMessages(m as Message[]);
     } catch (e: any) {
       toast.error(e?.message ?? "Agent failed");
-      setMessages((prev) => prev.filter((x) => x.id !== optimistic.id));
+      setInput(text);
     } finally {
       setSending(false);
     }
@@ -233,17 +257,17 @@ export default function FounderAgent() {
     }
   }
 
+  function quickAction(intent: string, payload?: any) {
+    void invokeAgent(intent, payload);
+  }
+
   if (role && role !== "startup") {
-    return (
-      <div className="p-6"><Card className="p-6">The agent is available to founders only.</Card></div>
-    );
+    return <div className="p-6"><Card className="p-6">The agent is available to founders only.</Card></div>;
   }
 
   return (
     <div className="grid h-[calc(100vh-7rem)] grid-cols-1 gap-4 lg:grid-cols-[1fr_280px]">
-      {/* Chat column */}
       <Card className="flex min-h-0 flex-col overflow-hidden">
-        {/* Top bar */}
         <div className="flex items-center gap-3 border-b px-5 py-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[hsl(var(--agent-accent,250_60%_67%))] text-white">
             <Bot className="h-4 w-4" />
@@ -258,14 +282,23 @@ export default function FounderAgent() {
           </Button>
         </div>
 
-        {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {loadingThread ? (
             <div className="space-y-3"><Skeleton className="h-16 w-2/3" /><Skeleton className="h-16 w-1/2 ml-auto" /></div>
           ) : messages.length === 0 ? (
             <Intro onPick={(t) => { setInput(t); taRef.current?.focus(); }} />
           ) : (
-            messages.map((m) => <MessageRow key={m.id} msg={m} onAction={invokeAgent} busy={busy} />)
+            messages.map((m, idx) => (
+              <MessageRow
+                key={m.id}
+                msg={m}
+                isLatestPreview={idx === latestPreviewIdx}
+                isLatestBuilders={idx === latestBuildersIdx}
+                awaiting={awaiting}
+                onAction={invokeAgent}
+                busy={busy}
+              />
+            ))
           )}
           {sending && (
             <div className="flex items-start gap-3">
@@ -275,9 +308,23 @@ export default function FounderAgent() {
               </div>
             </div>
           )}
+
+          {/* Quick actions after project is posted */}
+          {thread?.project_id && !sending && messages.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              <Button size="sm" variant="outline" disabled={!!busy} onClick={() => quickAction("fetch_shortlist")}>
+                <Trophy className="h-3 w-3 mr-1" /> Show shortlist
+              </Button>
+              <Button size="sm" variant="outline" disabled={!!busy} onClick={() => quickAction("broaden_match")}>
+                <Search className="h-3 w-3 mr-1" /> Broaden match
+              </Button>
+              <Button size="sm" variant="outline" disabled={!!busy} onClick={() => { setInput("What's the status?"); }}>
+                <Users className="h-3 w-3 mr-1" /> Status
+              </Button>
+            </div>
+          )}
         </div>
 
-        {/* Composer */}
         <div className="border-t p-3">
           <div className="flex items-end gap-2">
             <Textarea
@@ -299,7 +346,6 @@ export default function FounderAgent() {
         </div>
       </Card>
 
-      {/* Right rail */}
       <div className="space-y-4 overflow-y-auto">
         <Card className="p-4">
           <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">Agent stages</div>
@@ -342,10 +388,7 @@ export default function FounderAgent() {
         {thread?.project_id && (
           <Card className="p-4">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Active project</div>
-            <Link
-              to={`/projects/${thread.project_id}`}
-              className="flex items-center justify-between text-sm hover:underline"
-            >
+            <Link to={`/projects/${thread.project_id}`} className="flex items-center justify-between text-sm hover:underline">
               Open project page <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </Card>
@@ -359,6 +402,7 @@ function stageLabel(n: number, busy?: string) {
   if (busy === "approve_post") return "Posting…";
   if (busy === "send_invites") return "Sending…";
   if (busy === "fetch_shortlist") return "Refreshing…";
+  if (busy === "broaden_match") return "Broadening…";
   if (n === 0) return "Ready";
   return STAGES[n - 1] ?? "Done";
 }
@@ -379,11 +423,7 @@ function Intro({ onPick }: { onPick: (t: string) => void }) {
             </div>
             <div className="flex flex-wrap gap-1.5">
               {STARTERS.map((s, i) => (
-                <button
-                  key={i}
-                  onClick={() => onPick(s)}
-                  className="rounded-full border bg-background px-3 py-1 text-xs hover:bg-muted transition-colors"
-                >
+                <button key={i} onClick={() => onPick(s)} className="rounded-full border bg-background px-3 py-1 text-xs hover:bg-muted transition-colors">
                   {["SaaS MVP", "Mobile app", "Data pipeline"][i]}
                 </button>
               ))}
@@ -423,8 +463,11 @@ function Stat({ label, value }: { label: string; value: any }) {
   );
 }
 
-function MessageRow({ msg, onAction, busy }: {
+function MessageRow({ msg, isLatestPreview, isLatestBuilders, awaiting, onAction, busy }: {
   msg: Message;
+  isLatestPreview: boolean;
+  isLatestBuilders: boolean;
+  awaiting: "post_project" | "send_invites" | null;
   onAction: (intent: string, payload?: any) => void;
   busy: string | null;
 }) {
@@ -440,16 +483,15 @@ function MessageRow({ msg, onAction, busy }: {
             return (
               <div key={i} className={cn(
                 "rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
-                isUser
-                  ? "bg-primary text-primary-foreground"
-                  : "border bg-muted/40 text-foreground",
+                isUser ? "bg-primary text-primary-foreground" : "border bg-muted/40 text-foreground",
               )}>
                 {renderMarkdownLite(p.text)}
               </div>
             );
           }
           if (p.type === "project_preview") {
-            return <ProjectPreview key={i} project={p.project} awaiting={p.awaiting_approval} busy={busy} onAction={onAction} />;
+            const live = isLatestPreview && awaiting === "post_project";
+            return <ProjectPreview key={i} project={p.project} live={live} busy={busy} onAction={onAction} />;
           }
           if (p.type === "project_posted") {
             return (
@@ -462,7 +504,16 @@ function MessageRow({ msg, onAction, busy }: {
             );
           }
           if (p.type === "builders") {
-            return <BuildersList key={i} builders={p.builders} awaiting={p.awaiting_approval} busy={busy} onAction={onAction} />;
+            const live = isLatestBuilders && awaiting === "send_invites";
+            return <BuildersList key={i} builders={p.builders} live={live} busy={busy} onAction={onAction} />;
+          }
+          if (p.type === "broaden_prompt") {
+            return (
+              <Button key={i} size="sm" variant="outline" disabled={!!busy} onClick={() => onAction("broaden_match")}>
+                {busy === "broaden_match" ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Search className="h-3 w-3 mr-1" />}
+                Broaden the search
+              </Button>
+            );
           }
           if (p.type === "invites_sent") {
             return (
@@ -474,6 +525,9 @@ function MessageRow({ msg, onAction, busy }: {
           if (p.type === "shortlist") {
             return <Shortlist key={i} shortlist={p.shortlist} />;
           }
+          if (p.type === "evaluation_pinged") {
+            return null;
+          }
           return null;
         })}
       </div>
@@ -482,7 +536,6 @@ function MessageRow({ msg, onAction, busy }: {
 }
 
 function renderMarkdownLite(text: string) {
-  // Render **bold**
   const segments = text.split(/(\*\*[^*]+\*\*)/g);
   return segments.map((seg, i) =>
     seg.startsWith("**") && seg.endsWith("**")
@@ -491,8 +544,8 @@ function renderMarkdownLite(text: string) {
   );
 }
 
-function ProjectPreview({ project, awaiting, busy, onAction }: {
-  project: any; awaiting?: boolean; busy: string | null;
+function ProjectPreview({ project, live, busy, onAction }: {
+  project: any; live: boolean; busy: string | null;
   onAction: (intent: string, payload?: any) => void;
 }) {
   return (
@@ -505,22 +558,26 @@ function ProjectPreview({ project, awaiting, busy, onAction }: {
         <span>· {project.difficulty || "mid"}</span>
         {project.skills?.length ? <span>· {project.skills.slice(0, 4).join(", ")}</span> : null}
       </div>
-      {awaiting && (
+      {live ? (
         <div className="flex gap-2 pt-2">
           <Button size="sm" onClick={() => onAction("approve_post")} disabled={!!busy}>
             {busy === "approve_post" ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
             Post this project
           </Button>
         </div>
+      ) : (
+        <div className="pt-1 text-[11px] text-muted-foreground italic">Snapshot from earlier in this session.</div>
       )}
     </Card>
   );
 }
 
-function BuildersList({ builders, awaiting, busy, onAction }: {
-  builders: any[]; awaiting?: boolean; busy: string | null;
+function BuildersList({ builders, live, busy, onAction }: {
+  builders: any[]; live: boolean; busy: string | null;
   onAction: (intent: string, payload?: any) => void;
 }) {
+  const ids = builders.map((b) => b.id);
+  const top3 = ids.slice(0, 3);
   return (
     <div className="space-y-2 max-w-full">
       {builders.slice(0, 5).map((b) => (
@@ -534,29 +591,28 @@ function BuildersList({ builders, awaiting, busy, onAction }: {
               {(b.skills ?? []).slice(0, 2).join(" · ")}{b.experience_level ? ` · ${b.experience_level}` : ""}
             </div>
           </div>
-          <Badge
-            variant="secondary"
-            className={cn(
-              "text-[10px]",
-              b.match_score >= 85
-                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-            )}
-          >
+          <Badge variant="secondary" className={cn(
+            "text-[10px]",
+            b.match_score >= 85
+              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+              : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+          )}>
             {b.match_score}% match
           </Badge>
         </div>
       ))}
-      {awaiting && (
+      {live ? (
         <div className="flex flex-wrap gap-2 pt-1">
-          <Button size="sm" disabled={!!busy} onClick={() => onAction("send_invites", { limit: builders.length })}>
+          <Button size="sm" disabled={!!busy} onClick={() => onAction("send_invites", { builder_ids: ids })}>
             {busy === "send_invites" ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-            Invite all {builders.length}
+            Invite all {ids.length}
           </Button>
-          <Button size="sm" variant="outline" disabled={!!busy} onClick={() => onAction("send_invites", { limit: 3 })}>
+          <Button size="sm" variant="outline" disabled={!!busy} onClick={() => onAction("send_invites", { builder_ids: top3 })}>
             Top 3 only
           </Button>
         </div>
+      ) : (
+        <div className="text-[11px] text-muted-foreground italic">Snapshot from earlier in this session.</div>
       )}
     </div>
   );
