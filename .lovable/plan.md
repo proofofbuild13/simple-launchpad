@@ -1,102 +1,47 @@
 
-# Founder Agent — conversational project posting
+# Founder agent — fix the flow
 
-A chat-based agent on the startup side that takes a plain-English brief and runs the whole pipeline end-to-end with real platform actions: drafts a project, posts it, matches real builders from the database, sends real invitations, and surfaces real AI evaluations as submissions come in.
+The skeleton is in place but the flow has real gaps. Below is what is broken and the smallest set of changes to make it a coherent end-to-end pipeline.
 
-Per your choices:
-- **One conversation** per founder (resets when they start a new project), persisted in **Supabase** so it survives reloads/devices.
-- **Real end-to-end actions** — every step inserts into the actual tables and the founder must approve each destructive step (post, invite, offer) before it runs.
+## Issues in the current flow
 
-## User flow
+1. **Submission → evaluation loop never closes.** The chat tells the founder "I'll watch for submissions and auto-evaluate each one," but nothing in the agent ever calls `evaluate-submission`. The realtime channel only subscribes to `ai_submission_evaluations`, which by definition exists only *after* something else evaluates. Result: submissions arrive, nothing happens, stats stay at "—".
+2. **Realtime spam loop.** The eval channel listens to `event: "*"` and fires `fetch_shortlist` on every insert/update. `fetch_shortlist` then writes a new assistant message into `agent_messages`, which the messages-channel reloads. Five evaluations land = five near-identical "**N submissions evaluated**" cards stacked in chat.
+3. **Stale approval buttons on reload.** `awaiting_approval` is persisted on each `project_preview` / `builders` message. After the founder posts/invites, every old card in history still shows live "Post this project" / "Invite all" buttons, because the flag isn't reconciled against `thread.stats.awaiting`.
+4. **Stage numbering drift.** `approve_post` sets `current_stage: 3` (Match) when builders are found, but jumps to `4` when none are found — skipping Match entirely. `send_invites` then sets `5` (Evaluate), so the Invite step (stage 4) is never the "active" pill.
+5. **Stats are wrong.** `stats.submissions` is overwritten with the count of evaluated rows, not actual submissions. `matched_builders` (full builder rows) is stored inside `agent_threads.stats` jsonb — bloats the row and gets shipped on every realtime update.
+6. **Post-post chat is dumb.** Once a project is posted, plain `callAI` runs with no context and no tools. Asking "show me the shortlist" or "invite more builders" does nothing useful — those intents have to be triggered by the hardcoded card buttons only.
+7. **Optimistic message + server insert = brief duplicate** of the user message after the server roundtrip refresh.
+8. **No "broaden search" handler** even though the reply offers it when no matches are found.
 
-```text
-Founder types: "Need a React Native dev for a delivery-tracking app, 6 weeks"
-   │
-   ▼
-[Stage 1 — Parse]      Agent extracts {title, category, skills, duration, difficulty}
-[Stage 2 — Draft]      Agent calls generate-project-brief → shows preview card
-                       Founder clicks "Post" (or "Adjust")
-   │
-   ▼
-[Stage 3 — Match]      Tool queries builder_profiles by skills overlap + availability
-                       → 5–10 ranked candidates shown as chips
-                       Founder picks "Invite all" / "Top N"
-   │
-   ▼
-[Stage 4 — Invite]     Tool inserts project_invitations rows + notifications
-   │
-   ▼
-[Stage 5 — Evaluate]   Realtime subscription to submissions for this project
-                       Each new submission auto-fires evaluate-submission
-                       Agent posts a chat update per evaluation
-   │
-   ▼
-[Stage 6 — Shortlist]  Sorted by ai_score, top 3 rendered as ranked cards
-                       Buttons: "Send offers" / "Open submission" / "Start new project"
-```
+## Fix plan
 
-## UI
+### Backend (`supabase/functions/founder-agent/index.ts`)
 
-New page `/agent` (founder-only, added to AppSidebar as **"Agent"** with a custom logo, not Sparkles).
+- **Close the eval loop.** Add a new internal step inside the existing realtime path: when a `submissions` row is inserted for `thread.project_id`, the client invokes a new intent `evaluate_new_submission` with the `submission_id`. The function calls the existing `evaluate-submission` edge function (service-role fetch) and, only on success, appends **one** synthetic assistant message: `"Evaluated **{builder_name}** — {score}/100 ({grade})"`. No `fetch_shortlist` cascade.
+- **Add intents:**
+  - `evaluate_new_submission { submission_id }` — runs evaluate-submission, appends one chat line.
+  - `broaden_match` — re-runs the skills query with `.overlaps` removed (any available builder ranked by rating + recent activity), top 10. Returns a fresh `builders` part with a new `awaiting_approval: true`.
+  - `refresh_stats` — recomputes counts from `submissions` + `ai_submission_evaluations` for the project and writes to `stats` *without* appending a chat message. Used by realtime.
+- **Fix stage numbers.** Always: `approve_post` → 3 (Match). `send_invites` → 4 (Invite) then immediately 5 (Evaluate) once invites are written. `fetch_shortlist` → 6 only when shortlist length ≥ 1.
+- **Stop bloating `stats`.** Drop `matched_builders` from `agent_threads.stats`. Keep matched builders only inside the `parts` of the assistant message that rendered them. `send_invites` reads them from `body.builder_ids` (sent by client from the message part), not from stats.
+- **Single source of truth for "awaiting":** the function clears `stats.awaiting` as soon as the corresponding action runs, and the client uses `stats.awaiting` (not the persisted `awaiting_approval` flag on the message) to decide whether to render action buttons.
+- **Post-post chat tools.** When `thread.project_id` is set and the user message matches simple intents ("shortlist"/"top picks", "invite more", "status"), route to `fetch_shortlist` / `broaden_match` / a status reply that summarises `stats`. Everything else falls back to a short conversational reply scoped to the active project.
 
-Layout matches the uploaded mock:
-- Left: chat transcript + composer (AI Elements: `Conversation`, `Message`, `MessageResponse`, `PromptInput`, `Shimmer`).
-- Right rail (260px): 6-step stage tracker + live stats (matched / invited / submissions / shortlisted).
-- Embedded action cards in assistant messages: project preview, builder chips, ranked shortlist rows.
+### Frontend (`src/pages/agent/FounderAgent.tsx`)
 
-Replaces the "Post a project" CTA on `StartupDashboard` with a primary "Open agent" button (the multi-step `/projects/new` form stays available as "Use classic form").
+- **Replace the eval-channel realtime handler.** Subscribe to `submissions` for `project_id=eq.{pid}` instead. On each `INSERT`, call `invokeAgent("evaluate_new_submission", { submission_id })`. Also subscribe to `ai_submission_evaluations` but only call `invokeAgent("refresh_stats")` (no chat append) and debounce to one call / 2s.
+- **Render approval buttons from live state.** `ProjectPreview` and `BuildersList` only show buttons when `thread.stats.awaiting === "post_project"` / `"send_invites"` *and* the part is the latest one of its type in the transcript. Past cards become read-only summaries.
+- **Drop the optimistic user-message duplicate.** Remove the client-side optimistic insert; rely on the server insert + realtime push (typing indicator already covers latency).
+- **Add quick actions** under the latest assistant message when `project_id` is set: "Show shortlist", "Broaden match", "Invite more" buttons that map to the new intents.
+- **Stage rail polish.** Use `current_stage` from `thread` directly; show the Invite step as a real active state during the `send_invites` request.
 
-## Backend
+### No DB / RLS changes
+All work fits within the existing `agent_threads`, `agent_messages`, `projects`, `submissions`, `ai_submission_evaluations`, `project_invitations`, `notifications` tables and policies.
 
-### New tables (one migration, with GRANTs + RLS)
-
-- `agent_threads` — `id, founder_id, status, project_id (nullable), current_stage, stats jsonb, created_at, updated_at`. One active row per founder; new sessions archive the prior one.
-- `agent_messages` — `id, thread_id, role ('user'|'assistant'|'tool'), parts jsonb (AI SDK UIMessage parts), created_at`.
-
-RLS: founder owns their threads/messages; service_role full access for the edge function.
-
-### New edge function `founder-agent` (verify_jwt = true)
-
-AI SDK streaming chat (`streamText` + `toUIMessageStreamResponse`) using `google/gemini-3-flash-preview` via the Lovable AI Gateway. System prompt frames it as the ProofBuild founder agent. Tools (Zod-typed, `stopWhen: stepCountIs(50)`):
-
-| Tool | Action | Approval |
-|---|---|---|
-| `parse_brief` | Pure LLM extraction; no DB | none |
-| `draft_project` | Internal call to existing `generate-project-brief` | none |
-| `post_project` | Insert into `projects` (founder_id = caller) | **needsApproval** |
-| `match_builders` | Query `builder_profiles` filtered by skills (array overlap), `available = true`, ranked by overlap count + experience_level | none |
-| `send_invitations` | Insert `project_invitations` rows + `notifications` via `send_notification` RPC | **needsApproval** |
-| `get_evaluations` | Read `ai_submission_evaluations` joined to `submissions` for the active project | none |
-
-Auth: function reads JWT to scope every write to the caller; service_role used only for inserts the user can't do directly (e.g., bulk notifications via the existing RPC, which already checks permissions).
-
-### Persistence
-
-- On each `sendMessage`, client passes `threadId` (from the founder's single active thread, auto-created on first load).
-- `toUIMessageStreamResponse({ originalMessages, onFinish })` — `onFinish` persists the completed assistant `UIMessage` to `agent_messages`; user message persisted on request entry. Both use DB-generated UUIDs (AI SDK `msg_...` strings stored in a separate `client_id text` column).
-- `stats` and `current_stage` on `agent_threads` updated as tool calls succeed, surfaced to the right rail.
-
-### Realtime
-
-Subscribe to `ai_submission_evaluations` rows where `project_id = thread.project_id` inside `useEffect` (cleanup with `removeChannel`). Each new row appends a synthetic assistant tool-result message in the UI ("Builder X evaluated — 82/100, B grade"). When count reaches threshold or founder asks "show shortlist", the agent calls `get_evaluations` and renders ranked cards.
-
-## Frontend pieces
-
-- `src/pages/agent/FounderAgent.tsx` — main route, AI Elements composition, stage rail, stats grid.
-- `src/components/agent/StageRail.tsx`, `StatsGrid.tsx`, `ProjectPreviewCard.tsx`, `BuilderChip.tsx`, `ShortlistCard.tsx` — small presentational components matching the mock's visual language (purple `#7F77DD` accent kept as a CSS variable in `index.css`, not hardcoded in components).
-- `src/lib/agentThread.ts` — `getOrCreateActiveThread()`, `archiveAndStartNew()`, `loadMessages(threadId)`.
-- Install AI Elements: `bun x ai-elements@latest add conversation message prompt-input shimmer tool`.
-- Custom agent logo: small generated PNG (rounded square with circular mark), imported as ES6 asset — not Sparkles.
-
-Route added in `src/App.tsx` behind `<ProtectedRoute roles={["startup"]}>`. Sidebar link only shown for startup role.
-
-## Out of scope
-- No changes to existing `PostProject` form, `evaluate-submission` function, or the submission/contract pipeline.
-- Threaded history with sidebar (you chose "one conversation"). If you later want history, we add a thread list + `/agent/:threadId` route.
-- Offers/contracts from inside the agent — the "Send offers" button links to the existing offer flow.
-
-## Verification
-- Type-check + build pass.
-- Send a brief → see project row in `projects`, invitations in `project_invitations`, evaluations appear in chat as builders submit.
-- Reload mid-conversation → messages and stage restore from `agent_messages`/`agent_threads`.
-- Realtime channel cleaned up on unmount (no duplicate subscriptions in StrictMode).
+### Verification
+- Post a brief → preview card → Post → matched builders card with active buttons.
+- Reload page mid-flow → old cards render without action buttons; only the latest awaiting card is live.
+- Have a builder submit (or insert a row directly) → exactly one new "Evaluated …" assistant line appears, stats increment once, no duplicate cards.
+- Ask "show shortlist" in chat after posting → ranked cards appear without needing the realtime trigger.
+- Reset → new thread, empty transcript, stage rail back to "Ready".
