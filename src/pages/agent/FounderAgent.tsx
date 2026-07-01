@@ -278,8 +278,13 @@ export default function FounderAgent() {
             <p className="text-xs text-muted-foreground">Conversational project posting</p>
           </div>
           <Badge variant="secondary" className="text-[10px]">{stageLabel(stage, busy ?? undefined)}</Badge>
-          <Button variant="ghost" size="sm" onClick={() => {
-            try { window.localStorage.removeItem(`founder-agent-walkthrough-dismissed:${user?.id ?? "anon"}`); } catch {}
+          <Button variant="ghost" size="sm" onClick={async () => {
+            if (user?.id) {
+              await supabase.from("agent_ui_state").upsert(
+                { user_id: user.id, walkthrough_dismissed: false },
+                { onConflict: "user_id" }
+              );
+            }
             window.dispatchEvent(new CustomEvent("founder-agent:restart-walkthrough"));
           }}>
             <Sparkles className="h-3.5 w-3.5 mr-1" /> Restart walkthrough

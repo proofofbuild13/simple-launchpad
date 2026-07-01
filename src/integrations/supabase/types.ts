@@ -126,6 +126,27 @@ export type Database = {
           },
         ]
       }
+      agent_ui_state: {
+        Row: {
+          created_at: string
+          updated_at: string
+          user_id: string
+          walkthrough_dismissed: boolean
+        }
+        Insert: {
+          created_at?: string
+          updated_at?: string
+          user_id: string
+          walkthrough_dismissed?: boolean
+        }
+        Update: {
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+          walkthrough_dismissed?: boolean
+        }
+        Relationships: []
+      }
       ai_submission_evaluations: {
         Row: {
           created_at: string
