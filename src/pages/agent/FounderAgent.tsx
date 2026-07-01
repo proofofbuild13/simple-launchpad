@@ -659,3 +659,60 @@ function Shortlist({ shortlist }: { shortlist: any[] }) {
 function initials(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((s) => s[0]?.toUpperCase()).join("");
 }
+
+function Walkthrough({ userId }: { userId?: string }) {
+  const key = `founder-agent-walkthrough-dismissed:${userId ?? "anon"}`;
+  const [open, setOpen] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return window.localStorage.getItem(key) !== "1";
+  });
+  if (!open) return null;
+  const steps = [
+    { icon: MessageSquare, title: "Describe your brief", body: "Tell the agent what you need — stack, scope, timeline, budget. It parses a structured draft." },
+    { icon: Rocket, title: "Approve & post", body: "Review the project preview card. One click posts it and searches builders by skill overlap." },
+    { icon: MailCheck, title: "Send invitations", body: "Approve the matched shortlist to send invites. Builders get notified in real time." },
+    { icon: ClipboardCheck, title: "Auto-evaluate submissions", body: "Each submission is scored automatically. Ask for the ranked shortlist any time." },
+  ];
+  const dismiss = () => {
+    try { window.localStorage.setItem(key, "1"); } catch {}
+    setOpen(false);
+  };
+  return (
+    <div className="relative rounded-xl border bg-[hsl(var(--agent-accent,250_60%_67%))]/5 p-4">
+      <button
+        onClick={dismiss}
+        aria-label="Dismiss walkthrough"
+        className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+      <div className="mb-3 flex items-center gap-2">
+        <Sparkles className="h-4 w-4 text-[hsl(var(--agent-accent,250_60%_67%))]" />
+        <h2 className="text-sm font-semibold">How this works</h2>
+        <span className="text-[11px] text-muted-foreground">A quick tour before you start</span>
+      </div>
+      <ol className="grid gap-2 sm:grid-cols-2">
+        {steps.map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <li key={i} className="flex items-start gap-2.5 rounded-lg border bg-background/60 p-2.5">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[hsl(var(--agent-accent,250_60%_67%))]/15 text-[hsl(var(--agent-accent,250_60%_67%))]">
+                <Icon className="h-3.5 w-3.5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-medium leading-tight">
+                  <span className="mr-1 text-muted-foreground">{i + 1}.</span>{s.title}
+                </div>
+                <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{s.body}</p>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+      <div className="mt-3 flex items-center justify-between">
+        <p className="text-[11px] text-muted-foreground">You'll approve every action before it happens.</p>
+        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={dismiss}>Got it</Button>
+      </div>
+    </div>
+  );
+}
