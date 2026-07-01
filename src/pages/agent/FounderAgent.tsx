@@ -672,26 +672,46 @@ function initials(name: string) {
 }
 
 function Walkthrough({ userId }: { userId?: string }) {
-  const key = `founder-agent-walkthrough-dismissed:${userId ?? "anon"}`;
-  const [open, setOpen] = useState<boolean>(() => {
-    if (typeof window === "undefined") return true;
-    return window.localStorage.getItem(key) !== "1";
-  });
+  const [open, setOpen] = useState<boolean>(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!userId) { setLoaded(true); setOpen(true); return; }
+    (async () => {
+      const { data } = await supabase
+        .from("agent_ui_state")
+        .select("walkthrough_dismissed")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (cancelled) return;
+      setOpen(!(data?.walkthrough_dismissed ?? false));
+      setLoaded(true);
+    })();
+    return () => { cancelled = true; };
+  }, [userId]);
+
   useEffect(() => {
     const onRestart = () => setOpen(true);
     window.addEventListener("founder-agent:restart-walkthrough", onRestart);
     return () => window.removeEventListener("founder-agent:restart-walkthrough", onRestart);
   }, []);
-  if (!open) return null;
+
+  if (!loaded || !open) return null;
   const steps = [
     { icon: MessageSquare, title: "Describe your brief", body: "Tell the agent what you need — stack, scope, timeline, budget. It parses a structured draft." },
     { icon: Rocket, title: "Approve & post", body: "Review the project preview card. One click posts it and searches builders by skill overlap." },
     { icon: MailCheck, title: "Send invitations", body: "Approve the matched shortlist to send invites. Builders get notified in real time." },
     { icon: ClipboardCheck, title: "Auto-evaluate submissions", body: "Each submission is scored automatically. Ask for the ranked shortlist any time." },
   ];
-  const dismiss = () => {
-    try { window.localStorage.setItem(key, "1"); } catch {}
+  const dismiss = async () => {
     setOpen(false);
+    if (userId) {
+      await supabase.from("agent_ui_state").upsert(
+        { user_id: userId, walkthrough_dismissed: true },
+        { onConflict: "user_id" }
+      );
+    }
   };
   return (
     <div className="relative rounded-xl border bg-[hsl(var(--agent-accent,250_60%_67%))]/5 p-4">
