@@ -278,6 +278,12 @@ export default function FounderAgent() {
             <p className="text-xs text-muted-foreground">Conversational project posting</p>
           </div>
           <Badge variant="secondary" className="text-[10px]">{stageLabel(stage, busy ?? undefined)}</Badge>
+          <Button variant="ghost" size="sm" onClick={() => {
+            try { window.localStorage.removeItem(`founder-agent-walkthrough-dismissed:${user?.id ?? "anon"}`); } catch {}
+            window.dispatchEvent(new CustomEvent("founder-agent:restart-walkthrough"));
+          }}>
+            <Sparkles className="h-3.5 w-3.5 mr-1" /> Restart walkthrough
+          </Button>
           <Button variant="ghost" size="sm" onClick={resetThread} disabled={busy === "reset"}>
             <RotateCcw className="h-3.5 w-3.5 mr-1" /> New session
           </Button>
