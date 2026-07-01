@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import {
   Send, Bot, User as UserIcon, Check, Clock, ExternalLink,
   Loader2, RotateCcw, Sparkles, ArrowRight, Trophy, Search, Users,
+  MessageSquare, Rocket, MailCheck, ClipboardCheck, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
