@@ -672,6 +672,11 @@ function Walkthrough({ userId }: { userId?: string }) {
     if (typeof window === "undefined") return true;
     return window.localStorage.getItem(key) !== "1";
   });
+  useEffect(() => {
+    const onRestart = () => setOpen(true);
+    window.addEventListener("founder-agent:restart-walkthrough", onRestart);
+    return () => window.removeEventListener("founder-agent:restart-walkthrough", onRestart);
+  }, []);
   if (!open) return null;
   const steps = [
     { icon: MessageSquare, title: "Describe your brief", body: "Tell the agent what you need — stack, scope, timeline, budget. It parses a structured draft." },
