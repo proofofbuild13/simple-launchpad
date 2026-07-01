@@ -284,6 +284,7 @@ export default function FounderAgent() {
         </div>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          <Walkthrough userId={user?.id} />
           {loadingThread ? (
             <div className="space-y-3"><Skeleton className="h-16 w-2/3" /><Skeleton className="h-16 w-1/2 ml-auto" /></div>
           ) : messages.length === 0 ? (
