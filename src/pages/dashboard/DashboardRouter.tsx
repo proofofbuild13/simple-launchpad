@@ -15,7 +15,7 @@ export default function DashboardRouter() {
     );
   }
   if (!role) return <Navigate to="/register" replace />;
-  if (role === "startup") return <StartupDashboard />;
+  if (role === "startup") return <Navigate to="/agent" replace />;
   if (role === "builder") return <BuilderDashboard />;
   if (role === "admin" || role === "super_admin") return <Navigate to="/admin" replace />;
   return <AdminDashboard />;

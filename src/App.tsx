@@ -59,6 +59,8 @@ import AdminUserDetail from "./pages/admin/AdminUserDetail";
 import AdminAuditLogs from "./pages/admin/AdminAuditLogs";
 import AdminDisputeDetail from "./pages/admin/AdminDisputeDetail";
 import FounderAgent from "./pages/agent/FounderAgent";
+import Deals from "./pages/deals/Deals";
+import DealDetail from "./pages/deals/DealDetail";
 
 const queryClient = new QueryClient();
 
@@ -93,6 +95,11 @@ const App = () => (
             <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<DashboardRouter />} />
               <Route path="/agent" element={<FounderAgent />} />
+
+              <Route path="/deals" element={<Deals />} />
+              <Route path="/deals/:id" element={<DealDetail />} />
+
+
 
 
               <Route path="/projects" element={<MyProjects />} />

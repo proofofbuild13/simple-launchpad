@@ -1,27 +1,16 @@
 import { NavLink, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard,
+  Bot,
   FolderKanban,
-  PlusCircle,
-  FileCheck2,
-  HandCoins,
-  FileSignature,
+  Handshake,
   Search,
-  Send,
-  Bell,
   MessageSquare,
-  Settings,
   Shield,
-  User,
-  Calendar,
   AlertTriangle,
-  Compass,
-  Briefcase,
   Wallet,
   Users as UsersIcon,
   ScrollText,
-  Bookmark,
-  Bot,
+  User,
 } from "lucide-react";
 import {
   Sidebar,
@@ -40,32 +29,18 @@ import { useAuth } from "@/contexts/AuthContext";
 type Item = { title: string; url: string; icon: any };
 
 const startupItems: Item[] = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Agent", url: "/agent", icon: Bot },
-  { title: "Post Project", url: "/projects/new", icon: PlusCircle },
-  { title: "My Projects", url: "/projects", icon: FolderKanban },
-  { title: "Submissions", url: "/submissions", icon: FileCheck2 },
-  { title: "Interviews", url: "/interviews", icon: Calendar },
-  { title: "Offers", url: "/offers", icon: HandCoins },
-  { title: "Job Offers", url: "/job-offers", icon: Briefcase },
-  { title: "Contracts", url: "/contracts", icon: FileSignature },
-  { title: "Workspaces", url: "/workspaces", icon: Briefcase },
-  { title: "Saved Builders", url: "/saved-builders", icon: Bookmark },
-  { title: "Payments", url: "/payments/startup", icon: Wallet },
+  { title: "Projects", url: "/projects", icon: FolderKanban },
+  { title: "Deals", url: "/deals", icon: Handshake },
+  { title: "Builders", url: "/marketplace", icon: UsersIcon },
+  { title: "Inbox", url: "/messages", icon: MessageSquare },
 ];
 
-
 const builderItems: Item[] = [
-  { title: "Browse Projects", url: "/browse", icon: Search },
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Saved Projects", url: "/saved-projects", icon: Bookmark },
-  { title: "My Submissions", url: "/submissions", icon: Send },
-  { title: "Interviews", url: "/interviews", icon: Calendar },
-  { title: "Offers", url: "/offers", icon: HandCoins },
-  { title: "Job Offers", url: "/job-offers", icon: Briefcase },
-  { title: "Contracts", url: "/contracts", icon: FileSignature },
-  { title: "Workspaces", url: "/workspaces", icon: Briefcase },
-  { title: "Earnings", url: "/payments/builder", icon: Wallet },
+  { title: "Browse", url: "/browse", icon: Search },
+  { title: "Deals", url: "/deals", icon: Handshake },
+  { title: "Profile", url: "/profile", icon: User },
+  { title: "Inbox", url: "/messages", icon: MessageSquare },
 ];
 
 const adminItems: Item[] = [
@@ -100,7 +75,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-3 py-4">
-        <NavLink to="/dashboard" className="flex items-center gap-2">
+        <NavLink to={role === "startup" ? "/agent" : "/dashboard"} className="flex items-center gap-2">
           <img src="/logo.png" alt="proof_of_Build" className="h-7 w-7 object-contain" />
           {!collapsed && (
             <div className="flex flex-col">
@@ -131,7 +106,6 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
-
       </SidebarContent>
     </Sidebar>
   );
