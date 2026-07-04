@@ -271,9 +271,9 @@ export default function FounderAgent() {
         body: { thread_id: thread.id, intent: "reset" },
       });
       if (data?.thread_id) {
-        const { data: t } = await supabase.from("agent_threads").select("*").eq("id", data.thread_id).single();
-        setThread(t as Thread);
         setMessages([]);
+        setThread(null);
+        navigate(`/agent/${data.thread_id}`, { replace: true });
       }
     } finally {
       setBusy(null);
