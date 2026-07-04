@@ -32,15 +32,12 @@ const startupItems: Item[] = [
   { title: "Agent", url: "/agent", icon: Bot },
   { title: "Projects", url: "/projects", icon: FolderKanban },
   { title: "Deals", url: "/deals", icon: Handshake },
-  { title: "Builders", url: "/marketplace", icon: UsersIcon },
-  { title: "Inbox", url: "/messages", icon: MessageSquare },
 ];
 
 const builderItems: Item[] = [
   { title: "Browse", url: "/browse", icon: Search },
   { title: "Deals", url: "/deals", icon: Handshake },
   { title: "Profile", url: "/profile", icon: User },
-  { title: "Inbox", url: "/messages", icon: MessageSquare },
 ];
 
 const adminItems: Item[] = [
