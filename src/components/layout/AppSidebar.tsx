@@ -61,12 +61,13 @@ export function AppSidebar() {
 
   const renderItem = (item: Item) => (
     <SidebarMenuItem key={item.url}>
-      <SidebarMenuButton asChild isActive={pathname === item.url}>
+      <SidebarMenuButton asChild isActive={pathname === item.url || (item.url === "/agent" && pathname.startsWith("/agent"))}>
         <NavLink to={item.url} className="flex items-center gap-2">
           <item.icon className="h-4 w-4" />
           {!collapsed && <span>{item.title}</span>}
         </NavLink>
       </SidebarMenuButton>
+      {item.url === "/agent" && role === "startup" && <AgentHistoryList />}
     </SidebarMenuItem>
   );
 
