@@ -1,78 +1,37 @@
+## Goal
+Show the founder's Agent chat history inside the sidebar, under the "Agent" nav item, so past conversations can be reopened. Only applies to startups (the Agent is a founder-only feature).
 
-# Simplify platform IA — agent-first, fewer menus, guided single flow
+## Changes
 
-Goal: cut the sidebar clutter for both roles, and replace scattered pages (Submissions / Interviews / Offers / Contracts / Workspaces / Payments) with one **Deal** timeline per engagement. No DB or business-logic changes — pure UI/routing consolidation plus a new unified view.
+### 1. Route: support multiple threads by URL
+- Add route `/agent/:threadId` alongside existing `/agent` in `src/App.tsx`.
+- `/agent` (no id) picks the most recent active thread or creates one, then navigates to `/agent/:threadId`.
+- `FounderAgent.tsx` reads `threadId` from `useParams` and loads that thread + its messages. Remount is keyed on `threadId` so state doesn't bleed between threads.
 
-## New sidebar
+### 2. Sidebar: Agent history section
+- New component `src/components/layout/AgentHistoryList.tsx`.
+- Fetches `agent_threads` for the current user (`founder_id = user.id`, ordered by `updated_at desc`, limit ~20).
+- Subscribes to realtime `INSERT`/`UPDATE` on `agent_threads` for that founder so new chats appear immediately.
+- Renders under the "Agent" `SidebarMenuItem` as a nested `SidebarMenuSub` list. Each row:
+  - Links to `/agent/:threadId`
+  - Label = derived title (first user message preview, fallback "New chat")
+  - Active state highlighted when route matches
+- Includes a "+ New chat" button at the top that creates a fresh `agent_threads` row and navigates to it.
+- Hidden when the sidebar is collapsed to icon-only mode.
 
-**Founder (startup)**
-```
-Agent            /agent          ← default landing (replaces Dashboard)
-Projects         /projects       ← list + Post is a button inside
-Deals            /deals          ← unified: submissions→interview→offer→contract→work→payment
-Builders         /marketplace    ← includes Saved
-Inbox            /messages       ← messages + notifications tabs
-```
+### 3. Wire into `AppSidebar.tsx`
+- Only for `role === "startup"`.
+- Render `<AgentHistoryList />` inside the Agent menu item (below it in the same group), so it behaves like a sub-navigation for that section.
 
-**Builder**
-```
-Browse           /browse         ← includes Saved as a tab
-Deals            /deals          ← unified pipeline (my submissions → contracts → earnings)
-Profile          /profile
-Inbox            /messages
-```
+### 4. Derive chat title
+- Small helper: query the first `agent_messages.role='user'` row per thread (or fetch alongside threads with a lightweight join) and truncate to ~40 chars. Fallback: `"New chat · <date>"`.
 
-**Admin** — unchanged (already tight).
+## Not changing
+- DB schema (no new columns), RLS, edge functions, business logic.
+- Builder sidebar (Agent history is founder-only).
+- Existing single-thread reset flow keeps working; "Restart walkthrough" still resets the current thread.
 
-Removed from nav (still reachable via deep links / buttons inside Deals):
-- Submissions, Interviews, Offers, Job Offers, Contracts, Workspaces, Payments, Saved Builders/Projects, Post Project, classic Dashboard.
-
-## New unified `/deals` page
-
-One list, one detail view per engagement. The detail page is a vertical timeline that folds every existing page into collapsible sections:
-
-```
-[Submission] → [Interview] → [Offer] → [Contract] → [Workspace] → [Payment]
-   summary       schedule      terms      sign/fund   milestones     escrow/receipts
-```
-
-Each section reads from its existing table and reuses existing components (`WorkflowStatusTracker`, `AIEvaluationCard`, `PaymentTimeline`, milestone cards, etc.) — just embedded instead of separate routes. Actions (accept offer, sign, fund, release) render inline on the current stage only.
-
-List view (`/deals`):
-- Founder: rows grouped by project, each row = one builder engagement with current stage pill.
-- Builder: rows = my active engagements across projects.
-
-## Founder Agent stays primary
-
-- `/agent` becomes the founder landing (`/dashboard` redirects for `startup` role).
-- Existing agent flow unchanged; walkthrough already covers brief→post→invites→evaluations.
-- Add a small "View deals" link inside the agent header once a project is posted.
-
-## Files
-
-**New**
-- `src/pages/deals/Deals.tsx` — list, role-aware query
-- `src/pages/deals/DealDetail.tsx` — timeline shell embedding existing section components
-- `src/components/deals/*` — thin wrappers per stage (SubmissionSection, InterviewSection, OfferSection, ContractSection, WorkspaceSection, PaymentSection) that import the existing page bodies/components
-
-**Edit**
-- `src/components/layout/AppSidebar.tsx` — new item lists above
-- `src/App.tsx` — add `/deals` and `/deals/:id` routes, redirect `/dashboard`→`/agent` for startups, keep old routes mounted (deep links still work)
-- `src/pages/dashboard/DashboardRouter.tsx` — route startups to `/agent`
-- `src/pages/agent/FounderAgent.tsx` — add "View deals" link post-post
-- Any list pages that link to `/submissions/:id`, `/contracts/:id`, etc. get an added link to the equivalent `/deals/:id` view (old routes still function)
-
-**Untouched**
-- All DB tables, RLS, edge functions, business logic, statuses, stage transitions.
-- Old routes stay mounted as fallback for deep links / bookmarks.
-
-## Verification
-- Founder lands on `/agent`, sidebar has 5 items.
-- `/deals` shows one row per engagement; opening it renders every lifecycle stage inline with the right action live on current stage only.
-- Builder sidebar has 4 items; `/deals` shows their side of the same engagements.
-- Old routes (`/submissions/:id`, `/contracts/:id`, etc.) still open — Deals is additive, not destructive.
-
-## Out of scope
-- No changes to statuses, RPCs, or payment logic.
-- No visual redesign beyond the new list/timeline layout.
-- Removing legacy routes entirely — deferred until Deals is proven.
+## Technical notes
+- `SidebarMenuSub` / `SidebarMenuSubItem` / `SidebarMenuSubButton` from `@/components/ui/sidebar` for nested links.
+- New chat action: `insert into agent_threads { founder_id, status: 'active', current_stage: 0, stats: {} }` then `navigate('/agent/' + newId)`.
+- `FounderAgent.tsx` thread bootstrap becomes: if `:threadId` in URL, load it; else pick latest active or create, then `navigate` to canonical URL.

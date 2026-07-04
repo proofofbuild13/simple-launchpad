@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -53,6 +53,8 @@ const STARTERS = [
 
 export default function FounderAgent() {
   const { user, role } = useAuth();
+  const { threadId: routeThreadId } = useParams();
+  const navigate = useNavigate();
   const [thread, setThread] = useState<Thread | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -63,35 +65,55 @@ export default function FounderAgent() {
   const taRef = useRef<HTMLTextAreaElement>(null);
   const refreshTimer = useRef<number | null>(null);
 
-  // Load or create active thread
+  // Load thread by URL, or pick latest / create then navigate to canonical URL
   useEffect(() => {
     if (!user) return;
     let mounted = true;
     (async () => {
       setLoadingThread(true);
-      const { data: existing } = await supabase
-        .from("agent_threads")
-        .select("*")
-        .eq("founder_id", user.id)
-        .eq("status", "active")
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      let t = existing as Thread | null;
-      if (!t) {
-        const { data: created, error } = await supabase
+      setMessages([]);
+      setThread(null);
+
+      let t: Thread | null = null;
+      if (routeThreadId) {
+        const { data } = await supabase
           .from("agent_threads")
-          .insert({ founder_id: user.id, status: "active", current_stage: 0, stats: {} })
           .select("*")
-          .single();
-        if (error) {
-          toast.error("Couldn't start agent thread");
-          setLoadingThread(false);
+          .eq("id", routeThreadId)
+          .eq("founder_id", user.id)
+          .maybeSingle();
+        t = (data as Thread | null) ?? null;
+        if (!t) {
+          if (mounted) navigate("/agent", { replace: true });
           return;
         }
-        t = created as Thread;
+      } else {
+        const { data: existing } = await supabase
+          .from("agent_threads")
+          .select("*")
+          .eq("founder_id", user.id)
+          .eq("status", "active")
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        t = existing as Thread | null;
+        if (!t) {
+          const { data: created, error } = await supabase
+            .from("agent_threads")
+            .insert({ founder_id: user.id, status: "active", current_stage: 0, stats: {} })
+            .select("*")
+            .single();
+          if (error) {
+            toast.error("Couldn't start agent thread");
+            if (mounted) setLoadingThread(false);
+            return;
+          }
+          t = created as Thread;
+        }
+        if (mounted && t) navigate(`/agent/${t.id}`, { replace: true });
       }
-      if (!mounted) return;
+
+      if (!mounted || !t) return;
       setThread(t);
       const { data: msgs } = await supabase
         .from("agent_messages")
@@ -102,7 +124,7 @@ export default function FounderAgent() {
       setLoadingThread(false);
     })();
     return () => { mounted = false; };
-  }, [user]);
+  }, [user, routeThreadId, navigate]);
 
   // Realtime: thread + messages
   useEffect(() => {
@@ -249,9 +271,9 @@ export default function FounderAgent() {
         body: { thread_id: thread.id, intent: "reset" },
       });
       if (data?.thread_id) {
-        const { data: t } = await supabase.from("agent_threads").select("*").eq("id", data.thread_id).single();
-        setThread(t as Thread);
         setMessages([]);
+        setThread(null);
+        navigate(`/agent/${data.thread_id}`, { replace: true });
       }
     } finally {
       setBusy(null);

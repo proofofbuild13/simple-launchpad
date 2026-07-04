@@ -95,6 +95,7 @@ const App = () => (
             <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<DashboardRouter />} />
               <Route path="/agent" element={<FounderAgent />} />
+              <Route path="/agent/:threadId" element={<FounderAgent />} />
 
               <Route path="/deals" element={<Deals />} />
               <Route path="/deals/:id" element={<DealDetail />} />
