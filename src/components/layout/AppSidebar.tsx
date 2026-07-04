@@ -25,6 +25,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
+import { AgentHistoryList } from "./AgentHistoryList";
 
 type Item = { title: string; url: string; icon: any };
 
