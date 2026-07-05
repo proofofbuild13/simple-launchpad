@@ -70,38 +70,52 @@ export default function MyProjects() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {projects.map((p) => (
-            <Card key={p.id} className="hover:border-primary/50 transition h-full">
+            <Card
+              key={p.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate(`/projects/${p.id}`)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate(`/projects/${p.id}`);
+                }
+              }}
+              className="hover:border-primary/50 hover:shadow-md transition h-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
               <CardContent className="pt-5 space-y-2">
                 <div className="flex items-start justify-between gap-2">
-                  <Link to={`/projects/${p.id}`} className="font-semibold text-sm hover:underline">{p.title}</Link>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-4 w-4" /></Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => navigate(`/projects/${p.id}/edit`)}>
-                        <Pencil className="h-4 w-4 mr-2" />Edit
-                      </DropdownMenuItem>
-                      {p.status !== "closed" && (
-                        <DropdownMenuItem onClick={() => setStatus(p.id, "closed")}>
-                          <XCircle className="h-4 w-4 mr-2" />Close submissions
+                  <span className="font-semibold text-sm hover:underline">{p.title}</span>
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-4 w-4" /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => navigate(`/projects/${p.id}/edit`)}>
+                          <Pencil className="h-4 w-4 mr-2" />Edit
                         </DropdownMenuItem>
-                      )}
-                      {p.status !== "archived" ? (
-                        <DropdownMenuItem onClick={() => setStatus(p.id, "archived", { archived_at: new Date().toISOString() })}>
-                          <Archive className="h-4 w-4 mr-2" />Archive
+                        {p.status !== "closed" && (
+                          <DropdownMenuItem onClick={() => setStatus(p.id, "closed")}>
+                            <XCircle className="h-4 w-4 mr-2" />Close submissions
+                          </DropdownMenuItem>
+                        )}
+                        {p.status !== "archived" ? (
+                          <DropdownMenuItem onClick={() => setStatus(p.id, "archived", { archived_at: new Date().toISOString() })}>
+                            <Archive className="h-4 w-4 mr-2" />Archive
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem onClick={() => setStatus(p.id, "open", { archived_at: null })}>
+                            <RefreshCw className="h-4 w-4 mr-2" />Reopen
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive" onClick={() => askDelete(p)}>
+                          <Trash2 className="h-4 w-4 mr-2" />Delete
                         </DropdownMenuItem>
-                      ) : (
-                        <DropdownMenuItem onClick={() => setStatus(p.id, "open", { archived_at: null })}>
-                          <RefreshCw className="h-4 w-4 mr-2" />Reopen
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive" onClick={() => askDelete(p)}>
-                        <Trash2 className="h-4 w-4 mr-2" />Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
                 <Badge variant="secondary" className="text-[10px]">{(p.status ?? "").replace(/_/g, " ")}</Badge>
                 <p className="text-xs text-muted-foreground line-clamp-2">{p.short_description}</p>
