@@ -14,50 +14,61 @@ export const Nav = () => {
 
   return (
     <header
-      className={`sticky top-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "backdrop-blur-xl bg-background/85 border-b border-border shadow-sm"
-          : "backdrop-blur-xl bg-background/60 border-b border-border/40"
+      className={`sticky z-50 transition-all duration-500 ease-out ${
+        scrolled ? "top-4 px-4" : "top-0 px-0"
       }`}
     >
       <nav
-        className={`container flex items-center justify-between transition-all duration-300 ${
-          scrolled ? "h-12" : "h-16"
+        className={`mx-auto flex items-center justify-between transition-all duration-500 ease-out ${
+          scrolled
+            ? "max-w-4xl h-14 px-4 rounded-full bg-ink text-ink-foreground shadow-2xl shadow-ink/20 border border-ink/40"
+            : "container h-16 rounded-none bg-background/60 backdrop-blur-xl border-b border-border/40"
         }`}
       >
-        <Link to="/" className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2 shrink-0">
           <img
             src="/logo.png"
             alt="proof_of_Build"
-            className={`object-contain transition-all duration-300 ${scrolled ? "h-6 w-6" : "h-8 w-8"}`}
+            className={`object-contain transition-all duration-500 ${
+              scrolled ? "h-6 w-6 invert" : "h-8 w-8"
+            }`}
           />
           <span
-            className={`font-display transition-all duration-300 ${scrolled ? "text-base" : "text-xl"}`}
+            className={`font-display transition-all duration-500 ${
+              scrolled ? "text-sm" : "text-xl"
+            }`}
           >
             proof_of_Build
           </span>
         </Link>
         <div
-          className={`hidden md:flex items-center text-muted-foreground transition-all duration-300 ${
-            scrolled ? "gap-6 text-xs" : "gap-8 text-sm"
+          className={`hidden md:flex items-center transition-all duration-500 ${
+            scrolled
+              ? "gap-6 text-xs text-ink-foreground/70"
+              : "gap-8 text-sm text-muted-foreground"
           }`}
         >
-          <a href="#how" className="hover:text-foreground transition-colors">How it works</a>
-          <a href="#projects" className="hover:text-foreground transition-colors">Projects</a>
-          <a href="#builders" className="hover:text-foreground transition-colors">Builders</a>
-          <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
+          <a href="#how" className="hover:opacity-100 transition-opacity">How it works</a>
+          <a href="#projects" className="hover:opacity-100 transition-opacity">Projects</a>
+          <a href="#builders" className="hover:opacity-100 transition-opacity">Builders</a>
+          <a href="#pricing" className="hover:opacity-100 transition-opacity">Pricing</a>
         </div>
-        <div className="flex items-center gap-2">
-          <Link to="/login">
-            <Button variant="ghost" size="sm" className={scrolled ? "h-8 text-xs" : ""}>
-              Sign in
-            </Button>
-          </Link>
+        <div className="flex items-center gap-2 shrink-0">
+          {!scrolled && (
+            <Link to="/login">
+              <Button variant="ghost" size="sm">
+                Sign in
+              </Button>
+            </Link>
+          )}
           <Link to="/register">
             <Button
-              variant="default"
               size="sm"
-              className={`bg-ink text-ink-foreground hover:bg-ink/90 ${scrolled ? "h-8 text-xs" : ""}`}
+              className={
+                scrolled
+                  ? "h-9 rounded-full bg-background text-foreground hover:bg-background/90 text-xs px-4"
+                  : "bg-ink text-ink-foreground hover:bg-ink/90"
+              }
             >
               Get started
             </Button>
