@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "message_attachments_no_update" ON storage.objects;
