@@ -90,7 +90,7 @@ export default function Leaderboard() {
         <div className="grid grid-cols-3 gap-3 text-center min-w-[280px]">
           <div className="rounded-lg border bg-card px-3 py-2">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Entries</p>
-            <p className="text-lg font-semibold">{rows.length}</p>
+            <p className="text-lg font-semibold">{filteredRows.length}</p>
           </div>
           <div className="rounded-lg border bg-card px-3 py-2">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Top score</p>
