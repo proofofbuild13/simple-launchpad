@@ -104,11 +104,23 @@ export default function Leaderboard() {
       </div>
 
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-3 flex-row items-center justify-between space-y-0 gap-3 flex-wrap">
           <CardTitle className="text-base flex items-center gap-2">
             <Trophy className="h-4 w-4 text-yellow-500" />
             Submissions
+            <span className="text-xs font-normal text-muted-foreground">· {RANGE_LABEL[range]}</span>
           </CardTitle>
+          <ToggleGroup
+            type="single"
+            value={range}
+            onValueChange={(v) => v && setRange(v as RangeKey)}
+            size="sm"
+            variant="outline"
+          >
+            <ToggleGroupItem value="day" className="text-xs h-8 px-3">Daily</ToggleGroupItem>
+            <ToggleGroupItem value="week" className="text-xs h-8 px-3">Weekly</ToggleGroupItem>
+            <ToggleGroupItem value="all" className="text-xs h-8 px-3">All time</ToggleGroupItem>
+          </ToggleGroup>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
