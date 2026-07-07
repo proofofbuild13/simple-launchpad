@@ -186,10 +186,10 @@ export default function Leaderboard() {
                   </TableRow>
                 );
               })}
-              {rows.length === 0 && (
+              {filteredRows.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-12 text-muted-foreground text-sm">
-                    No submissions yet.
+                    {rows.length === 0 ? "No submissions yet." : `No submissions in ${RANGE_LABEL[range].toLowerCase()}.`}
                   </TableCell>
                 </TableRow>
               )}
