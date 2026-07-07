@@ -13,13 +13,14 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MoreVertical, PlusCircle, Pencil, Archive, RefreshCw, Trash2, XCircle } from "lucide-react";
+import { MoreVertical, PlusCircle, Pencil, Archive, RefreshCw, Trash2, XCircle, Inbox, Trophy } from "lucide-react";
 import { toast } from "sonner";
 
 export default function MyProjects() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [projects, setProjects] = useState<any[]>([]);
+  const [submissionCounts, setSubmissionCounts] = useState<Record<string, number>>({});
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; info: any } | null>(null);
 
   const load = async () => {
@@ -27,7 +28,18 @@ export default function MyProjects() {
     const { data } = await supabase
       .from("projects").select("*").eq("founder_id", user.id)
       .order("created_at", { ascending: false });
-    setProjects(data ?? []);
+    const list = data ?? [];
+    setProjects(list);
+    if (list.length) {
+      const { data: counts } = await supabase.rpc("get_project_submission_counts", {
+        _ids: list.map((p) => p.id),
+      });
+      const map: Record<string, number> = {};
+      (counts ?? []).forEach((c: any) => { map[c.project_id] = Number(c.count) || 0; });
+      setSubmissionCounts(map);
+    } else {
+      setSubmissionCounts({});
+    }
   };
   useEffect(() => { load(); }, [user]);
 
@@ -122,6 +134,33 @@ export default function MyProjects() {
                 <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
                   <span>{p.category}</span>
                   {p.budget && <span className="font-medium text-foreground">${p.budget}</span>}
+                </div>
+                <div
+                  className="mt-3 pt-3 border-t flex items-center justify-between gap-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center gap-2 text-xs">
+                    <Inbox className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="font-medium">
+                      {submissionCounts[p.id] ?? 0}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {(submissionCounts[p.id] ?? 0) === 1 ? "submission" : "submissions"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Link to={`/projects/${p.id}/leaderboard`}>
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs">
+                        <Trophy className="h-3.5 w-3.5 mr-1" />
+                        Leaderboard
+                      </Button>
+                    </Link>
+                    <Link to={`/projects/${p.id}#submissions`}>
+                      <Button size="sm" variant="outline" className="h-7 px-2 text-xs">
+                        View
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               </CardContent>
             </Card>
