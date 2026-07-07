@@ -13,7 +13,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MoreVertical, PlusCircle, Pencil, Archive, RefreshCw, Trash2, XCircle } from "lucide-react";
+import { MoreVertical, PlusCircle, Pencil, Archive, RefreshCw, Trash2, XCircle, Inbox, Trophy } from "lucide-react";
 import { toast } from "sonner";
 
 export default function MyProjects() {
