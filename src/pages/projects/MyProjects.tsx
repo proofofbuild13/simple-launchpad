@@ -20,6 +20,7 @@ export default function MyProjects() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [projects, setProjects] = useState<any[]>([]);
+  const [submissionCounts, setSubmissionCounts] = useState<Record<string, number>>({});
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; info: any } | null>(null);
 
   const load = async () => {
@@ -27,7 +28,18 @@ export default function MyProjects() {
     const { data } = await supabase
       .from("projects").select("*").eq("founder_id", user.id)
       .order("created_at", { ascending: false });
-    setProjects(data ?? []);
+    const list = data ?? [];
+    setProjects(list);
+    if (list.length) {
+      const { data: counts } = await supabase.rpc("get_project_submission_counts", {
+        _ids: list.map((p) => p.id),
+      });
+      const map: Record<string, number> = {};
+      (counts ?? []).forEach((c: any) => { map[c.project_id] = Number(c.count) || 0; });
+      setSubmissionCounts(map);
+    } else {
+      setSubmissionCounts({});
+    }
   };
   useEffect(() => { load(); }, [user]);
 
