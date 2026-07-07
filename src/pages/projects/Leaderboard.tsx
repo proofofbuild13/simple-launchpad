@@ -7,6 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Trophy, Loader2, Medal, Award, ArrowLeft } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+
+type RangeKey = "day" | "week" | "all";
+const RANGE_LABEL: Record<RangeKey, string> = { day: "Today", week: "This week", all: "All time" };
 
 const STATUS_COLOR: Record<string, string> = {
   submitted: "bg-muted text-foreground",
