@@ -135,6 +135,33 @@ export default function MyProjects() {
                   <span>{p.category}</span>
                   {p.budget && <span className="font-medium text-foreground">${p.budget}</span>}
                 </div>
+                <div
+                  className="mt-3 pt-3 border-t flex items-center justify-between gap-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center gap-2 text-xs">
+                    <Inbox className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="font-medium">
+                      {submissionCounts[p.id] ?? 0}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {(submissionCounts[p.id] ?? 0) === 1 ? "submission" : "submissions"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Link to={`/projects/${p.id}/leaderboard`}>
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs">
+                        <Trophy className="h-3.5 w-3.5 mr-1" />
+                        Leaderboard
+                      </Button>
+                    </Link>
+                    <Link to={`/projects/${p.id}#submissions`}>
+                      <Button size="sm" variant="outline" className="h-7 px-2 text-xs">
+                        View
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           ))}
