@@ -135,7 +135,7 @@ export default function Leaderboard() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((r, i) => {
+              {filteredRows.map((r, i) => {
                 const badge = rankBadge(i);
                 const Icon = badge?.icon;
                 return (
