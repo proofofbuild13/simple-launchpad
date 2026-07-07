@@ -61,7 +61,13 @@ export default function Leaderboard() {
     );
   }
 
-  const scored = rows.filter((r) => r.score != null);
+  const filteredRows = useMemo(() => {
+    if (range === "all") return rows;
+    const cutoff = Date.now() - (range === "day" ? 1 : 7) * 24 * 60 * 60 * 1000;
+    return rows.filter((r) => new Date(r.created_at).getTime() >= cutoff);
+  }, [rows, range]);
+
+  const scored = filteredRows.filter((r) => r.score != null);
   const avgScore = scored.length
     ? (scored.reduce((s, r) => s + Number(r.score), 0) / scored.length).toFixed(1)
     : "—";
