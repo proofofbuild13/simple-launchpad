@@ -35,6 +35,7 @@ export default function Leaderboard() {
   const [rows, setRows] = useState<any[]>([]);
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [range, setRange] = useState<RangeKey>("all");
 
   useEffect(() => {
     if (!id) return;
