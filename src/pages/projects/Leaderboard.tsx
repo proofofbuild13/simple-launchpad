@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Trophy, Loader2, Medal, Award, ArrowLeft } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+
+type RangeKey = "day" | "week" | "all";
+const RANGE_LABEL: Record<RangeKey, string> = { day: "Today", week: "This week", all: "All time" };
 
 const STATUS_COLOR: Record<string, string> = {
   submitted: "bg-muted text-foreground",
@@ -31,6 +35,7 @@ export default function Leaderboard() {
   const [rows, setRows] = useState<any[]>([]);
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [range, setRange] = useState<RangeKey>("all");
 
   useEffect(() => {
     if (!id) return;
@@ -56,7 +61,13 @@ export default function Leaderboard() {
     );
   }
 
-  const scored = rows.filter((r) => r.score != null);
+  const filteredRows = useMemo(() => {
+    if (range === "all") return rows;
+    const cutoff = Date.now() - (range === "day" ? 1 : 7) * 24 * 60 * 60 * 1000;
+    return rows.filter((r) => new Date(r.created_at).getTime() >= cutoff);
+  }, [rows, range]);
+
+  const scored = filteredRows.filter((r) => r.score != null);
   const avgScore = scored.length
     ? (scored.reduce((s, r) => s + Number(r.score), 0) / scored.length).toFixed(1)
     : "—";
@@ -79,7 +90,7 @@ export default function Leaderboard() {
         <div className="grid grid-cols-3 gap-3 text-center min-w-[280px]">
           <div className="rounded-lg border bg-card px-3 py-2">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Entries</p>
-            <p className="text-lg font-semibold">{rows.length}</p>
+            <p className="text-lg font-semibold">{filteredRows.length}</p>
           </div>
           <div className="rounded-lg border bg-card px-3 py-2">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Top score</p>
@@ -93,11 +104,23 @@ export default function Leaderboard() {
       </div>
 
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-3 flex-row items-center justify-between space-y-0 gap-3 flex-wrap">
           <CardTitle className="text-base flex items-center gap-2">
             <Trophy className="h-4 w-4 text-yellow-500" />
             Submissions
+            <span className="text-xs font-normal text-muted-foreground">· {RANGE_LABEL[range]}</span>
           </CardTitle>
+          <ToggleGroup
+            type="single"
+            value={range}
+            onValueChange={(v) => v && setRange(v as RangeKey)}
+            size="sm"
+            variant="outline"
+          >
+            <ToggleGroupItem value="day" className="text-xs h-8 px-3">Daily</ToggleGroupItem>
+            <ToggleGroupItem value="week" className="text-xs h-8 px-3">Weekly</ToggleGroupItem>
+            <ToggleGroupItem value="all" className="text-xs h-8 px-3">All time</ToggleGroupItem>
+          </ToggleGroup>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -112,7 +135,7 @@ export default function Leaderboard() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((r, i) => {
+              {filteredRows.map((r, i) => {
                 const badge = rankBadge(i);
                 const Icon = badge?.icon;
                 return (
@@ -163,10 +186,10 @@ export default function Leaderboard() {
                   </TableRow>
                 );
               })}
-              {rows.length === 0 && (
+              {filteredRows.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-12 text-muted-foreground text-sm">
-                    No submissions yet.
+                    {rows.length === 0 ? "No submissions yet." : `No submissions in ${RANGE_LABEL[range].toLowerCase()}.`}
                   </TableCell>
                 </TableRow>
               )}
