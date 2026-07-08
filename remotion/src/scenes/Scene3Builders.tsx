@@ -1,80 +1,119 @@
 import React from "react";
-import { AbsoluteFill, useCurrentFrame, interpolate, spring, useVideoConfig } from "remotion";
+import { AbsoluteFill, Img, staticFile, useCurrentFrame, interpolate, spring, useVideoConfig, Sequence } from "remotion";
 import { fraunces, mono, ink, paper, signal } from "../theme";
 
-// SCENE 3 — BUILDERS SHIP (225-375 / 5.0s)
-// "Builders ship working prototypes." — grid of submissions populating in.
-const submissions = [
-  { name: "M. Okafor",      url: "fraud-v1.vercel.app",   stack: "Next + Supabase" },
-  { name: "J. Tanaka",      url: "signal-demo.fly.dev",   stack: "Remix + Postgres" },
-  { name: "Lin & co.",      url: "ship.prototype.io",     stack: "Astro + Drizzle" },
-  { name: "R. Costa",       url: "fraudwatch.live",       stack: "Solid + Convex" },
-  { name: "K. Ahmed",       url: "anomaly-feed.app",      stack: "Sveltekit + d1" },
-  { name: "Pixel/Iron",     url: "iron-fraud.dev",        stack: "Next + ClickHouse" },
+// SCENE 3 — REAL PRODUCT MONTAGE (225-375 / 5.0s, 150 frames)
+// Ken-Burns pans across actual proof_of_Build screenshots inside a macOS-style
+// browser chrome. Sells the platform by showing the platform.
+
+type Shot = { src: string; caption: string; label: string; anchor?: "tl"|"tr"|"bl"|"br"|"c" };
+
+const shots: Shot[] = [
+  { src: "shots/hero.png",       caption: "The pitch, live.",         label: "proofbuild.in",                anchor: "tl" },
+  { src: "shots/challenges.png", caption: "Real briefs. Real money.", label: "proofbuild.in/browse",         anchor: "c"  },
+  { src: "shots/builders.png",   caption: "Builders who ship.",       label: "proofbuild.in/#builders",      anchor: "bl" },
 ];
 
-export const Scene3Builders: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+const SHOT_LEN = 50; // frames per shot (3 * 50 = 150)
 
-  const headerOp = interpolate(frame, [0, 20], [0, 1], { extrapolateRight: "clamp" });
-  const headerY = interpolate(frame, [0, 20], [40, 0], { extrapolateRight: "clamp" });
+const ChromeBar: React.FC<{ url: string }> = ({ url }) => (
+  <div style={{ height: 34, background: "#1c1c1f", display: "flex", alignItems: "center",
+    padding: "0 14px", gap: 10, borderBottom: "1px solid #2a2a2e" }}>
+    <div style={{ display: "flex", gap: 6 }}>
+      {["#ff5f57","#febc2e","#28c840"].map(c => (
+        <div key={c} style={{ width: 11, height: 11, borderRadius: 99, background: c }} />
+      ))}
+    </div>
+    <div style={{ flex: 1, textAlign: "center", fontFamily: "monospace", fontSize: 12, color: "#888" }}>
+      {url}
+    </div>
+  </div>
+);
+
+const ShotFrame: React.FC<{ shot: Shot }> = ({ shot }) => {
+  const frame = useCurrentFrame();
+  // Gentle Ken-Burns: scale only, no translate — keeps composition intact.
+  const t = frame / SHOT_LEN;
+  const scale = interpolate(t, [0, 1], [1.02, 1.08]);
+
+  const enter = spring({ frame, fps: 30, config: { damping: 22, stiffness: 90 } });
+  const y = interpolate(enter, [0, 1], [30, 0]);
+  const exit = interpolate(frame, [SHOT_LEN - 10, SHOT_LEN], [1, 0], { extrapolateRight: "clamp", extrapolateLeft: "clamp" });
+  const op = Math.min(enter, exit);
 
   return (
-    <AbsoluteFill style={{ background: paper, color: ink, padding: "140px 120px" }}>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between",
-        opacity: headerOp, transform: `translateY(${headerY}px)` }}>
-        <div>
-          <div style={{ fontFamily: mono, fontSize: 18, letterSpacing: 3, color: "#666", marginBottom: 18 }}>
-            CHAPTER · 03 — THE WORK
-          </div>
-          <div style={{ fontFamily: fraunces, fontSize: 108, lineHeight: 0.92, letterSpacing: -3 }}>
-            Builders <em style={{ fontWeight: 300, color: signal, WebkitTextStroke: `1px ${ink}` }}>ship</em>.
-          </div>
-        </div>
-        <div style={{ fontFamily: mono, fontSize: 16, color: "#666", letterSpacing: 2, textAlign: "right" }}>
-          BRIEF #4821<br/>
-          <span style={{ color: ink, fontSize: 22 }}>
-            {String(Math.min(submissions.length, Math.floor(interpolate(frame, [20, 110], [0, 6.5], { extrapolateRight: "clamp" }))))} / 6 prototypes received
-          </span>
+    <AbsoluteFill style={{ opacity: op }}>
+      {/* Browser frame — top area */}
+      <div style={{ position: "absolute", top: 130, left: 260, right: 260, height: 760,
+        transform: `translateY(${y}px)`, borderRadius: 14, overflow: "hidden",
+        boxShadow: "0 40px 120px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06)", background: "#000" }}>
+        <ChromeBar url={shot.label} />
+        <div style={{ width: "100%", height: "calc(100% - 34px)", overflow: "hidden", background: "#F4F1EA" }}>
+          <Img src={staticFile(shot.src)}
+            style={{ width: "100%", height: "auto", display: "block",
+              transform: `scale(${scale})`, transformOrigin: "center top" }} />
         </div>
       </div>
 
-      <div style={{ marginTop: 60, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 28 }}>
-        {submissions.map((s, i) => {
-          const delay = 30 + i * 12;
-          const sp = spring({ frame: frame - delay, fps, config: { damping: 18, stiffness: 120 } });
-          const scale = interpolate(sp, [0, 1], [0.92, 1]);
-          const y = interpolate(sp, [0, 1], [40, 0]);
+      {/* Caption bar — bottom */}
+      <div style={{ position: "absolute", left: 260, right: 260, bottom: 110,
+        display: "flex", justifyContent: "space-between", alignItems: "baseline",
+        opacity: interpolate(frame, [8, 22], [0, 1], { extrapolateRight: "clamp" }) }}>
+        <div>
+          <div style={{ fontFamily: mono, fontSize: 12, letterSpacing: 3, color: signal, marginBottom: 8 }}>
+            LIVE · SHIPPED
+          </div>
+          <div style={{ fontFamily: fraunces, fontSize: 44, lineHeight: 1, letterSpacing: -0.5, color: paper }}>
+            {shot.caption}
+          </div>
+        </div>
+        <div style={{ fontFamily: mono, fontSize: 13, color: "#888", letterSpacing: 1 }}>
+          {shot.label}
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+export const Scene3Builders: React.FC = () => {
+  const frame = useCurrentFrame();
+  const headerOp = interpolate(frame, [0, 20], [0, 1], { extrapolateRight: "clamp" });
+  const headerY = interpolate(frame, [0, 20], [30, 0], { extrapolateRight: "clamp" });
+
+  return (
+    <AbsoluteFill style={{ background: ink, color: paper, overflow: "hidden" }}>
+      {/* Backdrop wash */}
+      <div style={{ position: "absolute", inset: 0,
+        background: `radial-gradient(1200px 700px at 70% 30%, ${signal}18, transparent 60%)` }} />
+
+      {/* Chapter header */}
+      <div style={{ position: "absolute", top: 60, left: 120, right: 120, display: "flex",
+        justifyContent: "space-between", alignItems: "baseline", zIndex: 5,
+        opacity: headerOp, transform: `translateY(${headerY}px)` }}>
+        <div style={{ fontFamily: mono, fontSize: 16, letterSpacing: 3, color: "#888" }}>
+          CHAPTER · 03 — THE PLATFORM
+        </div>
+        <div style={{ fontFamily: mono, fontSize: 14, letterSpacing: 2, color: signal, display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 8, height: 8, borderRadius: 99, background: signal, boxShadow: `0 0 12px ${signal}` }} />
+          PROOFBUILD.IN
+        </div>
+      </div>
+
+      {/* Shot sequence */}
+      {shots.map((shot, i) => (
+        <Sequence key={shot.src} from={i * SHOT_LEN} durationInFrames={SHOT_LEN}>
+          <ShotFrame shot={shot} />
+        </Sequence>
+      ))}
+
+      {/* Progress ticks */}
+      <div style={{ position: "absolute", bottom: 60, left: 120, display: "flex", gap: 10, zIndex: 5 }}>
+        {shots.map((_, i) => {
+          const active = frame >= i * SHOT_LEN && frame < (i + 1) * SHOT_LEN;
+          const past = frame >= (i + 1) * SHOT_LEN;
           return (
-            <div key={s.name} style={{ background: "#fff", borderRadius: 14, border: `1px solid ${ink}15`,
-              padding: 22, opacity: sp, transform: `translateY(${y}px) scale(${scale})`,
-              boxShadow: "0 12px 40px rgba(0,0,0,0.06)" }}>
-              {/* Faux prototype window */}
-              <div style={{ background: ink, borderRadius: 8, height: 150, position: "relative", overflow: "hidden" }}>
-                <div style={{ position: "absolute", top: 10, left: 12, display: "flex", gap: 6 }}>
-                  {["#ff5f57", "#febc2e", "#28c840"].map(c => (
-                    <div key={c} style={{ width: 9, height: 9, borderRadius: 99, background: c, opacity: 0.7 }} />
-                  ))}
-                </div>
-                {/* Animated bars representing UI */}
-                <div style={{ position: "absolute", left: 16, top: 40, right: 16, display: "flex", flexDirection: "column", gap: 6 }}>
-                  {[0,1,2,3].map(b => {
-                    const w = interpolate((frame + i * 7 + b * 9) % 90, [0, 45, 90], [40, 95, 60]);
-                    const c = b === 0 ? signal : "#3a3a3e";
-                    return <div key={b} style={{ height: 8, width: `${w}%`, background: c, borderRadius: 99 }} />;
-                  })}
-                </div>
-                <div style={{ position: "absolute", bottom: 10, right: 14, fontFamily: mono, fontSize: 10, color: "#666" }}>
-                  ▶ live
-                </div>
-              </div>
-              <div style={{ marginTop: 16, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                <div style={{ fontFamily: fraunces, fontSize: 22, fontWeight: 500 }}>{s.name}</div>
-                <div style={{ fontFamily: mono, fontSize: 11, color: "#888" }}>{s.stack}</div>
-              </div>
-              <div style={{ fontFamily: mono, fontSize: 12, color: "#666", marginTop: 4 }}>{s.url}</div>
-            </div>
+            <div key={i} style={{ width: 44, height: 3, background: active || past ? signal : "#333", opacity: active ? 1 : past ? 0.6 : 1,
+              boxShadow: active ? `0 0 10px ${signal}` : "none" }} />
           );
         })}
       </div>
