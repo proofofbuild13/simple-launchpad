@@ -30,7 +30,8 @@ const ChromeBar: React.FC<{ url: string }> = ({ url }) => (
   </div>
 );
 
-const ShotFrame: React.FC<{ shot: Shot; frame: number }> = ({ shot, frame }) => {
+const ShotFrame: React.FC<{ shot: Shot }> = ({ shot }) => {
+  const frame = useCurrentFrame();
   // Ken-Burns: gently zoom + drift across the image over SHOT_LEN.
   const t = frame / SHOT_LEN;
   const scale = interpolate(t, [0, 1], [1.08, 1.18]);
