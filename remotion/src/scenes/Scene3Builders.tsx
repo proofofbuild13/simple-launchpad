@@ -32,46 +32,46 @@ const ChromeBar: React.FC<{ url: string }> = ({ url }) => (
 
 const ShotFrame: React.FC<{ shot: Shot }> = ({ shot }) => {
   const frame = useCurrentFrame();
-  // Ken-Burns: gently zoom + drift across the image over SHOT_LEN.
+  // Gentle Ken-Burns: scale only, no translate — keeps composition intact.
   const t = frame / SHOT_LEN;
-  const scale = interpolate(t, [0, 1], [1.08, 1.18]);
-  const anchors: Record<string, [number, number]> = {
-    tl: [-4, -4], tr: [4, -4], bl: [-4, 6], br: [4, 6], c: [0, 0],
-  };
-  const [ax, ay] = anchors[shot.anchor ?? "c"];
-  const dx = interpolate(t, [0, 1], [ax - 2, ax + 2]);
-  const dy = interpolate(t, [0, 1], [ay - 1, ay + 3]);
+  const scale = interpolate(t, [0, 1], [1.02, 1.08]);
 
   const enter = spring({ frame, fps: 30, config: { damping: 22, stiffness: 90 } });
-  const y = interpolate(enter, [0, 1], [40, 0]);
-  const exit = interpolate(frame, [SHOT_LEN - 12, SHOT_LEN], [1, 0.6], { extrapolateRight: "clamp", extrapolateLeft: "clamp" });
-  const op = enter * exit;
+  const y = interpolate(enter, [0, 1], [30, 0]);
+  const exit = interpolate(frame, [SHOT_LEN - 10, SHOT_LEN], [1, 0], { extrapolateRight: "clamp", extrapolateLeft: "clamp" });
+  const op = Math.min(enter, exit);
 
   return (
-    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-      opacity: op, transform: `translateY(${y}px)` }}>
-      {/* Browser frame */}
-      <div style={{ width: 1400, height: 820, borderRadius: 16, overflow: "hidden",
-        boxShadow: "0 60px 140px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)",
-        background: "#000" }}>
+    <AbsoluteFill style={{ opacity: op }}>
+      {/* Browser frame — top area */}
+      <div style={{ position: "absolute", top: 130, left: 260, right: 260, height: 760,
+        transform: `translateY(${y}px)`, borderRadius: 14, overflow: "hidden",
+        boxShadow: "0 40px 120px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06)", background: "#000" }}>
         <ChromeBar url={shot.label} />
-        <div style={{ width: "100%", height: "calc(100% - 34px)", overflow: "hidden", position: "relative", background: "#fff" }}>
+        <div style={{ width: "100%", height: "calc(100% - 34px)", overflow: "hidden", background: "#F4F1EA" }}>
           <Img src={staticFile(shot.src)}
-            style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top",
-              transform: `scale(${scale}) translate(${dx}%, ${dy}%)`, transformOrigin: "center top" }} />
+            style={{ width: "100%", height: "auto", display: "block",
+              transform: `scale(${scale})`, transformOrigin: "center top" }} />
         </div>
       </div>
 
-      {/* Caption */}
-      <div style={{ position: "absolute", left: 120, bottom: 120, maxWidth: 520 }}>
-        <div style={{ fontFamily: mono, fontSize: 12, letterSpacing: 3, color: signal, marginBottom: 12 }}>
-          LIVE · SHIPPED
+      {/* Caption bar — bottom */}
+      <div style={{ position: "absolute", left: 260, right: 260, bottom: 110,
+        display: "flex", justifyContent: "space-between", alignItems: "baseline",
+        opacity: interpolate(frame, [8, 22], [0, 1], { extrapolateRight: "clamp" }) }}>
+        <div>
+          <div style={{ fontFamily: mono, fontSize: 12, letterSpacing: 3, color: signal, marginBottom: 8 }}>
+            LIVE · SHIPPED
+          </div>
+          <div style={{ fontFamily: fraunces, fontSize: 44, lineHeight: 1, letterSpacing: -0.5, color: paper }}>
+            {shot.caption}
+          </div>
         </div>
-        <div style={{ fontFamily: fraunces, fontSize: 62, lineHeight: 1, letterSpacing: -1, color: paper }}>
-          {shot.caption}
+        <div style={{ fontFamily: mono, fontSize: 13, color: "#888", letterSpacing: 1 }}>
+          {shot.label}
         </div>
       </div>
-    </div>
+    </AbsoluteFill>
   );
 };
 
