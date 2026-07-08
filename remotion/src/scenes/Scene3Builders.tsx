@@ -102,8 +102,7 @@ export const Scene3Builders: React.FC = () => {
       {/* Shot sequence */}
       {shots.map((shot, i) => (
         <Sequence key={shot.src} from={i * SHOT_LEN} durationInFrames={SHOT_LEN}>
-          <ShotFrame shot={shot} frame={0} />
-          {/* We need the shot's local frame; render inline component */}
+          <ShotFrame shot={shot} />
         </Sequence>
       ))}
 
