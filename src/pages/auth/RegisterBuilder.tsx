@@ -71,8 +71,8 @@ export default function RegisterBuilder() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
       <Card className="w-full max-w-lg">
         <CardHeader className="text-center space-y-2">
-          <h1 className="text-2xl font-semibold">Register as a Builder</h1>
-          <p className="text-sm text-muted-foreground">Showcase your work and ship for great startups.</p>
+          <h1 className="text-2xl font-semibold">Register as a Web3 Builder</h1>
+          <p className="text-sm text-muted-foreground">Showcase your onchain work and ship for great Web3 startups.</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-3">
@@ -109,7 +109,7 @@ export default function RegisterBuilder() {
             </div>
             <div className="space-y-1.5">
               <Label>Skills (comma separated)</Label>
-              <Input value={form.skills} onChange={(e) => set("skills", e.target.value)} placeholder="React, Node, Postgres" />
+              <Input value={form.skills} onChange={(e) => set("skills", e.target.value)} placeholder="Solidity, Rust, Move, Viem, Wagmi, Foundry, Anchor, The Graph" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">

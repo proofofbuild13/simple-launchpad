@@ -2,19 +2,19 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, Users, Trophy } from "lucide-react";
 
 const projects = [
-  { cat: "AI", title: "Voice agent for clinic intake", budget: "$8,000", days: 14, subs: 23, tags: ["Realtime", "Whisper", "Next.js"] },
-  { cat: "SaaS", title: "Lightweight CRM for solo founders", budget: "$12,000", days: 21, subs: 47, tags: ["Postgres", "React", "Stripe"] },
-  { cat: "No-code", title: "Lead-gen automation for agencies", budget: "$3,500", days: 7, subs: 31, tags: ["Make", "Airtable"] },
-  { cat: "Mobile", title: "Habit tracker w/ social streaks", budget: "$15,000", days: 30, subs: 18, tags: ["Expo", "Supabase"] },
-  { cat: "Web", title: "Marketing site + CMS for fund", budget: "$6,000", days: 10, subs: 12, tags: ["Astro", "Sanity"] },
-  { cat: "Marketing", title: "Cold-outbound playbook + assets", budget: "$4,200", days: 14, subs: 9, tags: ["Copy", "Apollo"] },
+  { cat: "DeFi", title: "Perp DEX limit-order widget", budget: "$12,000", days: 14, subs: 23, tags: ["Solidity", "Viem", "Foundry"] },
+  { cat: "Infra", title: "Subgraph + indexer for L2 rollup", budget: "$9,000", days: 21, subs: 18, tags: ["The Graph", "TypeScript", "Postgres"] },
+  { cat: "Consumer", title: "Smart-wallet onboarding flow", budget: "$8,500", days: 10, subs: 31, tags: ["Wagmi", "Privy", "Next.js"] },
+  { cat: "DAO", title: "Onchain voting + treasury UI", budget: "$15,000", days: 30, subs: 14, tags: ["Snapshot", "Safe", "React"] },
+  { cat: "DeFi", title: "Liquid-staking rewards dashboard", budget: "$6,500", days: 12, subs: 22, tags: ["Solidity", "Wagmi", "Recharts"] },
+  { cat: "Consumer", title: "NFT-gated Farcaster mini-app", budget: "$4,200", days: 7, subs: 19, tags: ["Farcaster", "Viem", "Base"] },
 ];
 
 export const ProjectShowcase = () => (
   <section id="projects" className="container py-24 md:py-32 border-t border-border">
     <div className="flex items-end justify-between mb-12">
       <div>
-        <div className="font-mono text-xs text-signal uppercase tracking-widest mb-3">Live challenges</div>
+        <div className="font-mono text-xs text-signal uppercase tracking-widest mb-3">Live Web3 challenges</div>
         <h2 className="font-display text-5xl md:text-6xl text-balance">Open right now.</h2>
       </div>
       <a href="#" className="hidden md:inline-flex font-mono text-xs text-muted-foreground hover:text-foreground">view all →</a>

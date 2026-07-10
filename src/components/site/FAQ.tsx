@@ -7,12 +7,20 @@ import {
 
 const faqs = [
   {
-    q: "How does escrow work?",
-    a: "When you start a contract, funds for each milestone are held by the platform. Money is released to the builder only after you sign off on the milestone — and disputes are mediated by our admin team using the artifacts attached to the contract.",
+    q: "Which chains and stacks are supported?",
+    a: "All EVM chains (Ethereum, Base, Arbitrum, Optimism, Polygon, and other L2s), Solana, and Move-based chains (Aptos, Sui). Builders list their primary stack — Solidity/Foundry, Rust/Anchor, Move, plus frontend tooling like Viem, Wagmi, RainbowKit, Privy, and indexer stacks like The Graph.",
   },
   {
-    q: "Who owns the IP of submitted prototypes?",
-    a: "Builders retain rights to their submissions until you hire them. On hire, a signed IP-assignment and contractor agreement transfers full ownership of the work product to your company — automated as part of contract signing.",
+    q: "Can pseudonymous builders participate?",
+    a: "Yes. Web3 talent often ships under a handle. Pseudonymous builders can submit and get hired — every profile is still judged on verifiable onchain work (deployed contracts, verified addresses, public repos) and on-platform reviews from past founders.",
+  },
+  {
+    q: "Who owns the contracts and repo after handoff?",
+    a: "Builders retain rights to their submissions until you hire them. On hire, a signed IP-assignment and contractor agreement transfers full ownership of the code, contracts and deploy keys to your company — automated as part of contract signing.",
+  },
+  {
+    q: "How does escrow work?",
+    a: "When you start a contract, funds for each milestone are held by the platform in fiat escrow. Money is released to the builder only after you sign off on the milestone — and disputes are mediated by our admin team using the artifacts attached to the contract.",
   },
   {
     q: "What does it cost?",
@@ -21,10 +29,6 @@ const faqs = [
   {
     q: "What if no submission is good enough?",
     a: "You're never obligated to hire. If no submission meets the bar, you can close the challenge with no further commitment. Builders are told upfront that submission ≠ guaranteed payout.",
-  },
-  {
-    q: "How are builders vetted?",
-    a: "Every builder profile is judged on shipped work — repos, live URLs, walkthroughs and on-platform reviews from past founders. There are no résumé-only profiles.",
   },
   {
     q: "Can I convert a builder to a full-time hire?",
@@ -41,7 +45,7 @@ export const FAQ = () => (
           Questions, <em className="text-signal not-italic italic font-light">answered</em>.
         </h2>
         <p className="mt-6 text-muted-foreground max-w-sm">
-          Everything founders and builders typically ask before posting their first challenge.
+          Everything Web3 founders and builders typically ask before posting their first onchain challenge.
         </p>
       </div>
       <div className="lg:col-span-8">

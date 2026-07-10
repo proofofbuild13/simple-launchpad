@@ -67,8 +67,8 @@ export default function RegisterStartup() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
       <Card className="w-full max-w-lg">
         <CardHeader className="text-center space-y-2">
-          <h1 className="text-2xl font-semibold">Register as a Startup</h1>
-          <p className="text-sm text-muted-foreground">Post your first MVP challenge in minutes.</p>
+          <h1 className="text-2xl font-semibold">Register as a Web3 Startup</h1>
+          <p className="text-sm text-muted-foreground">Post your first onchain challenge in minutes.</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-3">
@@ -105,7 +105,7 @@ export default function RegisterStartup() {
               </div>
               <div className="space-y-1.5">
                 <Label>Industry</Label>
-                <Input value={form.industry} onChange={(e) => set("industry", e.target.value)} placeholder="e.g. Fintech" />
+                <Input value={form.industry} onChange={(e) => set("industry", e.target.value)} placeholder="e.g. DeFi, Infra, DAO tooling" />
               </div>
             </div>
             <div className="space-y-1.5">
