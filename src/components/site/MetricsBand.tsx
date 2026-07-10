@@ -11,12 +11,12 @@ type Metric = {
 };
 
 const metrics: Metric[] = [
-  { value: 2400, suffix: "+", format: "int", label: "Active builders", caption: "Vetted by shipped work, not résumés." },
-  { value: 1.2, prefix: "$", suffix: "M", format: "decimal", label: "Paid through escrow", caption: "Every release tied to a milestone." },
-  { value: 96, suffix: "%", format: "int", label: "On-time delivery", caption: "Tracked across every contract." },
-  { value: 7, suffix: " days", format: "int", label: "To first prototype", caption: "Median time from post to demo." },
-  { value: 48, suffix: " hrs", format: "int", label: "Founder response", caption: "Median time to first reply." },
-  { value: 38, format: "int", label: "Countries", caption: "A genuinely global builder pool." },
+  { value: 2400, suffix: "+", format: "int", label: "Onchain builders", caption: "Vetted by deployed contracts, not résumés." },
+  { value: 1.2, prefix: "$", suffix: "M", format: "decimal", label: "Paid through escrow", caption: "Every release tied to a signed milestone." },
+  { value: 96, suffix: "%", format: "int", label: "On-time delivery", caption: "Tracked across every Web3 contract." },
+  { value: 7, suffix: " days", format: "int", label: "To first prototype", caption: "Median time from post to deployed demo." },
+  { value: 4, format: "int", label: "Chain families", caption: "EVM, Solana, Move and major L2s." },
+  { value: 38, format: "int", label: "Countries", caption: "A genuinely global Web3 builder pool." },
 ];
 
 function useCountUp(target: number, start: boolean, duration = 1400) {
@@ -59,9 +59,9 @@ const MetricCell = ({ m, start }: { m: Metric; start: boolean }) => {
 };
 
 const practice = [
-  { icon: Zap, title: "Faster than a recruiter cycle", body: "Weeks of sourcing collapse into days of side-by-side prototypes." },
+  { icon: Zap, title: "Faster than a Web3 recruiter cycle", body: "Weeks of sourcing collapse into days of side-by-side deployed prototypes." },
   { icon: ShieldCheck, title: "Backed by milestone escrow", body: "Money only moves when a milestone is signed off — both sides protected." },
-  { icon: Award, title: "Outcomes over interviews", body: "You decide on real artifacts: repos, live URLs, video walkthroughs." },
+  { icon: Award, title: "Outcomes over interviews", body: "You decide on real artifacts: repos, verified contracts, live dApps, walkthroughs." },
 ];
 
 export const MetricsBand = () => {

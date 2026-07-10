@@ -20,7 +20,7 @@ const orgJsonLd = {
   url: "https://proofbuild.in/",
   logo: "https://proofbuild.in/logo.png",
   description:
-    "Execution-based hiring platform. Founders post real challenges, builders ship prototypes, escrow and contracts handled.",
+    "Execution-based Web3 hiring platform. Onchain founders post real challenges, builders ship deployed dApps, escrow and contracts handled.",
   sameAs: ["https://twitter.com/", "https://github.com/"],
 };
 
@@ -28,20 +28,20 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
-        <title>proof_of_Build — Build before you hire</title>
+        <title>proof_of_Build — Hire Web3 builders who already shipped it</title>
         <meta
           name="description"
-          content="Execution-based hiring. Founders post real challenges, builders ship prototypes, escrow and contracts handled end-to-end."
+          content="Execution-based Web3 hiring. Founders post onchain challenges, Solidity/Rust/Move builders ship deployed dApps, escrow and contracts handled end-to-end."
         />
         <meta
           name="keywords"
-          content="hire developers, freelance, escrow, prototype hiring, builder marketplace, startup hiring"
+          content="hire web3 developers, solidity developer, rust solana developer, dao tooling, defi engineers, onchain hiring, web3 escrow, dapp builders"
         />
         <link rel="canonical" href="https://proofbuild.in/" />
-        <meta property="og:title" content="proof_of_Build — Build before you hire" />
+        <meta property="og:title" content="proof_of_Build — Hire Web3 builders who already shipped it" />
         <meta
           property="og:description"
-          content="Execution-based hiring. Founders post real challenges, builders ship prototypes, escrow and contracts handled end-to-end."
+          content="Execution-based Web3 hiring. Founders post onchain challenges, Solidity/Rust/Move builders ship deployed dApps, escrow and contracts handled end-to-end."
         />
         <meta property="og:url" content="https://proofbuild.in/" />
         <meta property="og:type" content="website" />

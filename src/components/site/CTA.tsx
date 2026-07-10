@@ -9,20 +9,20 @@ export const CTA = () => (
       <div className="relative max-w-3xl">
         <h2 className="font-display text-5xl md:text-7xl leading-[0.95] text-balance">
           Stop interviewing. <br/>
-          <em className="text-signal not-italic italic font-light">Start shipping.</em>
+          <em className="text-signal not-italic italic font-light">Start shipping onchain.</em>
         </h2>
         <p className="mt-6 text-lg text-muted-foreground max-w-xl">
-          Post your first challenge in under 5 minutes. Free until you hire.
+          Post your first onchain challenge in under 5 minutes. Free until you hire.
         </p>
         <div className="mt-10 flex flex-wrap gap-3">
           <Link to="/register/startup">
             <Button size="lg" className="bg-ink text-ink-foreground hover:bg-ink/90 h-12 px-6 text-base">
-              Post a project <ArrowUpRight className="ml-1 h-4 w-4" />
+              Post an onchain challenge <ArrowUpRight className="ml-1 h-4 w-4" />
             </Button>
           </Link>
           <Link to="/register/builder">
             <Button size="lg" variant="outline" className="h-12 px-6 text-base">
-              Apply as a builder
+              Apply as a Web3 builder
             </Button>
           </Link>
         </div>

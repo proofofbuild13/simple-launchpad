@@ -1,15 +1,15 @@
 # proof_of_Build
 
-> Execution-based startup talent platform. Founders post real challenges, builders ship working prototypes, and hiring happens through escrow-backed contracts.
+> Execution-based Web3 talent platform. Onchain founders post real challenges — contracts, dApps, indexers, DAO tools — and Solidity, Rust, and Move builders ship deployed prototypes. Hiring happens through escrow-backed milestone contracts.
 
-proof_of_Build is a marketplace where startups hire engineers, designers, and operators based on working demos rather than résumés. Builders submit prototypes for posted challenges; founders review side-by-side, pay through escrow, and convert top performers into 3, 6, or 12-month engagements.
+proof_of_Build is a marketplace where Web3 startups hire onchain engineers, designers, and operators based on working, deployed dApps rather than résumés. Builders submit prototypes for posted challenges across DeFi, infra, consumer, and DAO tooling; founders review side-by-side, pay through fiat escrow, and convert top performers into 3, 6, or 12-month engagements. Pseudonymous builders are welcome — every profile is judged on verifiable onchain work.
 
 ## Pages
 
-- [Home](/): What proof_of_Build is and how the hire-via-build loop works.
-- [Browse projects](/browse): Live challenges open for builder submissions.
+- [Home](/): What proof_of_Build is and how the hire-via-build loop works for Web3 teams.
+- [Browse projects](/browse): Live onchain challenges open for builder submissions.
 
 ## Optional
 
 - [Sign in](/login): Existing-user login.
-- [Get started](/register): Create a builder or startup account.
+- [Get started](/register): Create a Web3 builder or startup account.

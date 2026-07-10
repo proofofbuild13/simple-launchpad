@@ -45,13 +45,13 @@ export const TrustSection = () => (
       <div className="lg:col-span-5">
         <div className="font-mono text-xs text-signal uppercase tracking-widest mb-3">Trust & safety</div>
         <h2 className="font-display text-5xl md:text-6xl text-balance leading-[1.02]">
-          Six guarantees behind every <em className="text-signal not-italic italic font-light">contract</em>.
+          Six guarantees behind every <em className="text-signal not-italic italic font-light">onchain contract</em>.
         </h2>
       </div>
       <p className="lg:col-span-6 lg:col-start-7 text-muted-foreground text-lg leading-relaxed self-end">
-        Hiring strangers on the internet to ship production code is a trust problem. We've built the platform
-        so neither side has to take the other purely on faith — money, IP and reputation are all protected
-        by the system, not the handshake.
+        Hiring pseudonymous builders on the internet to ship production Web3 code is a trust problem. We've
+        built the platform so neither side has to take the other purely on faith — money, IP and reputation
+        are all protected by the system, not the handshake.
       </p>
     </div>
 
