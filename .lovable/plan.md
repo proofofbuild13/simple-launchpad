@@ -1,37 +1,50 @@
-## Goal
-Show the founder's Agent chat history inside the sidebar, under the "Agent" nav item, so past conversations can be reopened. Only applies to startups (the Agent is a founder-only feature).
+# Web3 audience pivot — copy only
 
-## Changes
+Reposition the marketing site so Web3 founders and builders instantly recognize it as built for them. No visual redesign, no functionality changes, no escrow changes (stays fiat). Verticals emphasized: DeFi & trading, Infra & tooling, Consumer & social, DAO & governance.
 
-### 1. Route: support multiple threads by URL
-- Add route `/agent/:threadId` alongside existing `/agent` in `src/App.tsx`.
-- `/agent` (no id) picks the most recent active thread or creates one, then navigates to `/agent/:threadId`.
-- `FounderAgent.tsx` reads `threadId` from `useParams` and loads that thread + its messages. Remount is keyed on `threadId` so state doesn't bleed between threads.
+## Scope
 
-### 2. Sidebar: Agent history section
-- New component `src/components/layout/AgentHistoryList.tsx`.
-- Fetches `agent_threads` for the current user (`founder_id = user.id`, ordered by `updated_at desc`, limit ~20).
-- Subscribes to realtime `INSERT`/`UPDATE` on `agent_threads` for that founder so new chats appear immediately.
-- Renders under the "Agent" `SidebarMenuItem` as a nested `SidebarMenuSub` list. Each row:
-  - Links to `/agent/:threadId`
-  - Label = derived title (first user message preview, fallback "New chat")
-  - Active state highlighted when route matches
-- Includes a "+ New chat" button at the top that creates a fresh `agent_threads` row and navigates to it.
-- Hidden when the sidebar is collapsed to icon-only mode.
+Rewrite user-facing copy on the landing page and a few adjacent surfaces. Everything else — colors, fonts, layout, routes, auth, RLS, escrow, contracts — stays as-is.
 
-### 3. Wire into `AppSidebar.tsx`
-- Only for `role === "startup"`.
-- Render `<AgentHistoryList />` inside the Agent menu item (below it in the same group), so it behaves like a sub-navigation for that section.
+## Files to edit
 
-### 4. Derive chat title
-- Small helper: query the first `agent_messages.role='user'` row per thread (or fetch alongside threads with a lightweight join) and truncate to ~40 chars. Fallback: `"New chat · <date>"`.
+- `src/components/site/Hero.tsx` — headline, subhead, trust stats, badge pill
+- `src/components/site/HowItWorks.tsx` — reframe steps around onchain challenges
+- `src/components/site/AudienceSplit.tsx` — Web3 founder + Web3 builder cards
+- `src/components/site/Pillars.tsx` — pillars framed for onchain execution
+- `src/components/site/ProjectShowcase.tsx` — example challenges: DEX widget, indexer, wallet onboarding flow, DAO voting UI
+- `src/components/site/BuildersSection.tsx` — builder archetypes (Solidity, Rust/Solana, fullstack onchain, frontend web3)
+- `src/components/site/MetricsBand.tsx` — reword labels toward onchain framing
+- `src/components/site/FAQ.tsx` — add/replace 2–3 Q&As (chains supported, do builders need to be doxxed, IP/repo ownership)
+- `src/components/site/CTA.tsx` — final CTA reworded
+- `src/components/site/TrustSection.tsx` — trust points reframed (onchain-native builders, verified GitHub, etc.)
+- `src/components/site/Pricing.tsx` — light copy tweaks only
+- `src/pages/Index.tsx` — `<title>`, meta description, OG tags, JSON-LD description
+- `src/pages/auth/RegisterStartup.tsx` — heading + subhead + industry placeholder ("e.g. DeFi, Infra, DAO tooling")
+- `src/pages/auth/RegisterBuilder.tsx` — heading + subhead + skills placeholder ("Solidity, Rust, Move, Viem, Foundry…")
+- `index.html` — `<title>` and `<meta name="description">`
+- `public/llms.txt` — one-paragraph rewrite to describe the Web3 focus
 
-## Not changing
-- DB schema (no new columns), RLS, edge functions, business logic.
-- Builder sidebar (Agent history is founder-only).
-- Existing single-thread reset flow keeps working; "Restart walkthrough" still resets the current thread.
+## Copy direction
 
-## Technical notes
-- `SidebarMenuSub` / `SidebarMenuSubItem` / `SidebarMenuSubButton` from `@/components/ui/sidebar` for nested links.
-- New chat action: `insert into agent_threads { founder_id, status: 'active', current_stage: 0, stats: {} }` then `navigate('/agent/' + newId)`.
-- `FounderAgent.tsx` thread bootstrap becomes: if `:threadId` in URL, load it; else pick latest active or create, then `navigate` to canonical URL.
+- **Headline**: "Hire the Web3 builder whose onchain prototype already works."
+- **Subhead**: Real onchain challenges. Builders ship working dApps, contracts, indexers, and interfaces. AI-assisted review, milestone escrow, hire the winner.
+- **Audience tags**: "For Web3 founders" / "For onchain builders"
+- **Vertical chips** across showcase and register forms: DeFi · Infra · Consumer · DAO
+- **Builder skill tags**: Solidity, Rust, Move, Viem/Wagmi, Foundry, Anchor, The Graph, Subgraphs, ZK
+- **Trust reframes**: "vetted onchain builders", "shipped mainnet code", "milestones signed onchain-style, funded in escrow"
+- **FAQ additions**: chains covered (EVM, Solana, Move-based, L2s); whether pseudonymous builders are allowed; who owns the repo/contracts after handoff
+
+## Out of scope
+
+- No palette, typography, layout, or component structure changes
+- No changes to escrow (stays fiat), payments, or smart-contract integrations
+- No new routes, DB tables, or backend logic
+- No changes to `remotion/` marketing video
+- No new imagery generation
+
+## Verification
+
+- Read each edited file after changes to confirm copy renders
+- Playwright screenshot of `/` at 1280×1800 to confirm layout is intact and new copy is visible
+- `tsgo` clean
