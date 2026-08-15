@@ -13,7 +13,7 @@ export const Hero = () => (
           <span>DeFi · Infra · Consumer · DAO — AI-scored submissions, milestone escrow</span>
         </div>
         <h1 className="mt-6 font-display text-6xl md:text-8xl leading-[0.95] text-balance animate-fade-up" style={{ animationDelay: '60ms' }}>
-          Hire the Web3 builder whose <em className="text-signal not-italic font-light italic">onchain prototype</em> already works.
+          Connect the Web3 builder whose <em className="text-signal not-italic font-light italic">onchain prototype</em> already works.
         </h1>
         <p className="mt-8 max-w-2xl text-lg md:text-xl text-muted-foreground text-balance animate-fade-up" style={{ animationDelay: '120ms' }}>
           Post a real onchain challenge — a contract, a subgraph, a wallet flow, a DAO tool. Web3 builders
