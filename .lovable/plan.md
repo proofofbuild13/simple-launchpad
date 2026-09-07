@@ -1,50 +1,41 @@
-# Web3 audience pivot — copy only
+# Collective — community layer for ProofBuild
 
-Reposition the marketing site so Web3 founders and builders instantly recognize it as built for them. No visual redesign, no functionality changes, no escrow changes (stays fiat). Verticals emphasized: DeFi & trading, Infra & tooling, Consumer & social, DAO & governance.
+A new `/collective` page inside the app (signed-in area, same sidebar and visual style), social-first rather than deal-first, aimed at web3 founders and builders.
 
-## Scope
+## What you get
 
-Rewrite user-facing copy on the landing page and a few adjacent surfaces. Everything else — colors, fonts, layout, routes, auth, RLS, escrow, contracts — stays as-is.
+**Tabs:** Feed · Rooms · Weekly · Deal Flow
 
-## Files to edit
+1. **Builder identity header**
+   Your avatar, name, headline, ProofBuild score (existing rating), GitHub link and wallet address, plus a "Verified builder" badge when you have at least one completed submission. Founders see their startup identity instead.
 
-- `src/components/site/Hero.tsx` — headline, subhead, trust stats, badge pill
-- `src/components/site/HowItWorks.tsx` — reframe steps around onchain challenges
-- `src/components/site/AudienceSplit.tsx` — Web3 founder + Web3 builder cards
-- `src/components/site/Pillars.tsx` — pillars framed for onchain execution
-- `src/components/site/ProjectShowcase.tsx` — example challenges: DEX widget, indexer, wallet onboarding flow, DAO voting UI
-- `src/components/site/BuildersSection.tsx` — builder archetypes (Solidity, Rust/Solana, fullstack onchain, frontend web3)
-- `src/components/site/MetricsBand.tsx` — reword labels toward onchain framing
-- `src/components/site/FAQ.tsx` — add/replace 2–3 Q&As (chains supported, do builders need to be doxxed, IP/repo ownership)
-- `src/components/site/CTA.tsx` — final CTA reworded
-- `src/components/site/TrustSection.tsx` — trust points reframed (onchain-native builders, verified GitHub, etc.)
-- `src/components/site/Pricing.tsx` — light copy tweaks only
-- `src/pages/Index.tsx` — `<title>`, meta description, OG tags, JSON-LD description
-- `src/pages/auth/RegisterStartup.tsx` — heading + subhead + industry placeholder ("e.g. DeFi, Infra, DAO tooling")
-- `src/pages/auth/RegisterBuilder.tsx` — heading + subhead + skills placeholder ("Solidity, Rust, Move, Viem, Foundry…")
-- `index.html` — `<title>` and `<meta name="description">`
-- `public/llms.txt` — one-paragraph rewrite to describe the Web3 focus
+2. **Proof feed (center)**
+   Newest completed builds first: builder name, challenge title, one-line result, link to the submission. Filter chips: All / DeFi / DAO / NFT / Infra / L2, using the category already stored on projects.
 
-## Copy direction
+3. **Founder rooms**
+   Five topic rooms (DeFi, L2s, DAOs, NFT Infra, RWA Tokenization) with simple threaded posts. On your own post, a "Convert to challenge" button opens the existing project posting flow pre-filled with the post text.
 
-- **Headline**: "Hire the Web3 builder whose onchain prototype already works."
-- **Subhead**: Real onchain challenges. Builders ship working dApps, contracts, indexers, and interfaces. AI-assisted review, milestone escrow, hire the winner.
-- **Audience tags**: "For Web3 founders" / "For onchain builders"
-- **Vertical chips** across showcase and register forms: DeFi · Infra · Consumer · DAO
-- **Builder skill tags**: Solidity, Rust, Move, Viem/Wagmi, Foundry, Anchor, The Graph, Subgraphs, ZK
-- **Trust reframes**: "vetted onchain builders", "shipped mainnet code", "milestones signed onchain-style, funded in escrow"
-- **FAQ additions**: chains covered (EVM, Solana, Move-based, L2s); whether pseudonymous builders are allowed; who owns the repo/contracts after handoff
+4. **Weekly community challenge (right)**
+   The current week's reputation-only challenge with submission count and a "Submit your build" button. No money or escrow involved.
 
-## Out of scope
+5. **Deal flow board**
+   In this pass the board is visual only: layout, filters and the "I'm interested" button in place, with a clear "coming soon" state. Backend follows in a second pass.
 
-- No palette, typography, layout, or component structure changes
-- No changes to escrow (stays fiat), payments, or smart-contract integrations
-- No new routes, DB tables, or backend logic
-- No changes to `remotion/` marketing video
-- No new imagery generation
+Mobile: feed first, side panels stack underneath.
 
-## Verification
+## Technical notes
 
-- Read each edited file after changes to confirm copy renders
-- Playwright screenshot of `/` at 1280×1800 to confirm layout is intact and new copy is visible
-- `tsgo` clean
+New tables (migrations, each with grants + RLS):
+- `room_posts` — room_id (enum/text), author_id, content, parent_id for replies, created_at. Read: any signed-in user. Write/update/delete: author only.
+- `community_challenges` — title, description, start_date, end_date, is_active. Read: signed-in users. Write: admins.
+- `community_submissions` — challenge_id, builder_id, title, url, created_at (needed for the submission count and CTA to work).
+- `deal_flow_posts` and `deal_flow_interest` — created in this pass as schema only so the follow-up pass is a UI wire-up.
+
+Column additions:
+- `builder_profiles.wallet_address` and `builder_profiles.reputation_nft_id` (nullable placeholders).
+
+Proof feed access: `submissions` RLS today limits reads to the submitting builder and the owning founder, so a cross-platform feed cannot query the table directly. Add a `get_proof_feed(_category text, _limit int)` SECURITY DEFINER function returning only non-sensitive fields (builder name/avatar, project title + category, submission title, one-line summary, id) for submissions with status `completed`, and grant execute to authenticated.
+
+New files: `src/pages/collective/Collective.tsx`, plus components `BuilderIdentityHeader.tsx`, `ProofFeed.tsx`, `FounderRooms.tsx`, `WeeklyChallengeCard.tsx`, `DealFlowBoard.tsx` under `src/components/collective/`, and `src/lib/collective.ts` for queries. Route added in `src/App.tsx` under the protected dashboard layout, plus a "Collective" sidebar item for both roles.
+
+Notification on "I'm interested" reuses the existing `send_notification` RPC when the deal flow backend lands.
