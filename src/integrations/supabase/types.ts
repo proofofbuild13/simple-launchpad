@@ -242,6 +242,7 @@ export type Database = {
           phone: string | null
           portfolio: string | null
           rating: number | null
+          reputation_nft_id: string | null
           response_time_hours: number | null
           skills: string[] | null
           title: string | null
@@ -249,6 +250,7 @@ export type Database = {
           updated_at: string
           username: string | null
           verified: boolean | null
+          wallet_address: string | null
           work_preference: string | null
         }
         Insert: {
@@ -271,6 +273,7 @@ export type Database = {
           phone?: string | null
           portfolio?: string | null
           rating?: number | null
+          reputation_nft_id?: string | null
           response_time_hours?: number | null
           skills?: string[] | null
           title?: string | null
@@ -278,6 +281,7 @@ export type Database = {
           updated_at?: string
           username?: string | null
           verified?: boolean | null
+          wallet_address?: string | null
           work_preference?: string | null
         }
         Update: {
@@ -300,6 +304,7 @@ export type Database = {
           phone?: string | null
           portfolio?: string | null
           rating?: number | null
+          reputation_nft_id?: string | null
           response_time_hours?: number | null
           skills?: string[] | null
           title?: string | null
@@ -307,6 +312,7 @@ export type Database = {
           updated_at?: string
           username?: string | null
           verified?: boolean | null
+          wallet_address?: string | null
           work_preference?: string | null
         }
         Relationships: []
@@ -439,6 +445,80 @@ export type Database = {
           verified_by?: string | null
         }
         Relationships: []
+      }
+      community_challenges: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          end_date: string
+          id: string
+          is_active: boolean
+          start_date: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          start_date?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          start_date?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      community_submissions: {
+        Row: {
+          builder_id: string
+          challenge_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          title: string
+          url: string | null
+        }
+        Insert: {
+          builder_id: string
+          challenge_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          title: string
+          url?: string | null
+        }
+        Update: {
+          builder_id?: string
+          challenge_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          title?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_submissions_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "community_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contract_milestones: {
         Row: {
@@ -689,6 +769,65 @@ export type Database = {
           id?: string
           last_message_at?: string | null
           type?: string
+        }
+        Relationships: []
+      }
+      deal_flow_interest: {
+        Row: {
+          builder_id: string
+          created_at: string
+          id: string
+          post_id: string
+        }
+        Insert: {
+          builder_id: string
+          created_at?: string
+          id?: string
+          post_id: string
+        }
+        Update: {
+          builder_id?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_flow_interest_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "deal_flow_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_flow_posts: {
+        Row: {
+          content: string
+          created_at: string
+          founder_id: string
+          id: string
+          raise_stage: string | null
+          seeking_type: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          founder_id: string
+          id?: string
+          raise_stage?: string | null
+          seeking_type?: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          founder_id?: string
+          id?: string
+          raise_stage?: string | null
+          seeking_type?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1745,6 +1884,54 @@ export type Database = {
         }
         Relationships: []
       }
+      room_posts: {
+        Row: {
+          author_id: string
+          content: string
+          converted_project_id: string | null
+          created_at: string
+          id: string
+          parent_id: string | null
+          room_id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          converted_project_id?: string | null
+          created_at?: string
+          id?: string
+          parent_id?: string | null
+          room_id: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          converted_project_id?: string | null
+          created_at?: string
+          id?: string
+          parent_id?: string | null
+          room_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_posts_converted_project_id_fkey"
+            columns: ["converted_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_posts_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "room_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       saved_builders: {
         Row: {
           builder_id: string
@@ -2126,6 +2313,21 @@ export type Database = {
         Returns: {
           count: number
           project_id: string
+        }[]
+      }
+      get_proof_feed: {
+        Args: { _category?: string; _limit?: number }
+        Returns: {
+          builder_avatar: string
+          builder_id: string
+          builder_name: string
+          category: string
+          created_at: string
+          project_id: string
+          project_title: string
+          submission_id: string
+          submission_title: string
+          summary: string
         }[]
       }
       get_user_role: {
