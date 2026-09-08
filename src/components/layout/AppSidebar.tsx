@@ -11,6 +11,7 @@ import {
   Users as UsersIcon,
   ScrollText,
   User,
+  Users2,
 } from "lucide-react";
 import {
   Sidebar,
@@ -33,11 +34,13 @@ const startupItems: Item[] = [
   { title: "Agent", url: "/agent", icon: Bot },
   { title: "Projects", url: "/projects", icon: FolderKanban },
   { title: "Deals", url: "/deals", icon: Handshake },
+  { title: "Collective", url: "/collective", icon: Users2 },
 ];
 
 const builderItems: Item[] = [
   { title: "Browse", url: "/browse", icon: Search },
   { title: "Deals", url: "/deals", icon: Handshake },
+  { title: "Collective", url: "/collective", icon: Users2 },
   { title: "Profile", url: "/profile", icon: User },
 ];
 

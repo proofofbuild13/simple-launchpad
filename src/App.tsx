@@ -60,6 +60,7 @@ import AdminAuditLogs from "./pages/admin/AdminAuditLogs";
 import AdminDisputeDetail from "./pages/admin/AdminDisputeDetail";
 import FounderAgent from "./pages/agent/FounderAgent";
 import Deals from "./pages/deals/Deals";
+import Collective from "./pages/collective/Collective";
 import DealDetail from "./pages/deals/DealDetail";
 
 const queryClient = new QueryClient();
@@ -96,6 +97,8 @@ const App = () => (
               <Route path="/dashboard" element={<DashboardRouter />} />
               <Route path="/agent" element={<FounderAgent />} />
               <Route path="/agent/:threadId" element={<FounderAgent />} />
+
+              <Route path="/collective" element={<Collective />} />
 
               <Route path="/deals" element={<Deals />} />
               <Route path="/deals/:id" element={<DealDetail />} />
