@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
@@ -20,6 +20,8 @@ type EngagementType = "project_hire" | "hire_to_build";
 export default function PostProject() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const prefill = (location.state as any)?.prefill ?? {};
   const { t } = useTranslation();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -36,6 +38,7 @@ export default function PostProject() {
     location_type: "Remote", office_location: "",
     ctc_min: "", ctc_max: "", ctc_confidential: false, probation_months: "3",
     visibility: "public", nda_required: false, ip_agreement: false,
+    ...prefill,
   });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   const isH2B = form.engagement_type === "hire_to_build";
