@@ -38,6 +38,7 @@ export default function PostProject() {
     location_type: "Remote", office_location: "",
     ctc_min: "", ctc_max: "", ctc_confidential: false, probation_months: "3",
     visibility: "public", nda_required: false, ip_agreement: false,
+    ...prefill,
   });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   const isH2B = form.engagement_type === "hire_to_build";
