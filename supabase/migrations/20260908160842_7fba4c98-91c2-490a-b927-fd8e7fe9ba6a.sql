@@ -1,0 +1,1 @@
+CREATE POLICY "Startups can delete own challenges" ON public.community_challenges FOR DELETE TO authenticated USING (created_by = auth.uid());

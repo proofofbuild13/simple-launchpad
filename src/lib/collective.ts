@@ -64,6 +64,35 @@ export async function createRoomPost(roomId: string, content: string, parentId?:
   return data as any;
 }
 
+export async function updateRoomPost(id: string, content: string) {
+  const { error } = await supabase
+    .from("room_posts" as any)
+    .update({ content } as any)
+    .eq("id", id);
+  return { error: error?.message ?? null };
+}
+
+export async function deleteRoomPost(id: string) {
+  const { error } = await supabase.from("room_posts" as any).delete().eq("id", id);
+  return { error: error?.message ?? null };
+}
+
+export async function updateCommunityChallenge(
+  id: string,
+  patch: { title?: string; description?: string; start_date?: string; end_date?: string },
+) {
+  const { error } = await supabase
+    .from("community_challenges" as any)
+    .update(patch as any)
+    .eq("id", id);
+  return { error: error?.message ?? null };
+}
+
+export async function deleteCommunityChallenge(id: string) {
+  const { error } = await supabase.from("community_challenges" as any).delete().eq("id", id);
+  return { error: error?.message ?? null };
+}
+
 export async function createCommunityChallenge(input: {
   title: string;
   description: string;
