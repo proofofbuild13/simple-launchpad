@@ -64,6 +64,25 @@ export async function createRoomPost(roomId: string, content: string, parentId?:
   return data as any;
 }
 
+export async function createCommunityChallenge(input: {
+  title: string;
+  description: string;
+  start_date: string;
+  end_date: string;
+}) {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { error: "Not signed in" };
+  const { error } = await supabase.from("community_challenges" as any).insert({
+    title: input.title,
+    description: input.description,
+    start_date: input.start_date,
+    end_date: input.end_date,
+    is_active: true,
+    created_by: auth.user.id,
+  } as any);
+  return { error: error?.message ?? null };
+}
+
 export async function fetchActiveCommunityChallenge() {
   const { data, error } = await supabase
     .from("community_challenges" as any)
