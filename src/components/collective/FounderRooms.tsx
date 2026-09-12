@@ -54,6 +54,31 @@ export function FounderRooms() {
     load(room);
   };
 
+  const saveEdit = async (id: string) => {
+    if (!editDraft.trim()) return;
+    setBusy(true);
+    const { error } = await updateRoomPost(id, editDraft.trim());
+    setBusy(false);
+    if (error) {
+      toast.error("Could not save changes.");
+      return;
+    }
+    setEditingId(null);
+    setEditDraft("");
+    load(room);
+  };
+
+  const removePost = async (id: string) => {
+    if (!window.confirm("Delete this post? This cannot be undone.")) return;
+    const { error } = await deleteRoomPost(id);
+    if (error) {
+      toast.error("Could not delete.");
+      return;
+    }
+    toast.success("Deleted");
+    load(room);
+  };
+
   const roots = posts.filter((p) => !p.parent_id);
   const repliesOf = (id: string) => posts.filter((p) => p.parent_id === id);
 
