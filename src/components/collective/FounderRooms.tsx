@@ -130,8 +130,53 @@ export function FounderRooms() {
                     <AvatarFallback>{(author?.name ?? "M")[0]}</AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium">{author?.name ?? "Member"}</div>
-                    <p className="text-sm whitespace-pre-wrap">{p.content}</p>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="text-sm font-medium">{author?.name ?? "Member"}</div>
+                      {mine && editingId !== p.id && (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            aria-label="Edit post"
+                            onClick={() => {
+                              setEditingId(p.id);
+                              setEditDraft(p.content);
+                            }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-destructive"
+                            aria-label="Delete post"
+                            onClick={() => removePost(p.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    {editingId === p.id ? (
+                      <div className="space-y-2 mt-1">
+                        <Textarea
+                          rows={3}
+                          value={editDraft}
+                          onChange={(e) => setEditDraft(e.target.value)}
+                        />
+                        <div className="flex gap-2">
+                          <Button size="sm" disabled={busy} onClick={() => saveEdit(p.id)}>
+                            <Check className="h-4 w-4 mr-1" /> Save
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
+                            <X className="h-4 w-4 mr-1" /> Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap">{p.content}</p>
+                    )}
                     <div className="mt-2 flex flex-wrap gap-3 text-xs">
                       <button
                         className="text-muted-foreground hover:text-foreground"
@@ -167,10 +212,53 @@ export function FounderRooms() {
                 {repliesOf(p.id).map((r) => (
                   <div key={r.id} className="ml-11 flex items-start gap-2 text-sm">
                     <CornerDownRight className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
-                    <div>
-                      <span className="font-medium">{names[r.author_id]?.name ?? "Member"}</span>{" "}
-                      <span className="whitespace-pre-wrap">{r.content}</span>
-                    </div>
+                    {editingId === r.id ? (
+                      <div className="flex-1 space-y-2">
+                        <Textarea
+                          rows={2}
+                          value={editDraft}
+                          onChange={(e) => setEditDraft(e.target.value)}
+                        />
+                        <div className="flex gap-2">
+                          <Button size="sm" disabled={busy} onClick={() => saveEdit(r.id)}>
+                            Save
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex-1">
+                        <span className="font-medium">{names[r.author_id]?.name ?? "Member"}</span>{" "}
+                        <span className="whitespace-pre-wrap">{r.content}</span>
+                      </div>
+                    )}
+                    {r.author_id === user?.id && editingId !== r.id && (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          aria-label="Edit reply"
+                          onClick={() => {
+                            setEditingId(r.id);
+                            setEditDraft(r.content);
+                          }}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6 text-destructive"
+                          aria-label="Delete reply"
+                          onClick={() => removePost(r.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))}
 
