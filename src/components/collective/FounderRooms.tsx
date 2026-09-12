@@ -5,13 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { CornerDownRight, Rocket, Loader2 } from "lucide-react";
+import { CornerDownRight, Rocket, Loader2, Pencil, Trash2, X, Check } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   ROOMS,
   createRoomPost,
+  deleteRoomPost,
   fetchProfileNames,
   fetchRoomPosts,
+  updateRoomPost,
 } from "@/lib/collective";
 
 export function FounderRooms() {
