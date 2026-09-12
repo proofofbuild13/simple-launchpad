@@ -5,17 +5,20 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { CalendarDays, Users, Plus, Loader2 } from "lucide-react";
+import { CalendarDays, Users, Plus, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   createCommunityChallenge,
+  deleteCommunityChallenge,
   fetchActiveCommunityChallenge,
   fetchCommunitySubmissionCount,
   submitToCommunityChallenge,
+  updateCommunityChallenge,
 } from "@/lib/collective";
 
 export function WeeklyChallengeCard() {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
+  const [editing, setEditing] = useState(false);
   const [challenge, setChallenge] = useState<any>(null);
   const [count, setCount] = useState(0);
   const [open, setOpen] = useState(false);
@@ -58,6 +61,45 @@ export function WeeklyChallengeCard() {
     setCreating(false);
     setNewTitle("");
     setNewDesc("");
+    refresh();
+  };
+
+  const startEdit = () => {
+    setNewTitle(challenge.title ?? "");
+    setNewDesc(challenge.description ?? "");
+    setNewStart(challenge.start_date);
+    setNewEnd(challenge.end_date);
+    setEditing(true);
+  };
+
+  const saveEdit = async () => {
+    if (!newTitle.trim()) return;
+    setBusy(true);
+    const { error } = await updateCommunityChallenge(challenge.id, {
+      title: newTitle.trim(),
+      description: newDesc.trim(),
+      start_date: newStart,
+      end_date: newEnd,
+    });
+    setBusy(false);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    toast.success("Challenge updated");
+    setEditing(false);
+    refresh();
+  };
+
+  const removeChallenge = async () => {
+    if (!window.confirm("Delete this challenge? This cannot be undone.")) return;
+    const { error } = await deleteCommunityChallenge(challenge.id);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    toast.success("Challenge deleted");
+    setChallenge(null);
     refresh();
   };
 
@@ -126,16 +168,59 @@ export function WeeklyChallengeCard() {
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">This week</CardTitle>
-          <Badge variant="outline">Reputation only</Badge>
+          <div className="flex items-center gap-1">
+            <Badge variant="outline">Reputation only</Badge>
+            {challenge.created_by === user?.id && !editing && (
+              <>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7"
+                  aria-label="Edit challenge"
+                  onClick={startEdit}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7 text-destructive"
+                  aria-label="Delete challenge"
+                  onClick={removeChallenge}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div>
-          <h3 className="font-semibold leading-tight">{challenge.title}</h3>
-          {challenge.description && (
-            <p className="text-sm text-muted-foreground mt-1">{challenge.description}</p>
-          )}
-        </div>
+        {editing ? (
+          <div className="space-y-2">
+            <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
+            <Textarea rows={2} value={newDesc} onChange={(e) => setNewDesc(e.target.value)} />
+            <div className="grid grid-cols-2 gap-2">
+              <Input type="date" value={newStart} onChange={(e) => setNewStart(e.target.value)} />
+              <Input type="date" value={newEnd} onChange={(e) => setNewEnd(e.target.value)} />
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" disabled={busy || !newTitle.trim()} onClick={saveEdit}>
+                {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Save changes
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <h3 className="font-semibold leading-tight">{challenge.title}</h3>
+            {challenge.description && (
+              <p className="text-sm text-muted-foreground mt-1">{challenge.description}</p>
+            )}
+          </div>
+        )}
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <CalendarDays className="h-3 w-3" />
