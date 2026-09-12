@@ -26,6 +26,8 @@ export function FounderRooms() {
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyDraft, setReplyDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
 
   const load = async (roomId: string) => {
     const rows = await fetchRoomPosts(roomId);
