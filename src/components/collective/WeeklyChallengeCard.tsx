@@ -64,6 +64,45 @@ export function WeeklyChallengeCard() {
     refresh();
   };
 
+  const startEdit = () => {
+    setNewTitle(challenge.title ?? "");
+    setNewDesc(challenge.description ?? "");
+    setNewStart(challenge.start_date);
+    setNewEnd(challenge.end_date);
+    setEditing(true);
+  };
+
+  const saveEdit = async () => {
+    if (!newTitle.trim()) return;
+    setBusy(true);
+    const { error } = await updateCommunityChallenge(challenge.id, {
+      title: newTitle.trim(),
+      description: newDesc.trim(),
+      start_date: newStart,
+      end_date: newEnd,
+    });
+    setBusy(false);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    toast.success("Challenge updated");
+    setEditing(false);
+    refresh();
+  };
+
+  const removeChallenge = async () => {
+    if (!window.confirm("Delete this challenge? This cannot be undone.")) return;
+    const { error } = await deleteCommunityChallenge(challenge.id);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    toast.success("Challenge deleted");
+    setChallenge(null);
+    refresh();
+  };
+
   const createBlock = creating ? (
     <div className="space-y-2">
       <Input
