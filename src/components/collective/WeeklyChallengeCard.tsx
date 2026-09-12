@@ -17,7 +17,8 @@ import {
 } from "@/lib/collective";
 
 export function WeeklyChallengeCard() {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
+  const [editing, setEditing] = useState(false);
   const [challenge, setChallenge] = useState<any>(null);
   const [count, setCount] = useState(0);
   const [open, setOpen] = useState(false);
