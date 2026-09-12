@@ -5,13 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { CalendarDays, Users, Plus, Loader2 } from "lucide-react";
+import { CalendarDays, Users, Plus, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   createCommunityChallenge,
+  deleteCommunityChallenge,
   fetchActiveCommunityChallenge,
   fetchCommunitySubmissionCount,
   submitToCommunityChallenge,
+  updateCommunityChallenge,
 } from "@/lib/collective";
 
 export function WeeklyChallengeCard() {
