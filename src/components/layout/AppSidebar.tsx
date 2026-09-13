@@ -41,7 +41,6 @@ const builderItems: Item[] = [
   { title: "Browse", url: "/browse", icon: Search },
   { title: "Deals", url: "/deals", icon: Handshake },
   { title: "Collective", url: "/collective", icon: Users2 },
-  { title: "Profile", url: "/profile", icon: User },
 ];
 
 const adminItems: Item[] = [
