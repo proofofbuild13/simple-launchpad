@@ -11,6 +11,11 @@ export const ROOMS = [
   { id: "rwa", label: "RWA Tokenization" },
 ] as const;
 
+export const ROOM_FILTERS = [
+  { id: "all", label: "All" },
+  ...ROOMS,
+] as const;
+
 export type ProofFeedItem = {
   submission_id: string;
   submission_title: string;
@@ -37,11 +42,11 @@ export async function fetchProofFeed(category: ProofCategory) {
 }
 
 export async function fetchRoomPosts(roomId: string) {
-  const { data, error } = await supabase
-    .from("room_posts" as any)
-    .select("*")
-    .eq("room_id", roomId)
-    .order("created_at", { ascending: true });
+  let query = supabase.from("room_posts" as any).select("*");
+  if (roomId && roomId !== "all") {
+    query = query.eq("room_id", roomId);
+  }
+  const { data, error } = await query.order("created_at", { ascending: true });
   if (error) {
     console.error("fetchRoomPosts", error);
     return [] as any[];

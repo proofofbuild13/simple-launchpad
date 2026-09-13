@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
@@ -9,17 +10,20 @@ import { CornerDownRight, Rocket, Loader2, Pencil, Trash2, X, Check } from "luci
 import { useAuth } from "@/contexts/AuthContext";
 import {
   ROOMS,
+  ROOM_FILTERS,
   createRoomPost,
   deleteRoomPost,
   fetchProfileNames,
   fetchRoomPosts,
   updateRoomPost,
 } from "@/lib/collective";
+import { CardEngagementBar } from "./CardEngagementBar";
 
 export function FounderRooms() {
   const { user, role } = useAuth();
   const navigate = useNavigate();
-  const [room, setRoom] = useState<string>(ROOMS[0].id);
+  const [room, setRoom] = useState<string>("all");
+  const [postRoom, setPostRoom] = useState<string>(ROOMS[0].id);
   const [posts, setPosts] = useState<any[]>([]);
   const [names, setNames] = useState<Record<string, { name: string; avatar: string | null }>>({});
   const [draft, setDraft] = useState("");
@@ -42,7 +46,10 @@ export function FounderRooms() {
   const post = async (content: string, parentId: string | null) => {
     if (!content.trim()) return;
     setBusy(true);
-    const created = await createRoomPost(room, content.trim(), parentId);
+    const targetRoom = parentId
+      ? posts.find((p) => p.id === parentId)?.room_id ?? (room === "all" ? postRoom : room)
+      : (room === "all" ? postRoom : room);
+    const created = await createRoomPost(targetRoom, content.trim(), parentId);
     setBusy(false);
     if (!created) {
       toast.error("Could not post. Try again.");
@@ -83,13 +90,15 @@ export function FounderRooms() {
   const repliesOf = (id: string) => posts.filter((p) => p.parent_id === id);
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[220px_1fr]">
-      <div className="flex lg:flex-col gap-2 overflow-x-auto">
-        {ROOMS.map((r) => (
+    <div className="space-y-6">
+      {/* Horizontal room buttons at the top */}
+      <div className="flex flex-wrap items-center gap-2">
+        {ROOM_FILTERS.map((r) => (
           <Button
             key={r.id}
-            variant={room === r.id ? "secondary" : "ghost"}
-            className="justify-start shrink-0"
+            size="sm"
+            variant={room === r.id ? "default" : "outline"}
+            className="rounded-full shrink-0"
             onClick={() => setRoom(r.id)}
           >
             {r.label}
@@ -100,13 +109,48 @@ export function FounderRooms() {
       <div className="space-y-4">
         <Card>
           <CardContent className="p-4 space-y-3">
+            {room === "all" && (
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span>Room:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {ROOMS.map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => setPostRoom(r.id)}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                        postRoom === r.id
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                      }`}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <Textarea
-              placeholder={`Share something with the ${ROOMS.find((r) => r.id === room)?.label} room…`}
+              placeholder={
+                room === "all"
+                  ? `Share something with the ${ROOMS.find((r) => r.id === postRoom)?.label ?? "DeFi"} room…`
+                  : `Share something with the ${ROOMS.find((r) => r.id === room)?.label} room…`
+              }
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               rows={3}
             />
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-muted-foreground">
+                {room !== "all" && (
+                  <span>
+                    Posting to{" "}
+                    <span className="font-medium text-foreground">
+                      {ROOMS.find((r) => r.id === room)?.label}
+                    </span>
+                  </span>
+                )}
+              </div>
               <Button size="sm" disabled={busy || !draft.trim()} onClick={() => post(draft, null)}>
                 {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Post
               </Button>
@@ -121,93 +165,104 @@ export function FounderRooms() {
         {roots.map((p) => {
           const author = names[p.author_id];
           const mine = p.author_id === user?.id;
+          const replyCount = repliesOf(p.id).length;
           return (
             <Card key={p.id}>
               <CardContent className="p-5 space-y-3">
-                <div className="flex items-start gap-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={author?.avatar ?? undefined} />
-                    <AvatarFallback>{(author?.name ?? "M")[0]}</AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="text-sm font-medium">{author?.name ?? "Member"}</div>
-                      {mine && editingId !== p.id && (
-                        <div className="flex items-center gap-1">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7"
-                            aria-label="Edit post"
-                            onClick={() => {
-                              setEditingId(p.id);
-                              setEditDraft(p.content);
-                            }}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 text-destructive"
-                            aria-label="Delete post"
-                            onClick={() => removePost(p.id)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                    {editingId === p.id ? (
-                      <div className="space-y-2 mt-1">
-                        <Textarea
-                          rows={3}
-                          value={editDraft}
-                          onChange={(e) => setEditDraft(e.target.value)}
-                        />
-                        <div className="flex gap-2">
-                          <Button size="sm" disabled={busy} onClick={() => saveEdit(p.id)}>
-                            <Check className="h-4 w-4 mr-1" /> Save
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
-                            <X className="h-4 w-4 mr-1" /> Cancel
-                          </Button>
-                        </div>
+                {/* Header: avatar + name + room badge + engagement bar */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <Avatar className="h-8 w-8 shrink-0">
+                      <AvatarImage src={author?.avatar ?? undefined} />
+                      <AvatarFallback>{(author?.name ?? "M")[0]}</AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="text-sm font-medium">{author?.name ?? "Member"}</div>
+                        {p.room_id && (
+                          <Badge variant="secondary" className="text-[11px] font-normal px-2 py-0">
+                            {ROOMS.find((r) => r.id === p.room_id)?.label ?? p.room_id}
+                          </Badge>
+                        )}
+                        <span className="text-[11px] text-muted-foreground">
+                          {new Date(p.created_at).toLocaleDateString()}
+                        </span>
                       </div>
-                    ) : (
-                      <p className="text-sm whitespace-pre-wrap">{p.content}</p>
-                    )}
-                    <div className="mt-2 flex flex-wrap gap-3 text-xs">
-                      <button
-                        className="text-muted-foreground hover:text-foreground"
-                        onClick={() => setReplyTo(replyTo === p.id ? null : p.id)}
-                      >
-                        Reply
-                      </button>
-                      {mine && role === "startup" && (
-                        <button
-                          className="inline-flex items-center gap-1 text-primary hover:underline"
-                          onClick={() =>
-                            navigate("/projects/new", {
-                              state: {
-                                prefill: {
-                                  short_description: p.content.slice(0, 160),
-                                  description: p.content,
-                                  category: ROOMS.find((r) => r.id === room)?.label,
-                                },
-                              },
-                            })
-                          }
-                        >
-                          <Rocket className="h-3 w-3" /> Convert to challenge
-                        </button>
-                      )}
-                      <span className="text-muted-foreground">
-                        {new Date(p.created_at).toLocaleDateString()}
-                      </span>
                     </div>
                   </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <CardEngagementBar
+                      replyCount={replyCount}
+                      onReply={() => setReplyTo(replyTo === p.id ? null : p.id)}
+                    />
+                    {mine && editingId !== p.id && (
+                      <>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          aria-label="Edit post"
+                          onClick={() => {
+                            setEditingId(p.id);
+                            setEditDraft(p.content);
+                          }}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-destructive"
+                          aria-label="Delete post"
+                          onClick={() => removePost(p.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
+
+                {/* Content / edit form */}
+                {editingId === p.id ? (
+                  <div className="space-y-2 mt-1">
+                    <Textarea
+                      rows={3}
+                      value={editDraft}
+                      onChange={(e) => setEditDraft(e.target.value)}
+                    />
+                    <div className="flex gap-2">
+                      <Button size="sm" disabled={busy} onClick={() => saveEdit(p.id)}>
+                        <Check className="h-4 w-4 mr-1" /> Save
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
+                        <X className="h-4 w-4 mr-1" /> Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm whitespace-pre-wrap">{p.content}</p>
+                )}
+
+                {/* Convert to challenge */}
+                {mine && role === "startup" && (
+                  <button
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                    onClick={() =>
+                      navigate("/projects/new", {
+                        state: {
+                          prefill: {
+                            short_description: p.content.slice(0, 160),
+                            description: p.content,
+                            category: ROOMS.find((r) => r.id === (p.room_id || room))?.label,
+                          },
+                        },
+                      })
+                    }
+                  >
+                    <Rocket className="h-3 w-3" /> Convert to challenge
+                  </button>
+                )}
 
                 {repliesOf(p.id).map((r) => (
                   <div key={r.id} className="ml-11 flex items-start gap-2 text-sm">

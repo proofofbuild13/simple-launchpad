@@ -12,6 +12,7 @@ import {
   fetchProofFeed,
 } from "@/lib/collective";
 import { HelpCircle, Rocket } from "lucide-react";
+import { CardEngagementBar } from "./CardEngagementBar";
 
 const GUIDE_STEPS = [
   {
@@ -131,35 +132,42 @@ export function ProofFeed() {
           {items.map((it) => (
             <Card key={it.submission_id} className="hover:shadow-sm transition-shadow">
               <CardContent className="p-5">
-                <div className="flex items-start gap-3">
-                  <Avatar className="h-9 w-9">
-                    <AvatarImage src={it.builder_avatar ?? undefined} alt={it.builder_name} />
-                    <AvatarFallback>{it.builder_name[0]?.toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium">{it.builder_name}</span>
-                      <span className="text-xs text-muted-foreground">shipped</span>
-                      {it.category && (
-                        <Badge variant="outline" className="text-[10px] uppercase">
-                          {it.category}
-                        </Badge>
-                      )}
-                    </div>
-                    <h3 className="mt-1 font-semibold leading-tight">{it.project_title}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {it.summary || it.submission_title}
-                    </p>
-                    <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
-                      <span>{new Date(it.created_at).toLocaleDateString()}</span>
-                      <Link
-                        to={`/submissions/${it.submission_id}`}
-                        className="text-foreground hover:underline"
-                      >
-                        View submission
-                      </Link>
+                {/* Engagement bar — top right */}
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <Avatar className="h-9 w-9 shrink-0">
+                      <AvatarImage src={it.builder_avatar ?? undefined} alt={it.builder_name} />
+                      <AvatarFallback>{it.builder_name[0]?.toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium">{it.builder_name}</span>
+                        <span className="text-xs text-muted-foreground">shipped</span>
+                        {it.category && (
+                          <Badge variant="outline" className="text-[10px] uppercase">
+                            {it.category}
+                          </Badge>
+                        )}
+                      </div>
+                      <h3 className="mt-1 font-semibold leading-tight">{it.project_title}</h3>
                     </div>
                   </div>
+                  <CardEngagementBar
+                    shareUrl={`${window.location.origin}/submissions/${it.submission_id}`}
+                    className="shrink-0"
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground line-clamp-2 pl-12">
+                  {it.summary || it.submission_title}
+                </p>
+                <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground pl-12">
+                  <span>{new Date(it.created_at).toLocaleDateString()}</span>
+                  <Link
+                    to={`/submissions/${it.submission_id}`}
+                    className="text-foreground hover:underline"
+                  >
+                    View submission →
+                  </Link>
                 </div>
               </CardContent>
             </Card>

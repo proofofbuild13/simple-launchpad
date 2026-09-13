@@ -3,9 +3,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProofFeed } from "@/components/collective/ProofFeed";
 import { FounderRooms } from "@/components/collective/FounderRooms";
 import { WeeklyChallengeCard } from "@/components/collective/WeeklyChallengeCard";
-import { MessageCircle, Radio, Sparkles } from "lucide-react";
+import { SuperFeed } from "@/components/collective/SuperFeed";
+import { MessageCircle, Radio, Sparkles, LayoutGrid } from "lucide-react";
 
 const sections = [
+  { value: "super", label: "Super Feed", icon: LayoutGrid },
   { value: "feed", label: "Proof feed", icon: Radio },
   { value: "rooms", label: "Founder rooms", icon: MessageCircle },
   { value: "weekly", label: "Weekly challenge", icon: Sparkles },
@@ -22,7 +24,7 @@ export default function Collective() {
         />
       </Helmet>
 
-      <Tabs defaultValue="feed" className="mt-1">
+      <Tabs defaultValue="super" className="mt-1">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-border/80 pb-3">
           <h1 className="collective-heading text-2xl font-semibold">Collective</h1>
           <TabsList className="h-10 justify-start gap-1 rounded-full border bg-muted/40 p-1">
@@ -39,6 +41,12 @@ export default function Collective() {
           </TabsList>
         </div>
 
+        {/* ── Super Feed ── */}
+        <TabsContent value="super" className="m-0 mt-6 min-w-0">
+          <SuperFeed />
+        </TabsContent>
+
+        {/* ── Proof Feed ── */}
         <TabsContent value="feed" className="m-0 mt-6 min-w-0">
           <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
             <ProofFeed />
@@ -48,10 +56,12 @@ export default function Collective() {
           </div>
         </TabsContent>
 
+        {/* ── Founder Rooms ── */}
         <TabsContent value="rooms" className="m-0 mt-6 min-w-0">
           <FounderRooms />
         </TabsContent>
 
+        {/* ── Weekly Challenge ── */}
         <TabsContent value="weekly" className="m-0 mt-6 min-w-0 max-w-2xl">
           <WeeklyChallengeCard />
         </TabsContent>
