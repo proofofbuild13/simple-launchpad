@@ -11,8 +11,29 @@ import {
   ProofFeedItem,
   fetchProofFeed,
 } from "@/lib/collective";
+import { HelpCircle, Rocket } from "lucide-react";
+
+const GUIDE_STEPS = [
+  {
+    title: "Pick a challenge or project",
+    body: "Browse open projects and choose one that fits what you can ship.",
+  },
+  {
+    title: "Build and submit your work",
+    body: "Add your demo link, repo and a short write-up in the submission form.",
+  },
+  {
+    title: "Get reviewed",
+    body: "Your submission is scored automatically and the founder reviews it.",
+  },
+  {
+    title: "Marked complete, posted to the feed",
+    body: "Once the founder accepts or completes it, your build shows up here for everyone.",
+  },
+];
 
 export function ProofFeed() {
+  const [guide, setGuide] = useState(false);
   const [cat, setCat] = useState<ProofCategory>("All");
   const [items, setItems] = useState<ProofFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
