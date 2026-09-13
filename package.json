@@ -4,19 +4,19 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "predev": "bunx tsx scripts/generate-sitemap.ts",
+    "predev": "tsx scripts/generate-sitemap.ts",
     "dev": "vite",
-    "prebuild": "bunx tsx scripts/generate-sitemap.ts",
+    "prebuild": "tsx scripts/generate-sitemap.ts",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "predeploy": "bunx tsx scripts/check-security-findings.ts && bunx tsx scripts/check-policies.ts && bunx tsx scripts/generate-security-report.ts",
-    "check:security": "bunx tsx scripts/check-security-findings.ts",
-    "check:policies": "bunx tsx scripts/check-policies.ts",
-    "report:security": "bunx tsx scripts/generate-security-report.ts"
+    "predeploy": "tsx scripts/check-security-findings.ts && tsx scripts/check-policies.ts && tsx scripts/generate-security-report.ts",
+    "check:security": "tsx scripts/check-security-findings.ts",
+    "check:policies": "tsx scripts/check-policies.ts",
+    "report:security": "tsx scripts/generate-security-report.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "3.10.0",
@@ -93,9 +93,14 @@
     "postcss": "8.5.6",
     "supabase": "2.100.0",
     "tailwindcss": "3.4.17",
+    "tsx": "^4.23.13",
     "typescript": "5.8.3",
     "typescript-eslint": "8.38.0",
     "vite": "7.0.0",
     "vitest": "3.2.4"
+  },
+  "allowScripts": {
+    "@swc/core@1.15.33": true,
+    "esbuild@0.28.2": true
   }
 }
