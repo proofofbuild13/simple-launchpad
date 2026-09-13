@@ -1,4 +1,18 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@font-face { font-family: 'DM Sans'; src: url('./assets/fonts/dm-sans-400.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'DM Sans'; src: url('./assets/fonts/dm-sans-500.ttf') format('truetype'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'DM Sans'; src: url('./assets/fonts/dm-sans-600.ttf') format('truetype'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Space Grotesk'; src: url('./assets/fonts/space-grotesk-500.ttf') format('truetype'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Space Grotesk'; src: url('./assets/fonts/space-grotesk-600.ttf') format('truetype'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Fraunces'; src: url('./assets/fonts/fraunces-300.ttf') format('truetype'); font-weight: 300; font-display: swap; }
+@font-face { font-family: 'Fraunces'; src: url('./assets/fonts/fraunces-400.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Fraunces'; src: url('./assets/fonts/fraunces-500.ttf') format('truetype'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Fraunces'; src: url('./assets/fonts/fraunces-600.ttf') format('truetype'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Inter Tight'; src: url('./assets/fonts/inter-tight-400.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Inter Tight'; src: url('./assets/fonts/inter-tight-500.ttf') format('truetype'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Inter Tight'; src: url('./assets/fonts/inter-tight-600.ttf') format('truetype'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Inter Tight'; src: url('./assets/fonts/inter-tight-700.ttf') format('truetype'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'JetBrains Mono'; src: url('./assets/fonts/jetbrains-mono-400.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'JetBrains Mono'; src: url('./assets/fonts/jetbrains-mono-500.ttf') format('truetype'); font-weight: 500; font-display: swap; }
 
 @tailwind base;
 @tailwind components;
@@ -113,6 +127,17 @@
     letter-spacing: -0.02em;
   }
   .font-mono { font-family: 'JetBrains Mono', monospace; }
+  .collective-shell {
+    --primary: 173 80% 24%;
+    --ring: 173 80% 24%;
+    font-family: 'DM Sans', system-ui, sans-serif;
+  }
+  .collective-shell .collective-heading,
+  .collective-shell h2,
+  .collective-shell h3 {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    letter-spacing: 0;
+  }
 }
 
 @layer utilities {
