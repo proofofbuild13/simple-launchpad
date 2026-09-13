@@ -1,4 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@font-face { font-family: 'DM Sans'; src: url('./assets/fonts/dm-sans-400.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'DM Sans'; src: url('./assets/fonts/dm-sans-500.ttf') format('truetype'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'DM Sans'; src: url('./assets/fonts/dm-sans-600.ttf') format('truetype'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Space Grotesk'; src: url('./assets/fonts/space-grotesk-500.ttf') format('truetype'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Space Grotesk'; src: url('./assets/fonts/space-grotesk-600.ttf') format('truetype'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Fraunces'; src: local('Georgia'); font-weight: 300 600; }
+@font-face { font-family: 'Inter Tight'; src: local('Arial'); font-weight: 400 700; }
+@font-face { font-family: 'JetBrains Mono'; src: local('Courier New'); font-weight: 400 500; }
 
 @tailwind base;
 @tailwind components;
@@ -113,6 +120,8 @@
     letter-spacing: -0.02em;
   }
   .font-mono { font-family: 'JetBrains Mono', monospace; }
+  .collective-shell { font-family: 'DM Sans', system-ui, sans-serif; }
+  .collective-shell .collective-heading { font-family: 'Space Grotesk', system-ui, sans-serif; letter-spacing: 0; }
 }
 
 @layer utilities {
