@@ -10,7 +10,7 @@ import {
   Wallet,
   Users as UsersIcon,
   ScrollText,
-  User,
+  
   Users2,
 } from "lucide-react";
 import {
