@@ -11,8 +11,29 @@ import {
   ProofFeedItem,
   fetchProofFeed,
 } from "@/lib/collective";
+import { HelpCircle, Rocket } from "lucide-react";
+
+const GUIDE_STEPS = [
+  {
+    title: "Pick a challenge or project",
+    body: "Browse open projects and choose one that fits what you can ship.",
+  },
+  {
+    title: "Build and submit your work",
+    body: "Add your demo link, repo and a short write-up in the submission form.",
+  },
+  {
+    title: "Get reviewed",
+    body: "Your submission is scored automatically and the founder reviews it.",
+  },
+  {
+    title: "Marked complete, posted to the feed",
+    body: "Once the founder accepts or completes it, your build shows up here for everyone.",
+  },
+];
 
 export function ProofFeed() {
+  const [guide, setGuide] = useState(false);
   const [cat, setCat] = useState<ProofCategory>("All");
   const [items, setItems] = useState<ProofFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +53,54 @@ export function ProofFeed() {
 
   return (
     <div className="space-y-4">
+      <Card className="border-dashed">
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold">Shipped something? Put it on the feed.</h2>
+            <p className="text-xs text-muted-foreground">
+              Completed builds appear here automatically once your work is marked complete.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild size="sm">
+              <Link to="/browse">
+                <Rocket className="mr-2 h-4 w-4" /> Post a completed build
+              </Link>
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setGuide((g) => !g)}>
+              <HelpCircle className="mr-2 h-4 w-4" /> How it works
+            </Button>
+          </div>
+        </CardContent>
+        {guide && (
+          <CardContent className="border-t pt-4">
+            <ol className="space-y-3 text-sm">
+              {GUIDE_STEPS.map((s, i) => (
+                <li key={s.title} className="flex gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">
+                    {i + 1}
+                  </span>
+                  <span>
+                    <span className="block font-medium">{s.title}</span>
+                    <span className="block text-muted-foreground">{s.body}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button asChild size="sm" variant="secondary">
+                <Link to="/browse">Find a challenge</Link>
+              </Button>
+              <Button asChild size="sm" variant="ghost">
+                <Link to="/submissions">My submissions</Link>
+              </Button>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
       <div className="flex flex-wrap gap-2">
+
         {PROOF_CATEGORIES.map((c) => (
           <Button
             key={c}
