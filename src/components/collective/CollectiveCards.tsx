@@ -40,6 +40,8 @@ export interface ProjectCardProps {
   subLoading?: boolean;
   isLiked?: boolean;
   isSaved?: boolean;
+  likeCount?: number;
+  commentCount?: number;
   onLikeToggle?: () => Promise<boolean | void> | void;
   onSaveToggle?: () => Promise<boolean | void> | void;
 }
@@ -51,6 +53,8 @@ export function ProjectFeedCard({
   subLoading = false,
   isLiked = false,
   isSaved = false,
+  likeCount = 0,
+  commentCount = 0,
   onLikeToggle,
   onSaveToggle,
 }: ProjectCardProps) {
@@ -169,12 +173,14 @@ export function ProjectFeedCard({
         <CardEngagementBar
           shareUrl={`${window.location.origin}/projects/${item.id}`}
           shareTitle={item.title}
-          initialLikes={item.like_count ?? 0}
+          initialLikes={likeCount}
+          commentCount={commentCount}
+          entityType="project"
+          entityId={item.id}
           isLiked={isLiked}
           isSaved={isSaved}
           onLikeToggle={onLikeToggle}
           onSaveToggle={onSaveToggle}
-          commentStubMessage="Commenting on projects will be available in the next release."
         />
       </CardContent>
     </Card>
@@ -192,6 +198,8 @@ export interface RoomCardProps {
   replyCount?: number;
   isLiked?: boolean;
   isSaved?: boolean;
+  likeCount?: number;
+  commentCount?: number;
   onLikeToggle?: () => Promise<boolean | void> | void;
   onSaveToggle?: () => Promise<boolean | void> | void;
   onReply?: () => void;
@@ -205,6 +213,8 @@ export function RoomFeedCard({
   replyCount = 0,
   isLiked = false,
   isSaved = false,
+  likeCount = 0,
+  commentCount = 0,
   onLikeToggle,
   onSaveToggle,
   onReply,
@@ -302,13 +312,14 @@ export function RoomFeedCard({
         <CardEngagementBar
           shareUrl={`${window.location.origin}/collective?tab=rooms`}
           shareTitle={`Discussion by ${authorName} in ${roomLabel}`}
-          initialLikes={item.like_count ?? 0}
-          commentCount={replyCount}
+          initialLikes={likeCount}
+          commentCount={commentCount}
+          entityType="room_post"
+          entityId={item.id}
           isLiked={isLiked}
           isSaved={isSaved}
           onLikeToggle={onLikeToggle}
           onSaveToggle={onSaveToggle}
-          onComment={onReply}
         />
       </CardContent>
     </Card>
