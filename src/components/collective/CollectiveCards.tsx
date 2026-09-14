@@ -173,12 +173,14 @@ export function ProjectFeedCard({
         <CardEngagementBar
           shareUrl={`${window.location.origin}/projects/${item.id}`}
           shareTitle={item.title}
-          initialLikes={item.like_count ?? 0}
+          initialLikes={likeCount}
+          commentCount={commentCount}
+          entityType="project"
+          entityId={item.id}
           isLiked={isLiked}
           isSaved={isSaved}
           onLikeToggle={onLikeToggle}
           onSaveToggle={onSaveToggle}
-          commentStubMessage="Commenting on projects will be available in the next release."
         />
       </CardContent>
     </Card>
@@ -196,6 +198,8 @@ export interface RoomCardProps {
   replyCount?: number;
   isLiked?: boolean;
   isSaved?: boolean;
+  likeCount?: number;
+  commentCount?: number;
   onLikeToggle?: () => Promise<boolean | void> | void;
   onSaveToggle?: () => Promise<boolean | void> | void;
   onReply?: () => void;
@@ -209,6 +213,8 @@ export function RoomFeedCard({
   replyCount = 0,
   isLiked = false,
   isSaved = false,
+  likeCount = 0,
+  commentCount = 0,
   onLikeToggle,
   onSaveToggle,
   onReply,
