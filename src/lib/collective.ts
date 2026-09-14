@@ -279,6 +279,97 @@ export async function toggleEngagement(
   }
 }
 
+export interface CollectiveComment {
+  id: string;
+  user_id: string;
+  entity_id: string;
+  content: string;
+  created_at: string;
+  author_name: string;
+  author_avatar: string | null;
+}
+
+export async function fetchComments(
+  entityType: EngagementEntityType,
+  entityId: string,
+): Promise<CollectiveComment[]> {
+  const { data, error } = await supabase
+    .from("collective_comments" as any)
+    .select("id, user_id, entity_id, content, created_at")
+    .eq("entity_type", entityType)
+    .eq("entity_id", entityId)
+    .order("created_at", { ascending: true });
+
+  if (error || !data) {
+    if (error) console.warn("fetchComments", error);
+    return [];
+  }
+
+  const rows = data as any[];
+  const names = await fetchProfileNames([...new Set(rows.map((r) => r.user_id))] as string[]);
+  return rows.map((r) => ({
+    id: r.id,
+    user_id: r.user_id,
+    entity_id: r.entity_id,
+    content: r.content,
+    created_at: r.created_at,
+    author_name: names[r.user_id]?.name ?? "Member",
+    author_avatar: names[r.user_id]?.avatar ?? null,
+  }));
+}
+
+export async function addComment(
+  entityType: EngagementEntityType,
+  entityId: string,
+  content: string,
+): Promise<{ error: string | null }> {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { error: "Sign in to comment" };
+  const { error } = await supabase.from("collective_comments" as any).insert({
+    entity_type: entityType,
+    entity_id: entityId,
+    user_id: auth.user.id,
+    content,
+  } as any);
+  return { error: error?.message ?? null };
+}
+
+export async function deleteComment(id: string): Promise<{ error: string | null }> {
+  const { error } = await supabase.from("collective_comments" as any).delete().eq("id", id);
+  return { error: error?.message ?? null };
+}
+
+export interface EngagementCounts {
+  likes: Record<string, number>;
+  comments: Record<string, number>;
+}
+
+export async function fetchEngagementCounts(entityIds: string[]): Promise<EngagementCounts> {
+  const counts: EngagementCounts = { likes: {}, comments: {} };
+  if (!entityIds.length) return counts;
+
+  const [likeRes, commentRes] = await Promise.all([
+    supabase
+      .from("engagements" as any)
+      .select("entity_id")
+      .eq("action", "like")
+      .in("entity_id", entityIds),
+    supabase
+      .from("collective_comments" as any)
+      .select("entity_id")
+      .in("entity_id", entityIds),
+  ]);
+
+  (likeRes.data ?? []).forEach((r: any) => {
+    counts.likes[r.entity_id] = (counts.likes[r.entity_id] ?? 0) + 1;
+  });
+  (commentRes.data ?? []).forEach((r: any) => {
+    counts.comments[r.entity_id] = (counts.comments[r.entity_id] ?? 0) + 1;
+  });
+
+  return counts;
+}
+
 export async function updateUserPerspective(perspective: "builder" | "founder") {
   try {
     const { error } = await supabase.auth.updateUser({
