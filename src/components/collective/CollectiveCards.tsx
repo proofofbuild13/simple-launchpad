@@ -40,6 +40,8 @@ export interface ProjectCardProps {
   subLoading?: boolean;
   isLiked?: boolean;
   isSaved?: boolean;
+  likeCount?: number;
+  commentCount?: number;
   onLikeToggle?: () => Promise<boolean | void> | void;
   onSaveToggle?: () => Promise<boolean | void> | void;
 }
@@ -51,6 +53,8 @@ export function ProjectFeedCard({
   subLoading = false,
   isLiked = false,
   isSaved = false,
+  likeCount = 0,
+  commentCount = 0,
   onLikeToggle,
   onSaveToggle,
 }: ProjectCardProps) {
