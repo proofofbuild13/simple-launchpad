@@ -1,8 +1,19 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Heart, MessageCircle, Share2, Bookmark } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Heart, MessageCircle, Share2, Bookmark, Loader2, Trash2 } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  CollectiveComment,
+  EngagementEntityType,
+  addComment,
+  deleteComment,
+  fetchComments,
+} from "@/lib/collective";
 
 export interface CardEngagementBarProps {
   /** Target permalink or link to share. Defaults to window.location.href */
