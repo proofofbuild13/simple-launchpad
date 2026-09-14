@@ -168,3 +168,126 @@ export async function fetchProfileNames(ids: string[]) {
   });
   return map;
 }
+
+export type EngagementEntityType = "project" | "room_post" | "proof" | "challenge";
+export type EngagementAction = "like" | "save";
+
+export interface UserEngagements {
+  likes: Set<string>;
+  saves: Set<string>;
+}
+
+export async function fetchUserEngagements(userId: string): Promise<UserEngagements> {
+  const result: UserEngagements = {
+    likes: new Set<string>(),
+    saves: new Set<string>(),
+  };
+  if (!userId) return result;
+
+  try {
+    const { data, error } = await supabase
+      .from("engagements" as any)
+      .select("entity_id, action")
+      .eq("user_id", userId);
+
+    if (!error && data) {
+      data.forEach((row: any) => {
+        if (row.action === "like") result.likes.add(row.entity_id);
+        if (row.action === "save") result.saves.add(row.entity_id);
+      });
+    }
+  } catch (err) {
+    console.warn("Could not fetch engagements:", err);
+  }
+
+  // Also check existing saved_projects table for backward compatibility
+  try {
+    const { data: savedProjects } = await supabase
+      .from("saved_projects")
+      .select("project_id")
+      .eq("user_id", userId);
+    (savedProjects ?? []).forEach((sp: any) => {
+      result.saves.add(sp.project_id);
+    });
+  } catch (err) {
+    // ignore
+  }
+
+  return result;
+}
+
+export async function toggleEngagement(
+  userId: string,
+  entityType: EngagementEntityType,
+  entityId: string,
+  action: EngagementAction,
+  currentlyActive: boolean
+): Promise<{ success: boolean; error?: string }> {
+  if (!userId) return { success: false, error: "Authentication required" };
+
+  try {
+    if (currentlyActive) {
+      // Remove engagement
+      const { error } = await supabase
+        .from("engagements" as any)
+        .delete()
+        .eq("user_id", userId)
+        .eq("entity_type", entityType)
+        .eq("entity_id", entityId)
+        .eq("action", action);
+
+      if (error) {
+        console.warn("Failed deleting engagement:", error);
+      }
+
+      // Sync legacy saved_projects if applicable
+      if (entityType === "project" && action === "save") {
+        await supabase
+          .from("saved_projects")
+          .delete()
+          .eq("user_id", userId)
+          .eq("project_id", entityId);
+      }
+
+      return { success: true };
+    } else {
+      // Add engagement
+      const { error } = await supabase
+        .from("engagements" as any)
+        .insert({
+          user_id: userId,
+          entity_type: entityType,
+          entity_id: entityId,
+          action: action,
+        } as any);
+
+      if (error) {
+        console.warn("Failed inserting engagement:", error);
+      }
+
+      // Sync legacy saved_projects if applicable
+      if (entityType === "project" && action === "save") {
+        await supabase
+          .from("saved_projects")
+          .upsert({ user_id: userId, project_id: entityId }, { onConflict: "user_id,project_id" });
+      }
+
+      return { success: true };
+    }
+  } catch (err: any) {
+    return { success: false, error: err?.message ?? "Failed to toggle engagement" };
+  }
+}
+
+export async function updateUserPerspective(perspective: "builder" | "founder") {
+  try {
+    const { error } = await supabase.auth.updateUser({
+      data: { collective_perspective: perspective },
+    });
+    if (error) console.warn("Could not save perspective to user metadata:", error);
+    return { error: error?.message ?? null };
+  } catch (err: any) {
+    return { error: err?.message ?? null };
+  }
+}
+

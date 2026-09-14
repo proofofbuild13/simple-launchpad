@@ -1,6 +1,6 @@
 import { BUILDER_PROFILE_PUBLIC_COLUMNS } from "@/lib/builderProfileFields";
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,12 +26,14 @@ import {
   Users,
   Sparkles,
   CheckCircle2,
+  MessageSquare,
 } from "lucide-react";
 
 type Builder = any;
 type Startup = any;
 
 export default function Marketplace() {
+  const navigate = useNavigate();
   const [builders, setBuilders] = useState<Builder[]>([]);
   const [startups, setStartups] = useState<Startup[]>([]);
   const [q, setQ] = useState("");
@@ -81,14 +83,20 @@ export default function Marketplace() {
         <meta property="og:description" content="Discover vetted builders and startups across the proof_of_Build ecosystem." />
         <meta property="og:url" content="https://proofbuild.in/marketplace" />
       </Helmet>
-      <div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider">
-          <Sparkles className="h-3 w-3" /> Discovery
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider">
+            <Sparkles className="h-3 w-3" /> Discovery
+          </div>
+          <h1 className="text-3xl font-semibold mt-1">Marketplace</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Discover builders and startups across the ecosystem.
+          </p>
         </div>
-        <h1 className="text-3xl font-semibold mt-1">Marketplace</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Discover builders and startups across the ecosystem.
-        </p>
+        <Button variant="outline" onClick={() => navigate("/messages")}>
+          <MessageSquare className="h-4 w-4 mr-2" />
+          Messages
+        </Button>
       </div>
 
       <Tabs defaultValue="builders" className="space-y-6">
