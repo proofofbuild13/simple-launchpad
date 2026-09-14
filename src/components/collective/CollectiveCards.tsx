@@ -312,13 +312,14 @@ export function RoomFeedCard({
         <CardEngagementBar
           shareUrl={`${window.location.origin}/collective?tab=rooms`}
           shareTitle={`Discussion by ${authorName} in ${roomLabel}`}
-          initialLikes={item.like_count ?? 0}
-          commentCount={replyCount}
+          initialLikes={likeCount}
+          commentCount={commentCount}
+          entityType="room_post"
+          entityId={item.id}
           isLiked={isLiked}
           isSaved={isSaved}
           onLikeToggle={onLikeToggle}
           onSaveToggle={onSaveToggle}
-          onComment={onReply}
         />
       </CardContent>
     </Card>
