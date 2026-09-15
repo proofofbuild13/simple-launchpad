@@ -9,10 +9,12 @@ import {
   ProofFeedItem,
   fetchProofFeed,
   fetchUserEngagements,
+  fetchEngagementCounts,
   toggleEngagement,
+  EngagementCounts,
   UserEngagements,
 } from "@/lib/collective";
-import { HelpCircle, Rocket } from "lucide-react";
+import { HelpCircle, Rocket, Bookmark } from "lucide-react";
 import { ProofFeedCard } from "./CollectiveCards";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
