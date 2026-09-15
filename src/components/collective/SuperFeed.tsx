@@ -259,6 +259,12 @@ export function SuperFeed({
 
       setItems(unified);
 
+      // Like / comment counts for every card in the feed
+      const entityIds = unified
+        .map((u) => (u._type === "proof" ? (u.data as ProofFeedItem).submission_id : (u.data as any).id))
+        .filter(Boolean) as string[];
+      fetchEngagementCounts(entityIds).then(setCounts);
+
       // Fetch submission counts for project items
       const pIds = projects.map((p: any) => p.id);
       if (pIds.length) {
