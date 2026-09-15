@@ -442,6 +442,8 @@ export function SuperFeed({
                   subLoading={subLoading}
                   isLiked={engagements.likes.has(p.id)}
                   isSaved={engagements.saves.has(p.id)}
+                  likeCount={counts.likes[p.id] ?? 0}
+                  commentCount={counts.comments[p.id] ?? 0}
                   onLikeToggle={() => handleLikeToggle("project", p.id)}
                   onSaveToggle={() => handleSaveToggle("project", p.id)}
                 />
@@ -461,6 +463,8 @@ export function SuperFeed({
                   replyCount={r.replyCount}
                   isLiked={engagements.likes.has(r.data.id)}
                   isSaved={engagements.saves.has(r.data.id)}
+                  likeCount={counts.likes[r.data.id] ?? 0}
+                  commentCount={counts.comments[r.data.id] ?? 0}
                   onLikeToggle={() => handleLikeToggle("room_post", r.data.id)}
                   onSaveToggle={() => handleSaveToggle("room_post", r.data.id)}
                   onReply={() => {
@@ -483,6 +487,8 @@ export function SuperFeed({
                   item={proof}
                   isLiked={engagements.likes.has(proof.submission_id)}
                   isSaved={engagements.saves.has(proof.submission_id)}
+                  likeCount={counts.likes[proof.submission_id] ?? 0}
+                  commentCount={counts.comments[proof.submission_id] ?? 0}
                   onLikeToggle={() => handleLikeToggle("proof", proof.submission_id)}
                   onSaveToggle={() => handleSaveToggle("proof", proof.submission_id)}
                 />
@@ -500,6 +506,8 @@ export function SuperFeed({
                   perspective={perspective}
                   isLiked={engagements.likes.has(ch.data.id)}
                   isSaved={engagements.saves.has(ch.data.id)}
+                  likeCount={counts.likes[ch.data.id] ?? 0}
+                  commentCount={counts.comments[ch.data.id] ?? 0}
                   onLikeToggle={() => handleLikeToggle("challenge", ch.data.id)}
                   onSaveToggle={() => handleSaveToggle("challenge", ch.data.id)}
                   onSubmitSuccess={loadFeed}
