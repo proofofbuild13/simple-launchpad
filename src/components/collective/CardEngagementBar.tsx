@@ -2,7 +2,27 @@ import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Heart, MessageCircle, Share2, Bookmark, Loader2, Trash2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Heart,
+  MessageCircle,
+  Share2,
+  Bookmark,
+  Loader2,
+  Trash2,
+  Link2,
+  Mail,
+  MessageCircle as WhatsAppIcon,
+  Send as TelegramIcon,
+  Twitter,
+  Linkedin,
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -83,6 +103,7 @@ export function CardEngagementBar({
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
   const [localCount, setLocalCount] = useState<number | undefined>(commentCount ?? replyCount);
+  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     setLiked(isLiked);
@@ -196,25 +217,31 @@ export function CardEngagementBar({
     setLocalCount((c) => Math.max(0, (c ?? 1) - 1));
   };
 
-  const handleShare = async () => {
-    const url = shareUrl || window.location.href;
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: shareTitle,
-          url,
-        });
-        return;
-      } catch (err: any) {
-        if (err.name === "AbortError") return;
-      }
-    }
+  const url = shareUrl || (typeof window !== "undefined" ? window.location.href : "");
 
+  const handleShare = () => {
+    setShareOpen(true);
+  };
+
+  const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(url);
       toast.success("Link copied to clipboard");
     } catch {
       toast.error("Unable to copy link");
+    }
+  };
+
+  const handleNativeShare = async () => {
+    if (!navigator.share) {
+      toast.error("Sharing not supported on this device");
+      return;
+    }
+    try {
+      await navigator.share({ title: shareTitle, url });
+    } catch (err: any) {
+      if (err.name === "AbortError") return;
+      toast.error("Could not share");
     }
   };
 
@@ -379,6 +406,111 @@ export function CardEngagementBar({
           )}
         </div>
       )}
+
+      {/* Share dialog */}
+      <Dialog open={shareOpen} onOpenChange={setShareOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Share</DialogTitle>
+            <DialogDescription>
+              {shareTitle}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-3 gap-3 py-2">
+            <Button
+              variant="outline"
+              className="h-auto flex-col gap-2 py-3 px-2 text-xs font-medium"
+              onClick={() => {
+                window.open(
+                  `https://wa.me/?text=${encodeURIComponent(`${shareTitle} ${url}`)}`,
+                  "_blank",
+                  "noopener,noreferrer"
+                );
+              }}
+            >
+              <WhatsAppIcon className="h-5 w-5 text-emerald-600" />
+              WhatsApp
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-auto flex-col gap-2 py-3 px-2 text-xs font-medium"
+              onClick={() => {
+                window.open(
+                  `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(shareTitle)}`,
+                  "_blank",
+                  "noopener,noreferrer"
+                );
+              }}
+            >
+              <Twitter className="h-5 w-5" />
+              X / Twitter
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-auto flex-col gap-2 py-3 px-2 text-xs font-medium"
+              onClick={() => {
+                window.open(
+                  `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
+                  "_blank",
+                  "noopener,noreferrer"
+                );
+              }}
+            >
+              <Linkedin className="h-5 w-5 text-blue-700" />
+              LinkedIn
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-auto flex-col gap-2 py-3 px-2 text-xs font-medium"
+              onClick={() => {
+                window.open(
+                  `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(shareTitle)}`,
+                  "_blank",
+                  "noopener,noreferrer"
+                );
+              }}
+            >
+              <TelegramIcon className="h-5 w-5 text-sky-500" />
+              Telegram
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-auto flex-col gap-2 py-3 px-2 text-xs font-medium"
+              onClick={() => {
+                window.location.href = `mailto:?subject=${encodeURIComponent(shareTitle)}&body=${encodeURIComponent(url)}`;
+              }}
+            >
+              <Mail className="h-5 w-5" />
+              Email
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-auto flex-col gap-2 py-3 px-2 text-xs font-medium"
+              onClick={handleCopyLink}
+            >
+              <Link2 className="h-5 w-5" />
+              Copy link
+            </Button>
+          </div>
+
+          {navigator.share && (
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={handleNativeShare}
+            >
+              <Share2 className="h-4 w-4 mr-2" />
+              More options
+            </Button>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
