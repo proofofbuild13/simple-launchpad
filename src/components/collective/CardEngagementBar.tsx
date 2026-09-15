@@ -103,6 +103,7 @@ export function CardEngagementBar({
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
   const [localCount, setLocalCount] = useState<number | undefined>(commentCount ?? replyCount);
+  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     setLiked(isLiked);
