@@ -129,6 +129,10 @@ export function ProofFeed() {
     };
   }, [cat]);
 
+  const visibleItems = savedOnly
+    ? items.filter((it) => engagements.saves.has(it.submission_id))
+    : items;
+
   return (
     <div className="space-y-4">
       {/* Banner / Guide - ONLY for builder accounts */}
