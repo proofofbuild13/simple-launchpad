@@ -296,8 +296,12 @@ export function SuperFeed({
     loadFeed();
   }, [loadFeed]);
 
-  // Search filtering
+  const entityIdOf = (it: UnifiedItem) =>
+    it._type === "proof" ? (it.data as ProofFeedItem).submission_id : (it.data as any).id;
+
+  // Search + saved filtering
   const filtered = items.filter((it) => {
+    if (savedOnly && !engagements.saves.has(entityIdOf(it))) return false;
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     if (it._type === "project") {
@@ -370,9 +374,25 @@ export function SuperFeed({
             className="pl-9 h-9 text-xs bg-background"
           />
         </div>
-        <span className="text-xs text-muted-foreground hidden sm:inline">
-          {filtered.length} {filtered.length === 1 ? "item" : "items"}
-        </span>
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            size="sm"
+            variant={savedOnly ? "default" : "outline"}
+            className="h-9 text-xs gap-1.5"
+            aria-pressed={savedOnly}
+            onClick={() => setSavedOnly((v) => !v)}
+          >
+            <Bookmark className={savedOnly ? "h-3.5 w-3.5 fill-current" : "h-3.5 w-3.5"} />
+            {savedOnly ? "Showing saved" : "Saved"}
+            {engagements.saves.size > 0 && (
+              <span className="tabular-nums opacity-70">({engagements.saves.size})</span>
+            )}
+          </Button>
+          <span className="text-xs text-muted-foreground hidden sm:inline">
+            {filtered.length} {filtered.length === 1 ? "item" : "items"}
+          </span>
+        </div>
       </div>
 
       {/* Feed List */}
