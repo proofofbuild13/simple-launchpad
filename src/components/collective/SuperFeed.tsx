@@ -405,13 +405,22 @@ export function SuperFeed({
       ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="py-14 text-center space-y-2">
-            <p className="text-sm font-medium text-foreground">No items found</p>
+            <p className="text-sm font-medium text-foreground">
+              {savedOnly ? "Nothing saved yet" : "No items found"}
+            </p>
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-              {search
+              {savedOnly
+                ? "Tap the bookmark on any card to save it here for later."
+                : search
                 ? "No matching items match your search query. Try clearing the search."
                 : "There are no active feed items currently published."}
             </p>
-            {search && (
+            {savedOnly && (
+              <Button size="sm" variant="outline" className="mt-2 text-xs" onClick={() => setSavedOnly(false)}>
+                Show all items
+              </Button>
+            )}
+            {search && !savedOnly && (
               <Button size="sm" variant="outline" className="mt-2 text-xs" onClick={() => setSearch("")}>
                 Clear search
               </Button>
