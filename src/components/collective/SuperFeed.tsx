@@ -12,6 +12,7 @@ import {
   Radio,
   Sparkles,
   ExternalLink,
+  Bookmark,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -22,7 +23,9 @@ import {
   fetchActiveCommunityChallenge,
   fetchCommunitySubmissionCount,
   fetchUserEngagements,
+  fetchEngagementCounts,
   toggleEngagement,
+  EngagementCounts,
   UserEngagements,
   ProofFeedItem,
   ROOMS,
