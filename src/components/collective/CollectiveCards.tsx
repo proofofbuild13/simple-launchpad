@@ -593,12 +593,14 @@ export function WeeklyChallengeFeedCard({
         <CardEngagementBar
           shareUrl={`${window.location.origin}/collective?tab=weekly`}
           shareTitle={`Weekly Challenge: ${item.title}`}
-          initialLikes={item.like_count ?? 0}
+          initialLikes={likeCount}
+          commentCount={commentCount}
+          entityType="challenge"
+          entityId={item.id}
           isLiked={isLiked}
           isSaved={isSaved}
           onLikeToggle={onLikeToggle}
           onSaveToggle={onSaveToggle}
-          commentStubMessage="Challenge discussion happens in the Founder rooms."
         />
       </CardContent>
     </Card>
