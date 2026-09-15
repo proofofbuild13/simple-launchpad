@@ -48,6 +48,8 @@ export function ProofFeed() {
     likes: new Set<string>(),
     saves: new Set<string>(),
   });
+  const [counts, setCounts] = useState<EngagementCounts>({ likes: {}, comments: {} });
+  const [savedOnly, setSavedOnly] = useState(false);
 
   const loadEngagements = useCallback(async () => {
     if (!user) return;
@@ -118,6 +120,9 @@ export function ProofFeed() {
       if (!active) return;
       setItems(rows);
       setLoading(false);
+      fetchEngagementCounts(rows.map((r) => r.submission_id)).then((c) => {
+        if (active) setCounts(c);
+      });
     });
     return () => {
       active = false;
