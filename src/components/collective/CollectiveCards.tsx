@@ -333,6 +333,8 @@ export interface ProofCardProps {
   item: ProofFeedItem;
   isLiked?: boolean;
   isSaved?: boolean;
+  likeCount?: number;
+  commentCount?: number;
   onLikeToggle?: () => Promise<boolean | void> | void;
   onSaveToggle?: () => Promise<boolean | void> | void;
 }
@@ -341,6 +343,8 @@ export function ProofFeedCard({
   item,
   isLiked = false,
   isSaved = false,
+  likeCount = 0,
+  commentCount = 0,
   onLikeToggle,
   onSaveToggle,
 }: ProofCardProps) {
@@ -410,12 +414,14 @@ export function ProofFeedCard({
         <CardEngagementBar
           shareUrl={`${window.location.origin}/submissions/${item.submission_id}`}
           shareTitle={`Proof of build by ${item.builder_name}`}
-          initialLikes={0}
+          initialLikes={likeCount}
+          commentCount={commentCount}
+          entityType="proof"
+          entityId={item.submission_id}
           isLiked={isLiked}
           isSaved={isSaved}
           onLikeToggle={onLikeToggle}
           onSaveToggle={onSaveToggle}
-          commentStubMessage="Proof feedback is viewable in the submission details."
         />
       </CardContent>
     </Card>
@@ -431,6 +437,8 @@ export interface WeeklyChallengeCardProps {
   perspective: CollectivePerspective;
   isLiked?: boolean;
   isSaved?: boolean;
+  likeCount?: number;
+  commentCount?: number;
   onLikeToggle?: () => Promise<boolean | void> | void;
   onSaveToggle?: () => Promise<boolean | void> | void;
   onSubmitSuccess?: () => void;
@@ -442,6 +450,8 @@ export function WeeklyChallengeFeedCard({
   perspective,
   isLiked = false,
   isSaved = false,
+  likeCount = 0,
+  commentCount = 0,
   onLikeToggle,
   onSaveToggle,
   onSubmitSuccess,
@@ -583,12 +593,14 @@ export function WeeklyChallengeFeedCard({
         <CardEngagementBar
           shareUrl={`${window.location.origin}/collective?tab=weekly`}
           shareTitle={`Weekly Challenge: ${item.title}`}
-          initialLikes={item.like_count ?? 0}
+          initialLikes={likeCount}
+          commentCount={commentCount}
+          entityType="challenge"
+          entityId={item.id}
           isLiked={isLiked}
           isSaved={isSaved}
           onLikeToggle={onLikeToggle}
           onSaveToggle={onSaveToggle}
-          commentStubMessage="Challenge discussion happens in the Founder rooms."
         />
       </CardContent>
     </Card>

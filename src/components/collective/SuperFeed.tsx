@@ -12,6 +12,7 @@ import {
   Radio,
   Sparkles,
   ExternalLink,
+  Bookmark,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -22,7 +23,9 @@ import {
   fetchActiveCommunityChallenge,
   fetchCommunitySubmissionCount,
   fetchUserEngagements,
+  fetchEngagementCounts,
   toggleEngagement,
+  EngagementCounts,
   UserEngagements,
   ProofFeedItem,
   ROOMS,
@@ -92,6 +95,8 @@ export function SuperFeed({
     likes: new Set<string>(),
     saves: new Set<string>(),
   });
+  const [counts, setCounts] = useState<EngagementCounts>({ likes: {}, comments: {} });
+  const [savedOnly, setSavedOnly] = useState(false);
 
   // Load user likes & saves from polymorphic engagements table
   const loadEngagements = useCallback(async () => {
@@ -254,6 +259,12 @@ export function SuperFeed({
 
       setItems(unified);
 
+      // Like / comment counts for every card in the feed
+      const entityIds = unified
+        .map((u) => (u._type === "proof" ? (u.data as ProofFeedItem).submission_id : (u.data as any).id))
+        .filter(Boolean) as string[];
+      fetchEngagementCounts(entityIds).then(setCounts);
+
       // Fetch submission counts for project items
       const pIds = projects.map((p: any) => p.id);
       if (pIds.length) {
@@ -285,8 +296,12 @@ export function SuperFeed({
     loadFeed();
   }, [loadFeed]);
 
-  // Search filtering
+  const entityIdOf = (it: UnifiedItem) =>
+    it._type === "proof" ? (it.data as ProofFeedItem).submission_id : (it.data as any).id;
+
+  // Search + saved filtering
   const filtered = items.filter((it) => {
+    if (savedOnly && !engagements.saves.has(entityIdOf(it))) return false;
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     if (it._type === "project") {
@@ -359,9 +374,25 @@ export function SuperFeed({
             className="pl-9 h-9 text-xs bg-background"
           />
         </div>
-        <span className="text-xs text-muted-foreground hidden sm:inline">
-          {filtered.length} {filtered.length === 1 ? "item" : "items"}
-        </span>
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            size="sm"
+            variant={savedOnly ? "default" : "outline"}
+            className="h-9 text-xs gap-1.5"
+            aria-pressed={savedOnly}
+            onClick={() => setSavedOnly((v) => !v)}
+          >
+            <Bookmark className={savedOnly ? "h-3.5 w-3.5 fill-current" : "h-3.5 w-3.5"} />
+            {savedOnly ? "Showing saved" : "Saved"}
+            {engagements.saves.size > 0 && (
+              <span className="tabular-nums opacity-70">({engagements.saves.size})</span>
+            )}
+          </Button>
+          <span className="text-xs text-muted-foreground hidden sm:inline">
+            {filtered.length} {filtered.length === 1 ? "item" : "items"}
+          </span>
+        </div>
       </div>
 
       {/* Feed List */}
@@ -374,13 +405,22 @@ export function SuperFeed({
       ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="py-14 text-center space-y-2">
-            <p className="text-sm font-medium text-foreground">No items found</p>
+            <p className="text-sm font-medium text-foreground">
+              {savedOnly ? "Nothing saved yet" : "No items found"}
+            </p>
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-              {search
+              {savedOnly
+                ? "Tap the bookmark on any card to save it here for later."
+                : search
                 ? "No matching items match your search query. Try clearing the search."
                 : "There are no active feed items currently published."}
             </p>
-            {search && (
+            {savedOnly && (
+              <Button size="sm" variant="outline" className="mt-2 text-xs" onClick={() => setSavedOnly(false)}>
+                Show all items
+              </Button>
+            )}
+            {search && !savedOnly && (
               <Button size="sm" variant="outline" className="mt-2 text-xs" onClick={() => setSearch("")}>
                 Clear search
               </Button>
@@ -402,6 +442,8 @@ export function SuperFeed({
                   subLoading={subLoading}
                   isLiked={engagements.likes.has(p.id)}
                   isSaved={engagements.saves.has(p.id)}
+                  likeCount={counts.likes[p.id] ?? 0}
+                  commentCount={counts.comments[p.id] ?? 0}
                   onLikeToggle={() => handleLikeToggle("project", p.id)}
                   onSaveToggle={() => handleSaveToggle("project", p.id)}
                 />
@@ -421,6 +463,8 @@ export function SuperFeed({
                   replyCount={r.replyCount}
                   isLiked={engagements.likes.has(r.data.id)}
                   isSaved={engagements.saves.has(r.data.id)}
+                  likeCount={counts.likes[r.data.id] ?? 0}
+                  commentCount={counts.comments[r.data.id] ?? 0}
                   onLikeToggle={() => handleLikeToggle("room_post", r.data.id)}
                   onSaveToggle={() => handleSaveToggle("room_post", r.data.id)}
                   onReply={() => {
@@ -443,6 +487,8 @@ export function SuperFeed({
                   item={proof}
                   isLiked={engagements.likes.has(proof.submission_id)}
                   isSaved={engagements.saves.has(proof.submission_id)}
+                  likeCount={counts.likes[proof.submission_id] ?? 0}
+                  commentCount={counts.comments[proof.submission_id] ?? 0}
                   onLikeToggle={() => handleLikeToggle("proof", proof.submission_id)}
                   onSaveToggle={() => handleSaveToggle("proof", proof.submission_id)}
                 />
@@ -460,6 +506,8 @@ export function SuperFeed({
                   perspective={perspective}
                   isLiked={engagements.likes.has(ch.data.id)}
                   isSaved={engagements.saves.has(ch.data.id)}
+                  likeCount={counts.likes[ch.data.id] ?? 0}
+                  commentCount={counts.comments[ch.data.id] ?? 0}
                   onLikeToggle={() => handleLikeToggle("challenge", ch.data.id)}
                   onSaveToggle={() => handleSaveToggle("challenge", ch.data.id)}
                   onSubmitSuccess={loadFeed}

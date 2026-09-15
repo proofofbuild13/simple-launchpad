@@ -9,10 +9,12 @@ import {
   ProofFeedItem,
   fetchProofFeed,
   fetchUserEngagements,
+  fetchEngagementCounts,
   toggleEngagement,
+  EngagementCounts,
   UserEngagements,
 } from "@/lib/collective";
-import { HelpCircle, Rocket } from "lucide-react";
+import { HelpCircle, Rocket, Bookmark } from "lucide-react";
 import { ProofFeedCard } from "./CollectiveCards";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -46,6 +48,8 @@ export function ProofFeed() {
     likes: new Set<string>(),
     saves: new Set<string>(),
   });
+  const [counts, setCounts] = useState<EngagementCounts>({ likes: {}, comments: {} });
+  const [savedOnly, setSavedOnly] = useState(false);
 
   const loadEngagements = useCallback(async () => {
     if (!user) return;
@@ -116,11 +120,18 @@ export function ProofFeed() {
       if (!active) return;
       setItems(rows);
       setLoading(false);
+      fetchEngagementCounts(rows.map((r) => r.submission_id)).then((c) => {
+        if (active) setCounts(c);
+      });
     });
     return () => {
       active = false;
     };
   }, [cat]);
+
+  const visibleItems = savedOnly
+    ? items.filter((it) => engagements.saves.has(it.submission_id))
+    : items;
 
   return (
     <div className="space-y-4">
@@ -174,7 +185,7 @@ export function ProofFeed() {
       )}
 
       {/* Category selector for Proof feed */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {PROOF_CATEGORIES.map((c) => (
           <Button
             key={c}
@@ -186,6 +197,16 @@ export function ProofFeed() {
             {c}
           </Button>
         ))}
+        <Button
+          size="sm"
+          variant={savedOnly ? "default" : "outline"}
+          aria-pressed={savedOnly}
+          onClick={() => setSavedOnly((v) => !v)}
+          className="rounded-full text-xs h-7 px-3 gap-1.5 ml-auto"
+        >
+          <Bookmark className={savedOnly ? "h-3.5 w-3.5 fill-current" : "h-3.5 w-3.5"} />
+          {savedOnly ? "Showing saved" : "Saved"}
+        </Button>
       </div>
 
       {/* Cards list using standard ProofFeedCard */}
@@ -195,20 +216,24 @@ export function ProofFeed() {
             <Skeleton key={i} className="h-36 w-full rounded-xl" />
           ))}
         </div>
-      ) : items.length === 0 ? (
+      ) : visibleItems.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center text-sm text-muted-foreground">
-            No proof yet in this category. Completed builds show up here.
+            {savedOnly
+              ? "You have not saved any proofs yet. Tap the bookmark on a card to save it."
+              : "No proof yet in this category. Completed builds show up here."}
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
-          {items.map((it) => (
+          {visibleItems.map((it) => (
             <ProofFeedCard
               key={it.submission_id}
               item={it}
               isLiked={engagements.likes.has(it.submission_id)}
               isSaved={engagements.saves.has(it.submission_id)}
+              likeCount={counts.likes[it.submission_id] ?? 0}
+              commentCount={counts.comments[it.submission_id] ?? 0}
               onLikeToggle={() => handleLikeToggle(it.submission_id)}
               onSaveToggle={() => handleSaveToggle(it.submission_id)}
             />
