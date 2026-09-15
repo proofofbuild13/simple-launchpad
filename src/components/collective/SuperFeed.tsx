@@ -95,6 +95,8 @@ export function SuperFeed({
     likes: new Set<string>(),
     saves: new Set<string>(),
   });
+  const [counts, setCounts] = useState<EngagementCounts>({ likes: {}, comments: {} });
+  const [savedOnly, setSavedOnly] = useState(false);
 
   // Load user likes & saves from polymorphic engagements table
   const loadEngagements = useCallback(async () => {
