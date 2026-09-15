@@ -406,6 +406,111 @@ export function CardEngagementBar({
           )}
         </div>
       )}
+
+      {/* Share dialog */}
+      <Dialog open={shareOpen} onOpenChange={setShareOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Share</DialogTitle>
+            <DialogDescription>
+              {shareTitle}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-3 gap-3 py-2">
+            <Button
+              variant="outline"
+              className="h-auto flex-col gap-2 py-3 px-2 text-xs font-medium"
+              onClick={() => {
+                window.open(
+                  `https://wa.me/?text=${encodeURIComponent(`${shareTitle} ${url}`)}`,
+                  "_blank",
+                  "noopener,noreferrer"
+                );
+              }}
+            >
+              <WhatsAppIcon className="h-5 w-5 text-emerald-600" />
+              WhatsApp
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-auto flex-col gap-2 py-3 px-2 text-xs font-medium"
+              onClick={() => {
+                window.open(
+                  `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(shareTitle)}`,
+                  "_blank",
+                  "noopener,noreferrer"
+                );
+              }}
+            >
+              <Twitter className="h-5 w-5" />
+              X / Twitter
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-auto flex-col gap-2 py-3 px-2 text-xs font-medium"
+              onClick={() => {
+                window.open(
+                  `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
+                  "_blank",
+                  "noopener,noreferrer"
+                );
+              }}
+            >
+              <Linkedin className="h-5 w-5 text-blue-700" />
+              LinkedIn
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-auto flex-col gap-2 py-3 px-2 text-xs font-medium"
+              onClick={() => {
+                window.open(
+                  `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(shareTitle)}`,
+                  "_blank",
+                  "noopener,noreferrer"
+                );
+              }}
+            >
+              <TelegramIcon className="h-5 w-5 text-sky-500" />
+              Telegram
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-auto flex-col gap-2 py-3 px-2 text-xs font-medium"
+              onClick={() => {
+                window.location.href = `mailto:?subject=${encodeURIComponent(shareTitle)}&body=${encodeURIComponent(url)}`;
+              }}
+            >
+              <Mail className="h-5 w-5" />
+              Email
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-auto flex-col gap-2 py-3 px-2 text-xs font-medium"
+              onClick={handleCopyLink}
+            >
+              <Link2 className="h-5 w-5" />
+              Copy link
+            </Button>
+          </div>
+
+          {navigator.share && (
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={handleNativeShare}
+            >
+              <Share2 className="h-4 w-4 mr-2" />
+              More options
+            </Button>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
