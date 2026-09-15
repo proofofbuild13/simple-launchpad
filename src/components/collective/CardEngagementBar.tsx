@@ -217,25 +217,31 @@ export function CardEngagementBar({
     setLocalCount((c) => Math.max(0, (c ?? 1) - 1));
   };
 
-  const handleShare = async () => {
-    const url = shareUrl || window.location.href;
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: shareTitle,
-          url,
-        });
-        return;
-      } catch (err: any) {
-        if (err.name === "AbortError") return;
-      }
-    }
+  const url = shareUrl || (typeof window !== "undefined" ? window.location.href : "");
 
+  const handleShare = () => {
+    setShareOpen(true);
+  };
+
+  const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(url);
       toast.success("Link copied to clipboard");
     } catch {
       toast.error("Unable to copy link");
+    }
+  };
+
+  const handleNativeShare = async () => {
+    if (!navigator.share) {
+      toast.error("Sharing not supported on this device");
+      return;
+    }
+    try {
+      await navigator.share({ title: shareTitle, url });
+    } catch (err: any) {
+      if (err.name === "AbortError") return;
+      toast.error("Could not share");
     }
   };
 
