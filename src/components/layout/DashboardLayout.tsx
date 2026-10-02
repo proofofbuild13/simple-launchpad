@@ -36,6 +36,9 @@ export default function DashboardLayout() {
 
   const initial = user?.email?.[0]?.toUpperCase() ?? "U";
   const navItems = role === "startup" ? startupItems : role === "builder" ? builderItems : [];
+  const mobileItems = navItems.length
+    ? [...navItems, { title: "Market", url: "/marketplace", icon: Compass }]
+    : [];
 
   return (
     <div className="min-h-screen flex flex-col w-full bg-background overflow-x-hidden">
@@ -50,7 +53,7 @@ export default function DashboardLayout() {
           </NavLink>
         </div>
         <div className="flex items-center gap-1 sm:gap-1.5">
-          <nav className="flex items-center gap-1">
+          <nav className="hidden md:flex items-center gap-1">
             {navItems.map((item) => (
               <NavLink
                 key={item.url}
@@ -73,7 +76,7 @@ export default function DashboardLayout() {
             size="icon"
             onClick={() => navigate("/marketplace")}
             title="Marketplace"
-            className="h-8 w-8"
+            className="h-8 w-8 hidden md:inline-flex"
           >
             <Compass className="h-4 w-4" />
           </Button>
@@ -106,11 +109,32 @@ export default function DashboardLayout() {
           </DropdownMenu>
         </div>
       </header>
-      <main className="flex-1 overflow-auto min-w-0">
+      <main className="flex-1 overflow-auto min-w-0 pb-20 md:pb-0">
         <div className="w-full max-w-7xl mx-auto px-3 py-4 sm:px-4 sm:py-5 md:px-6 md:py-6">
           <Outlet />
         </div>
       </main>
+      {mobileItems.length > 0 && (
+        <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 border-t bg-card/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
+          <ul className="flex items-stretch justify-around h-16">
+            {mobileItems.map((item) => (
+              <li key={item.url} className="flex-1">
+                <NavLink
+                  to={item.url}
+                  className={({ isActive }) =>
+                    `flex h-full flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
+                      isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                    }`
+                  }
+                >
+                  <item.icon className="h-5 w-5" />
+                  {item.title}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
     </div>
   );
 }

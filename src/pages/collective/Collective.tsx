@@ -110,15 +110,17 @@ export default function Collective() {
 
       {/* Navigation: 5 top tabs only (duplicate chip rows removed) */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-0 space-y-6">
-        <TabsList className="h-10 justify-start gap-1 rounded-full border bg-muted/40 p-1 flex-wrap w-fit">
+        <TabsList className="h-10 justify-between sm:justify-start gap-1 rounded-full border bg-muted/40 p-1 w-full sm:w-fit">
           {sections.map(({ value, label, icon: Icon }) => (
             <TabsTrigger
               key={value}
               value={value}
-              className="h-8 gap-2 rounded-full px-3.5 text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs"
+              title={label}
+              aria-label={label}
+              className="h-8 flex-1 sm:flex-none gap-2 rounded-full px-3 sm:px-3.5 text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs"
             >
-              <Icon className="h-3.5 w-3.5" />
-              {label}
+              <Icon className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+              <span className="hidden sm:inline">{label}</span>
             </TabsTrigger>
           ))}
         </TabsList>
