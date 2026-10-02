@@ -25,16 +25,16 @@ export const Nav = () => {
             : "container h-16 rounded-none bg-background/60 backdrop-blur-xl border-b border-border/40"
         }`}
       >
-        <Link to="/" className="flex items-center gap-2 shrink-0">
+        <Link to="/" className="flex items-center gap-2 shrink-0 min-w-0">
           <img
             src="/logo.png"
             alt="proof_of_Build"
-            className={`object-contain transition-all duration-500 ${
+            className={`object-contain shrink-0 transition-all duration-500 ${
               scrolled ? "h-6 w-6 invert" : "h-8 w-8"
             }`}
           />
           <span
-            className={`font-display transition-all duration-500 ${
+            className={`font-display transition-all duration-500 hidden sm:inline ${
               scrolled ? "text-sm" : "text-xl"
             }`}
           >
@@ -53,10 +53,10 @@ export const Nav = () => {
           <a href="#builders" className="hover:opacity-100 transition-opacity">Builders</a>
           <a href="#pricing" className="hover:opacity-100 transition-opacity">Pricing</a>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           {!scrolled && (
             <Link to="/login">
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" className="text-xs px-3">
                 Sign in
               </Button>
             </Link>
@@ -67,7 +67,7 @@ export const Nav = () => {
               className={
                 scrolled
                   ? "h-9 rounded-full bg-background text-foreground hover:bg-background/90 text-xs px-4"
-                  : "bg-ink text-ink-foreground hover:bg-ink/90"
+                  : "bg-ink text-ink-foreground hover:bg-ink/90 text-xs px-3 sm:px-4 sm:text-sm"
               }
             >
               Get started
