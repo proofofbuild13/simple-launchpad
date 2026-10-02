@@ -14,10 +14,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { NotificationBell } from "./NotificationBell";
 
 const startupItems = [
+  { title: "Home", url: "/startup", icon: FolderKanban },
   { title: "Agent", url: "/agent", icon: Bot },
-  { title: "Projects", url: "/projects", icon: FolderKanban },
-  { title: "Deals", url: "/deals", icon: Handshake },
-  { title: "Collective", url: "/collective", icon: Users2 },
 ];
 
 const builderItems = [
@@ -44,7 +42,7 @@ export default function DashboardLayout() {
     <div className="min-h-screen flex flex-col w-full bg-background overflow-x-hidden">
       <header className="h-14 border-b flex items-center justify-between px-3 sm:px-4 bg-card/50 backdrop-blur shrink-0 sticky top-0 z-50">
         <div className="flex items-center gap-2">
-          <NavLink to={role === "startup" ? "/agent" : "/dashboard"} className="flex items-center gap-2">
+          <NavLink to={role === "startup" ? "/startup" : "/dashboard"} className="flex items-center gap-2">
             <img src="/logo.png" alt="proof_of_Build" className="h-7 w-7 object-contain" />
             <div className="flex flex-col hidden sm:flex">
               <span className="text-sm font-semibold leading-none">proof_of_Build</span>

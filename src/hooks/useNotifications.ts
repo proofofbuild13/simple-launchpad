@@ -69,18 +69,27 @@ export function useNotifications() {
   // Real-time subscription
   useEffect(() => {
     if (!user) return;
-    const channel = supabase
-      .channel("notifications-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
-        () => {
-          fetchNotifications();
-        }
-      )
-      .subscribe();
+    const channelName = `notifications-${user.id}-${Math.random().toString(36).slice(2, 9)}`;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    try {
+      channel = supabase
+        .channel(channelName)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
+          () => {
+            fetchNotifications();
+          }
+        )
+        .subscribe();
+    } catch (err) {
+      console.warn("Failed to subscribe to notifications realtime channel:", err);
+    }
+
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [user, fetchNotifications]);
 

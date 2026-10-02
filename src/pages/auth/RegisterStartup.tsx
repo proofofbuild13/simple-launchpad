@@ -28,7 +28,7 @@ export default function RegisterStartup() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const [sp] = useSearchParams();
-  const redirect = sp.get("redirect") || "/collective";
+  const redirect = sp.get("redirect") || "/startup";
 
   const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
 

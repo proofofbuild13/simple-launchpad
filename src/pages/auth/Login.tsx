@@ -29,7 +29,11 @@ export default function Login() {
     toast.success("Welcome back");
     if (!sp.get("redirect")) {
       const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id).single();
-      if (roleData?.role === "builder" || roleData?.role === "startup") {
+      if (roleData?.role === "startup") {
+        navigate("/startup");
+        return;
+      }
+      if (roleData?.role === "builder") {
         navigate("/collective");
         return;
       }

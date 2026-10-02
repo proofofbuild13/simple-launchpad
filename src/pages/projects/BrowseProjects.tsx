@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Users, Clock, Briefcase, Loader2, AlertTriangle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { Bookmark, Share2 } from "lucide-react";
+import { Bookmark, Share2, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { engagementBadgeClass, engagementLabel, formatCtcRange } from "@/lib/engagement";
@@ -20,6 +20,7 @@ const OPEN_STATUSES = ["open", "open_for_submissions", "reviewing_submissions", 
 
 export default function BrowseProjects() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<any[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [countsLoading, setCountsLoading] = useState(false);
@@ -150,6 +151,15 @@ export default function BrowseProjects() {
                         )}
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => handleShare(e, p.id)}>
                           <Share2 className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          title="View Proof Feeds"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate("/collective?tab=feed"); }}
+                        >
+                          <Radio className="h-4 w-4 text-muted-foreground" />
                         </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => toggleSave(e, p.id)}>
                           <Bookmark className={`h-4 w-4 ${savedIds.has(p.id) ? "fill-current text-primary" : "text-muted-foreground"}`} />

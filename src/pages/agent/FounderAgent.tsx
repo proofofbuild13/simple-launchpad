@@ -45,6 +45,15 @@ type Thread = {
 
 const STAGES = ["Parse brief", "Draft project", "Match builders", "Send invitations", "Evaluate submissions", "Shortlist"];
 
+const STAGE_DETAILS = [
+  { label: "Parse brief", desc: "Extract requirements & project scope" },
+  { label: "Draft project", desc: "Generate project brief & deliverables" },
+  { label: "Match builders", desc: "Scan builder network & proof scores" },
+  { label: "Send invitations", desc: "Dispatch invites to top-matching talent" },
+  { label: "Evaluate submissions", desc: "Review & score incoming code & PRs" },
+  { label: "Shortlist", desc: "Select finalists for interview & award" },
+];
+
 const STARTERS = [
   "I need a full-stack dev to build an MVP SaaS dashboard with real-time analytics, user auth, and Stripe payments. React + Node. 3 months.",
   "Looking for a mobile dev to build a React Native delivery tracking app with live GPS, push notifications, and a driver portal. 6 weeks.",
@@ -61,6 +70,7 @@ export default function FounderAgent() {
   const [sending, setSending] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [loadingThread, setLoadingThread] = useState(true);
+  const [mobileTab, setMobileTab] = useState<"chat" | "stages">("chat");
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const refreshTimer = useRef<number | null>(null);
@@ -289,34 +299,123 @@ export default function FounderAgent() {
   }
 
   return (
-    <div className="grid h-[calc(100vh-7rem)] grid-cols-1 gap-4 lg:grid-cols-[1fr_280px]">
-      <Card className="flex min-h-0 flex-col overflow-hidden">
-        <div className="flex items-center gap-3 border-b px-5 py-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[hsl(var(--agent-accent,250_60%_67%))] text-white">
-            <Bot className="h-4 w-4" />
+    <div className="flex flex-col h-[calc(100dvh-8.5rem)] md:h-[calc(100vh-6rem)] lg:grid lg:grid-cols-[1fr_320px] gap-4 min-h-0">
+      {/* ── Chat Card ── */}
+      <Card
+        className={cn(
+          "flex min-h-0 flex-1 flex-col overflow-hidden border shadow-xs bg-card",
+          mobileTab === "stages" && "hidden lg:flex"
+        )}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between gap-2.5 border-b px-3 sm:px-5 py-2.5 sm:py-3 shrink-0 bg-card">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-xs">
+              <Bot className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h1 className="text-sm sm:text-base font-bold tracking-tight truncate leading-tight">
+                  Founder Agent
+                </h1>
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] font-medium px-2 py-0.5 h-4.5 cursor-pointer lg:cursor-default"
+                  onClick={() => setMobileTab("stages")}
+                  title="Click to view stages"
+                >
+                  {stageLabel(stage, busy ?? undefined)}
+                </Badge>
+              </div>
+              <p className="text-[11px] text-muted-foreground truncate hidden sm:block mt-0.5">
+                Conversational project posting & candidate evaluation
+              </p>
+            </div>
           </div>
-          <div className="flex-1">
-            <h1 className="text-sm font-semibold">Founder agent</h1>
-            <p className="text-xs text-muted-foreground">Conversational project posting</p>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-2 sm:px-3 text-xs font-medium"
+              title="Restart walkthrough"
+              onClick={async () => {
+                if (user?.id) {
+                  await supabase.from("agent_ui_state").upsert(
+                    { user_id: user.id, walkthrough_dismissed: false },
+                    { onConflict: "user_id" }
+                  );
+                }
+                window.dispatchEvent(new CustomEvent("founder-agent:restart-walkthrough"));
+              }}
+            >
+              <Sparkles className="h-3.5 w-3.5 sm:mr-1.5 text-primary shrink-0" />
+              <span className="hidden sm:inline">Walkthrough</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-2 sm:px-3 text-xs font-medium"
+              title="New session"
+              onClick={resetThread}
+              disabled={busy === "reset"}
+            >
+              <RotateCcw className="h-3.5 w-3.5 sm:mr-1.5 shrink-0" />
+              <span className="hidden sm:inline">New session</span>
+            </Button>
           </div>
-          <Badge variant="secondary" className="text-[10px]">{stageLabel(stage, busy ?? undefined)}</Badge>
-          <Button variant="ghost" size="sm" onClick={async () => {
-            if (user?.id) {
-              await supabase.from("agent_ui_state").upsert(
-                { user_id: user.id, walkthrough_dismissed: false },
-                { onConflict: "user_id" }
-              );
-            }
-            window.dispatchEvent(new CustomEvent("founder-agent:restart-walkthrough"));
-          }}>
-            <Sparkles className="h-3.5 w-3.5 mr-1" /> Restart walkthrough
-          </Button>
-          <Button variant="ghost" size="sm" onClick={resetThread} disabled={busy === "reset"}>
-            <RotateCcw className="h-3.5 w-3.5 mr-1" /> New session
-          </Button>
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        {/* Mobile View Switcher Tab Bar */}
+        <div className="lg:hidden border-b bg-muted/30 px-3 py-1.5 shrink-0">
+          <div className="grid grid-cols-2 p-0.5 rounded-lg bg-muted/80 border text-xs w-full">
+            <button
+              type="button"
+              onClick={() => setMobileTab("chat")}
+              className={cn(
+                "flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md font-medium transition-all text-xs",
+                mobileTab === "chat"
+                  ? "bg-background text-foreground shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              <span>Chat</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab("stages")}
+              className={cn(
+                "flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md font-medium transition-all text-xs",
+                mobileTab === "stages"
+                  ? "bg-background text-foreground shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Rocket className="h-3.5 w-3.5" />
+              <span>Stages ({stage}/6)</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile quick stage ticker */}
+        <button
+          type="button"
+          onClick={() => setMobileTab("stages")}
+          className="lg:hidden flex items-center justify-between px-3 py-1.5 border-b bg-card/60 hover:bg-muted/40 transition-colors text-xs"
+        >
+          <div className="flex items-center gap-2 truncate">
+            <div className="flex h-2 w-2 rounded-full bg-primary animate-pulse shrink-0" />
+            <span className="font-semibold text-foreground shrink-0">Stage {stage}/6:</span>
+            <span className="text-muted-foreground truncate">{STAGES[stage - 1] ?? "Done"}</span>
+          </div>
+          <span className="text-[11px] font-medium text-primary shrink-0 flex items-center gap-0.5 ml-2">
+            Details <ArrowRight className="h-3 w-3" />
+          </span>
+        </button>
+
+        {/* Messages scroll area */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 sm:px-5 py-3 sm:py-4 space-y-4">
           <Walkthrough userId={user?.id} />
           {loadingThread ? (
             <div className="space-y-3"><Skeleton className="h-16 w-2/3" /><Skeleton className="h-16 w-1/2 ml-auto" /></div>
@@ -360,7 +459,8 @@ export default function FounderAgent() {
           )}
         </div>
 
-        <div className="border-t p-3">
+        {/* Input box */}
+        <div className="border-t p-2.5 sm:p-3 bg-card shrink-0">
           <div className="flex items-end gap-2">
             <Textarea
               ref={taRef}
@@ -371,64 +471,219 @@ export default function FounderAgent() {
               }}
               rows={2}
               placeholder="Tell me what you need to build…"
-              className="resize-none min-h-[58px]"
+              className="resize-none min-h-[52px] sm:min-h-[58px] text-sm"
               disabled={sending || loadingThread}
             />
-            <Button onClick={send} disabled={!input.trim() || sending || loadingThread} size="icon" className="h-[58px] w-12 shrink-0">
+            <Button
+              onClick={send}
+              disabled={!input.trim() || sending || loadingThread}
+              size="icon"
+              className="h-[52px] sm:h-[58px] w-11 sm:w-12 shrink-0"
+            >
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </div>
         </div>
       </Card>
 
-      <div className="space-y-4 overflow-y-auto">
-        <Card className="p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">Agent stages</div>
-          <div className="space-y-1.5">
-            {STAGES.map((label, i) => {
-              const n = i + 1;
-              const done = n < stage;
-              const active = n === stage;
-              return (
-                <div key={n} className={cn(
-                  "flex items-center gap-2.5 rounded-md border border-transparent px-2.5 py-1.5 text-[13px]",
-                  active && "border-[hsl(var(--agent-accent,250_60%_67%))]/50 bg-[hsl(var(--agent-accent,250_60%_67%))]/10",
-                  done && "text-muted-foreground",
-                )}>
-                  <div className={cn(
-                    "flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-medium",
-                    done && "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-                    active && "bg-[hsl(var(--agent-accent,250_60%_67%))] text-white",
-                    !done && !active && "border bg-muted text-muted-foreground",
-                  )}>
-                    {done ? <Check className="h-3 w-3" /> : n}
-                  </div>
-                  <span className={cn(active && "font-medium text-foreground")}>{label}</span>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">Live stats</div>
-          <div className="grid grid-cols-2 gap-2">
-            <Stat label="Matched" value={stats.matched ?? "—"} />
-            <Stat label="Invited" value={stats.invited ?? "—"} />
-            <Stat label="Submissions" value={stats.submissions ?? "—"} />
-            <Stat label="Shortlisted" value={stats.shortlisted ?? "—"} />
-          </div>
-        </Card>
-
-        {thread?.project_id && (
-          <Card className="p-4">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Active project</div>
-            <Link to={`/projects/${thread.project_id}`} className="flex items-center justify-between text-sm hover:underline">
-              Open project page <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </Card>
+      {/* ── Separate Section for Agent Stages ── */}
+      <div
+        className={cn(
+          "space-y-4 overflow-y-auto min-h-0",
+          mobileTab === "chat" ? "hidden lg:block" : "flex-1 block"
         )}
+      >
+        {/* On mobile: view switcher at top of stages view */}
+        <div className="lg:hidden border-b bg-muted/30 p-1 rounded-lg border text-xs grid grid-cols-2 mb-3">
+          <button
+            type="button"
+            onClick={() => setMobileTab("chat")}
+            className={cn(
+              "flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md font-medium transition-all text-xs",
+              mobileTab === "chat"
+                ? "bg-background text-foreground shadow-xs font-semibold"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            <span>Chat</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab("stages")}
+            className={cn(
+              "flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md font-medium transition-all text-xs",
+              mobileTab === "stages"
+                ? "bg-background text-foreground shadow-xs font-semibold"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Rocket className="h-3.5 w-3.5" />
+            <span>Stages ({stage}/6)</span>
+          </button>
+        </div>
+
+        <StagesSidebar
+          stage={stage}
+          stats={stats}
+          project_id={thread?.project_id ?? null}
+          busy={busy}
+          quickAction={quickAction}
+          onReturnToChat={() => setMobileTab("chat")}
+        />
       </div>
+    </div>
+  );
+}
+
+function StagesSidebar({
+  stage,
+  stats,
+  project_id,
+  busy,
+  quickAction,
+  onReturnToChat,
+}: {
+  stage: number;
+  stats: any;
+  project_id: string | null;
+  busy: string | null;
+  quickAction: (intent: string, payload?: any) => void;
+  onReturnToChat?: () => void;
+}) {
+  return (
+    <div className="space-y-4">
+      {/* Stages card */}
+      <Card className="p-4 border shadow-xs">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            Agent Stages
+          </div>
+          <Badge variant="outline" className="text-[10px] font-medium px-1.5 py-0 h-4">
+            {stage}/6 completed
+          </Badge>
+        </div>
+
+        {/* Progress bar */}
+        <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden mb-3.5">
+          <div
+            className="h-full bg-primary transition-all duration-300"
+            style={{ width: `${Math.min(100, Math.max(12, (stage / 6) * 100))}%` }}
+          />
+        </div>
+
+        <div className="space-y-2">
+          {STAGES.map((label, i) => {
+            const n = i + 1;
+            const done = n < stage;
+            const active = n === stage;
+            const meta = STAGE_DETAILS[i];
+            return (
+              <div
+                key={n}
+                className={cn(
+                  "flex items-start gap-2.5 rounded-lg border border-transparent px-2.5 py-2 text-[13px] transition-colors",
+                  active && "border-primary/30 bg-primary/5",
+                  done && "text-muted-foreground bg-muted/20",
+                  !done && !active && "text-muted-foreground/80"
+                )}
+              >
+                <div
+                  className={cn(
+                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-medium mt-0.5",
+                    done && "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+                    active && "bg-primary text-primary-foreground font-bold shadow-xs",
+                    !done && !active && "border bg-muted text-muted-foreground"
+                  )}
+                >
+                  {done ? <Check className="h-3 w-3 stroke-[3]" /> : n}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className={cn("font-medium leading-tight", active && "text-foreground font-semibold")}>
+                      {label}
+                    </span>
+                    {active && (
+                      <span className="inline-flex items-center px-1.5 py-0 rounded text-[9px] font-semibold bg-primary/10 text-primary shrink-0">
+                        In Progress
+                      </span>
+                    )}
+                    {done && (
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium shrink-0">
+                        Done
+                      </span>
+                    )}
+                  </div>
+                  {meta && (
+                    <p className="text-[11px] text-muted-foreground leading-normal mt-0.5">
+                      {meta.desc}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+
+      {/* Live stats */}
+      <Card className="p-4 border shadow-xs">
+        <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
+          Live Stats
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Stat label="Matched" value={stats.matched ?? "—"} />
+          <Stat label="Invited" value={stats.invited ?? "—"} />
+          <Stat label="Submissions" value={stats.submissions ?? "—"} />
+          <Stat label="Shortlisted" value={stats.shortlisted ?? "—"} />
+        </div>
+      </Card>
+
+      {/* Active project */}
+      {project_id && (
+        <Card className="p-4 border shadow-xs">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
+            Active Project
+          </div>
+          <Link
+            to={`/projects/${project_id}`}
+            className="flex items-center justify-between text-sm font-medium text-primary hover:underline group"
+          >
+            <span>Open project page</span>
+            <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+          </Link>
+        </Card>
+      )}
+
+      {/* Quick actions on mobile in stages view */}
+      {project_id && (
+        <Card className="p-4 border shadow-xs lg:hidden">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2.5">
+            Quick Actions
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" disabled={!!busy} onClick={() => quickAction("fetch_shortlist")}>
+              <Trophy className="h-3.5 w-3.5 mr-1 text-primary" /> Show shortlist
+            </Button>
+            <Button size="sm" variant="outline" disabled={!!busy} onClick={() => quickAction("broaden_match")}>
+              <Search className="h-3.5 w-3.5 mr-1" /> Broaden match
+            </Button>
+            <Button size="sm" variant="outline" disabled={!!busy} onClick={() => quickAction("status")}>
+              <Users className="h-3.5 w-3.5 mr-1" /> Check status
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Return to chat button on mobile */}
+      {onReturnToChat && (
+        <div className="pt-1 pb-4 lg:hidden">
+          <Button onClick={onReturnToChat} className="w-full gap-2 h-11 font-semibold">
+            <MessageSquare className="h-4 w-4" />
+            Return to Agent Chat
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -473,13 +728,13 @@ function Intro({ onPick }: { onPick: (t: string) => void }) {
 function Avatar({ role }: { role: "user" | "assistant" }) {
   if (role === "assistant") {
     return (
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--agent-accent,250_60%_67%))]/15 text-[hsl(var(--agent-accent,250_60%_67%))]">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-xs">
         <Bot className="h-4 w-4" />
       </div>
     );
   }
   return (
-    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-muted border text-foreground">
       <UserIcon className="h-4 w-4" />
     </div>
   );

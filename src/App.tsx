@@ -62,6 +62,7 @@ import FounderAgent from "./pages/agent/FounderAgent";
 import Deals from "./pages/deals/Deals";
 import Collective from "./pages/collective/Collective";
 import DealDetail from "./pages/deals/DealDetail";
+import StartupControlPanel from "./pages/startup/StartupControlPanel";
 
 const queryClient = new QueryClient();
 
@@ -95,6 +96,7 @@ const App = () => (
 
             <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<DashboardRouter />} />
+              <Route path="/startup" element={<StartupControlPanel />} />
               <Route path="/agent" element={<FounderAgent />} />
               <Route path="/agent/:threadId" element={<FounderAgent />} />
 

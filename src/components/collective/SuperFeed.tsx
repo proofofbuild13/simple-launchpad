@@ -374,7 +374,7 @@ export function SuperFeed({
             className="pl-9 h-9 text-xs bg-background"
           />
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Button
             type="button"
             size="sm"
@@ -389,6 +389,19 @@ export function SuperFeed({
               <span className="tabular-nums opacity-70">({engagements.saves.size})</span>
             )}
           </Button>
+          {contentType === "project" && onSwitchTab && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-9 w-9 p-0"
+              title="Proof Feed"
+              aria-label="Open Proof Feed"
+              onClick={() => onSwitchTab("feed")}
+            >
+              <Radio className="h-4 w-4" />
+            </Button>
+          )}
           <span className="text-xs text-muted-foreground hidden sm:inline">
             {filtered.length} {filtered.length === 1 ? "item" : "items"}
           </span>

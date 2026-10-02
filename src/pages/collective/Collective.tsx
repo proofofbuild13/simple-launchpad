@@ -11,17 +11,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   MessageCircle,
-  Radio,
   Sparkles,
-  LayoutGrid,
   Layers,
 } from "lucide-react";
 
 const sections = [
-  { value: "super", label: "Super Feed", icon: LayoutGrid },
   { value: "projects", label: "Projects", icon: Layers },
   { value: "rooms", label: "Rooms", icon: MessageCircle },
-  { value: "feed", label: "Proof feed", icon: Radio },
   { value: "weekly", label: "Weekly challenge", icon: Sparkles },
 ];
 
@@ -32,7 +28,7 @@ export default function Collective() {
   // Tab state synced with URL query param
   const tabParam = searchParams.get("tab");
   const initialTab =
-    tabParam && sections.some((s) => s.value === tabParam) ? tabParam : "super";
+    tabParam && sections.some((s) => s.value === tabParam) ? tabParam : "projects";
   const [activeTab, setActiveTab] = useState(initialTab);
 
   // Sync state if URL changes
@@ -46,7 +42,7 @@ export default function Collective() {
     setActiveTab(val);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
-      if (val === "super") {
+      if (val === "projects") {
         next.delete("tab");
       } else {
         next.set("tab", val);
@@ -98,17 +94,12 @@ export default function Collective() {
         />
       </Helmet>
 
-      {/* Header with Title & Context description */}
-      <div className="border-b border-border/80 pb-4 space-y-1">
+      {/* Header */}
+      <div className="border-b border-border/80 pb-4">
         <h1 className="collective-heading text-2xl font-bold tracking-tight">Collective</h1>
-        <p className="text-xs text-muted-foreground">
-          {perspective === "founder"
-            ? "Founder view — Review project submissions, start discussions in topic rooms, and inspect shipped builds."
-            : "Builder view — Discover open projects to build, join founder discussions, and submit verified proofs of work."}
-        </p>
       </div>
 
-      {/* Navigation: 5 top tabs only (duplicate chip rows removed) */}
+      {/* Navigation tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-0 space-y-6">
         <TabsList className="h-10 justify-between sm:justify-start gap-1 rounded-full border bg-muted/40 p-1 w-full sm:w-fit">
           {sections.map(({ value, label, icon: Icon }) => (
@@ -125,32 +116,22 @@ export default function Collective() {
           ))}
         </TabsList>
 
-        {/* ── 1. Super Feed (Unified stream of all four card types) ── */}
-        <TabsContent value="super" className="m-0 min-w-0 focus-visible:outline-none">
-          <SuperFeed perspective={perspective} onSwitchTab={handleTabChange} />
-        </TabsContent>
-
-        {/* ── 2. Projects (Filtered to projects with ProjectFeedCards & engagement bar) ── */}
+        {/* ── 1. Projects ── */}
         <TabsContent value="projects" className="m-0 min-w-0 focus-visible:outline-none">
           <SuperFeed perspective={perspective} contentType="project" onSwitchTab={handleTabChange} />
         </TabsContent>
 
-        {/* ── 3. Founder Rooms (Filtered to room discussions with RoomFeedCards & engagement bar) ── */}
+        {/* ── 2. Founder Rooms ── */}
         <TabsContent value="rooms" className="m-0 min-w-0 focus-visible:outline-none">
           <FounderRooms perspective={perspective} />
         </TabsContent>
 
-        {/* ── 4. Proof Feed (Filtered to shipped proofs with ProofFeedCards & engagement bar) ── */}
+        {/* ── 3. Proof Feed ── */}
         <TabsContent value="feed" className="m-0 min-w-0 focus-visible:outline-none">
-          <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-            <ProofFeed />
-            <aside className="order-first space-y-4 lg:order-last">
-              <WeeklyChallengeCard perspective={perspective} />
-            </aside>
-          </div>
+          <ProofFeed />
         </TabsContent>
 
-        {/* ── 5. Weekly Challenge (Standalone view with warm amber styling & engagement bar) ── */}
+        {/* ── 4. Weekly Challenge ── */}
         <TabsContent value="weekly" className="m-0 min-w-0 max-w-2xl focus-visible:outline-none">
           <WeeklyChallengeCard perspective={perspective} />
         </TabsContent>
