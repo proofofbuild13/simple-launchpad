@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ShieldCheck, Wallet, TrendingDown, Clock } from "lucide-react";
+import { ShieldCheck, Wallet } from "lucide-react";
+import { fmtCurrency, type SupportedCurrency } from "@/lib/currency";
 
 interface Props {
   contractId: string;
@@ -11,6 +12,8 @@ interface Props {
   escrowFunded: boolean;
   escrowBalance: number;
   isFounder: boolean;
+  canFund?: boolean;
+  currency?: SupportedCurrency;
   onFundClick: () => void;
 }
 
@@ -30,12 +33,17 @@ export function EscrowStatusCard({
   escrowFunded,
   escrowBalance,
   isFounder,
+  canFund = false,
+  currency = "USD",
   onFundClick,
 }: Props) {
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [summary, setSummary] = useState<any>(null);
 
   useEffect(() => {
+    let cancelled = false;
+    setLedger([]);
+    setSummary(null);
     if (!escrowFunded) return;
     (async () => {
       const [{ data: entries }, { data: sum }] = await Promise.all([
@@ -47,12 +55,18 @@ export function EscrowStatusCard({
           .limit(10),
         supabase.rpc("get_escrow_summary", { _contract_id: contractId }),
       ]);
-      setLedger(entries ?? []);
-      if (sum) setSummary(sum[0]);
+      if (!cancelled) {
+        setLedger(entries ?? []);
+        setSummary(sum?.[0] ?? null);
+      }
     })();
-  }, [contractId, escrowFunded]);
+    return () => { cancelled = true; };
+  }, [contractId, escrowFunded, escrowBalance]);
 
-  const pctReleased = totalAmount > 0 ? Math.round(((totalAmount - escrowBalance) / totalAmount) * 100) : 0;
+  const released = Number(summary?.total_released ?? 0);
+  const funded = Number(summary?.total_funded ?? totalAmount);
+  const pctReleased = funded > 0 ? Math.min(100, Math.max(0, Math.round((released / funded) * 100))) : 0;
+  const money = (amount: number) => fmtCurrency(amount, currency, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const entryLabel: Record<string, string> = {
     funded: "Deposit",
@@ -84,13 +98,16 @@ export function EscrowStatusCard({
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Amount required</span>
-              <span className="font-mono font-medium">₹{totalAmount.toLocaleString()}</span>
+              <span className="font-mono font-medium">{money(totalAmount)}</span>
             </div>
             {isFounder && (
-              <Button className="w-full bg-emerald-600 hover:bg-emerald-700" onClick={onFundClick}>
+              <Button className="w-full bg-emerald-600 hover:bg-emerald-700" disabled={!canFund || totalAmount <= 0} onClick={onFundClick}>
                 <Wallet className="h-4 w-4 mr-2" />
                 Fund escrow
               </Button>
+            )}
+            {isFounder && !canFund && (
+              <p className="text-xs text-muted-foreground">Both parties must sign before funding escrow.</p>
             )}
             {!isFounder && (
               <p className="text-xs text-muted-foreground">Waiting for founder to fund escrow.</p>
@@ -101,11 +118,11 @@ export function EscrowStatusCard({
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className="rounded-md bg-muted/50 p-2">
                 <div className="text-xs text-muted-foreground mb-1">Held</div>
-                <div className="text-sm font-semibold font-mono">₹{escrowBalance.toLocaleString()}</div>
+                <div className="text-sm font-semibold font-mono">{money(escrowBalance)}</div>
               </div>
               <div className="rounded-md bg-muted/50 p-2">
                 <div className="text-xs text-muted-foreground mb-1">Released</div>
-                <div className="text-sm font-semibold font-mono">₹{(totalAmount - escrowBalance).toLocaleString()}</div>
+                <div className="text-sm font-semibold font-mono">{money(released)}</div>
               </div>
               <div className="rounded-md bg-muted/50 p-2">
                 <div className="text-xs text-muted-foreground mb-1">Progress</div>
@@ -140,11 +157,11 @@ export function EscrowStatusCard({
                           {entryLabel[e.entry_type] ?? e.entry_type}
                         </Badge>
                         <span className="text-muted-foreground font-mono">
-                          {e.entry_type === "released" ? "-" : "+"}₹{e.amount.toLocaleString()}
+                          {e.entry_type === "funded" ? "+" : "-"}{money(e.amount)}
                         </span>
                       </div>
                       <span className="text-muted-foreground">
-                        bal ₹{e.balance_after.toLocaleString()}
+                        bal {money(e.balance_after)}
                       </span>
                     </div>
                   ))}

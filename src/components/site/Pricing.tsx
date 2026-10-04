@@ -24,7 +24,7 @@ const tiers = [
     type: "Milestone contracts",
     fee: "15%",
     unit: "per release",
-    desc: "Flat platform commission deducted from each milestone escrow release. Shown on every offer before you accept — invoiced automatically with a 7-day due window.",
+    desc: "Flat platform commission billed to the startup for each milestone escrow release. Builders receive the full milestone amount. Invoiced automatically with a 7-day due window.",
   },
   {
     type: "Full-time placement",

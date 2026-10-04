@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { act, cleanup, render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 // --- Mocks ---
 const rpcMock = vi.fn();
@@ -45,6 +45,7 @@ const milestones = [
 ];
 
 describe("FundEscrowModal (e2e: payment-details gate)", () => {
+  afterEach(cleanup);
   beforeEach(() => {
     rpcMock.mockReset();
     fromMock.mockReset();
@@ -145,5 +146,30 @@ describe("FundEscrowModal (e2e: payment-details gate)", () => {
     ).toBe(false);
 
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalled());
+  });
+
+  it("keeps funding disabled while checking builder payment details", async () => {
+    let finishCheck!: (value: any) => void;
+    rpcMock.mockImplementationOnce(() => new Promise((resolve) => { finishCheck = resolve; }));
+    rpcMock.mockResolvedValueOnce({ data: "ledger-1", error: null });
+    render(<FundEscrowModal open onOpenChange={() => {}} contract={contract} milestones={milestones} onDone={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText(/407812345678/i), { target: { value: "UTR-LOCK" } });
+    const button = screen.getByRole("button", { name: /confirm deposit/i });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    expect(rpcMock).toHaveBeenCalledTimes(1);
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => { finishCheck({ data: [{ has_method: true }], error: null }); });
+    await waitFor(() => expect(rpcMock).toHaveBeenCalledTimes(2));
+    expect(toastSuccessMock).toHaveBeenCalledWith("Escrow deposit recorded");
+  });
+
+  it("funds an exact cent total in the contract currency and excludes cancelled milestones", async () => {
+    rpcMock.mockResolvedValueOnce({ data: [{ has_method: true }], error: null }).mockResolvedValueOnce({ data: "ledger-1", error: null });
+    render(<FundEscrowModal open onOpenChange={() => {}} contract={{ ...contract, currency: "EUR" }} milestones={[{ amount: 33.33 }, { amount: 33.33 }, { amount: 33.34 }, { amount: 500, status: "cancelled" }]} onDone={() => {}} />);
+    expect(screen.getAllByText(/100,00.*€/).length).toBeGreaterThan(0);
+    fireEvent.change(screen.getByPlaceholderText(/407812345678/i), { target: { value: "UTR-CENTS" } });
+    fireEvent.click(screen.getByRole("button", { name: /confirm deposit/i }));
+    await waitFor(() => expect(rpcMock).toHaveBeenCalledWith("fund_escrow", { _contract_id: contract.id, _amount: 100, _transaction_ref: "UTR-CENTS", _screenshot_url: null }));
   });
 });

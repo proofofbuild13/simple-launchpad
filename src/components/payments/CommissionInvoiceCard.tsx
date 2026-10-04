@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { fmtCurrency, type SupportedCurrency } from "@/lib/currency";
 
 const STATUS_COLORS: Record<string, string> = {
   generated: "bg-amber-500/15 text-amber-600 border-amber-500/30",
@@ -10,6 +11,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function CommissionInvoiceCard({ invoice, founderName, builderName, projectTitle, milestoneTitle }: any) {
+  const money = (value: number | string) => fmtCurrency(value, (invoice.currency ?? "USD") as SupportedCurrency, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const overdue = invoice.status === "generated" && new Date(invoice.due_date) < new Date();
   const status = overdue ? "overdue" : invoice.status;
   return (
@@ -31,9 +33,9 @@ export function CommissionInvoiceCard({ invoice, founderName, builderName, proje
           <div><div className="text-muted-foreground">Due date</div><div>{new Date(invoice.due_date).toLocaleDateString()}</div></div>
         </div>
         <div className="rounded-md border-t pt-2 space-y-1 text-xs">
-          <div className="flex justify-between"><span>Base amount</span><span className="font-mono">${Number(invoice.base_amount).toFixed(2)}</span></div>
-          <div className="flex justify-between"><span>Platform fee</span><span className="font-mono">${Number(invoice.commission_amount).toFixed(2)}</span></div>
-          <div className="flex justify-between text-base font-semibold pt-1 border-t"><span>Total due</span><span className="font-mono">${Number(invoice.commission_amount).toFixed(2)}</span></div>
+          <div className="flex justify-between"><span>Base amount</span><span className="font-mono">{money(invoice.base_amount)}</span></div>
+          <div className="flex justify-between"><span>Platform fee</span><span className="font-mono">{money(invoice.commission_amount)}</span></div>
+          <div className="flex justify-between text-base font-semibold pt-1 border-t"><span>Total due</span><span className="font-mono">{money(invoice.commission_amount)}</span></div>
         </div>
       </CardContent>
     </Card>

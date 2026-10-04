@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { COMMISSION_RATE } from "@/config/platformPayee";
 import { BellRing, CheckCircle2 } from "lucide-react";
+import { fmtCurrency, type SupportedCurrency } from "@/lib/currency";
 
 interface Props {
   open: boolean;
@@ -34,6 +35,9 @@ export function RecordPaymentModal({ open, onOpenChange, milestone, contract, on
   useEffect(() => {
     if (open && milestone) {
       setAmount(String(milestone.amount ?? ""));
+      setRef("");
+      setNotes("");
+      setFile(null);
     }
   }, [open, milestone]);
 
@@ -62,6 +66,7 @@ export function RecordPaymentModal({ open, onOpenChange, milestone, contract, on
 
 
   if (!milestone || !contract) return null;
+  const money = (value: number | string) => fmtCurrency(value, (contract.currency ?? "USD") as SupportedCurrency, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const commission = (Number(amount || 0) * COMMISSION_RATE).toFixed(2);
 
   const remindBuilder = async () => {
@@ -76,8 +81,8 @@ export function RecordPaymentModal({ open, onOpenChange, milestone, contract, on
   };
 
   const submit = async () => {
-    if (!user) return;
-    if (!amount || !ref) return toast.error("Amount and transaction reference required");
+    if (!user || saving) return;
+    if (!amount || !Number.isFinite(Number(amount)) || Number(amount) <= 0 || !ref.trim()) return toast.error("A positive amount and transaction reference are required");
     setSaving(true);
     try {
       let screenshot_url: string | null = null;
@@ -93,8 +98,9 @@ export function RecordPaymentModal({ open, onOpenChange, milestone, contract, on
         startup_id: contract.founder_id,
         builder_id: contract.builder_id,
         declared_amount: Number(amount),
+        currency: contract.currency ?? "USD",
         payment_method: method,
-        transaction_ref: ref,
+        transaction_ref: ref.trim(),
         notes: notes || null,
         screenshot_url,
       });
@@ -103,7 +109,7 @@ export function RecordPaymentModal({ open, onOpenChange, milestone, contract, on
         _user_id: contract.builder_id,
         _type: "payment_declared",
         _title: "Payment recorded — please confirm",
-        _body: `Founder declared $${amount} via ${method.toUpperCase()}.`,
+        _body: `Founder declared ${money(amount)} via ${method.toUpperCase()}.`,
         _link: `/workspace/${contract.id}`,
       });
       toast.success("Payment recorded");
@@ -127,7 +133,7 @@ export function RecordPaymentModal({ open, onOpenChange, milestone, contract, on
         <div className="space-y-4">
           <div className="rounded-md bg-muted p-3 text-xs space-y-1">
             <div className="flex justify-between"><span>Milestone</span><span className="font-medium">{milestone.title}</span></div>
-            <div className="flex justify-between"><span>Platform commission ({(COMMISSION_RATE * 100).toFixed(0)}%)</span><span className="font-mono">${commission}</span></div>
+            <div className="flex justify-between"><span>Estimated platform commission ({(COMMISSION_RATE * 100).toFixed(0)}%)</span><span className="font-mono">{money(commission)}</span></div>
           </div>
 
           <div className="space-y-2">
@@ -188,8 +194,8 @@ export function RecordPaymentModal({ open, onOpenChange, milestone, contract, on
             </Select>
           </div>
           <div>
-            <Label>Amount paid ($)</Label>
-            <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            <Label>Milestone payment ({contract.currency ?? "USD"})</Label>
+            <Input type="number" value={amount} readOnly />
           </div>
           <div>
             <Label>UPI / UTR reference</Label>

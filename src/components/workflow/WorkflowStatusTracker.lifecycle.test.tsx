@@ -144,6 +144,22 @@ describe("Contract lifecycle — status transitions", () => {
     await assertStage("Settled");
   });
 
+  it("escrow released with an unpaid fee remains 'Payment pending'", async () => {
+    resetDb("contract_active", true);
+    db.contract_milestones = [{ id: "m1", contract_id: CONTRACT_ID, status: "escrow_released" }];
+    db.payment_records = [{ milestone_id: "m1", status: "confirmed", created_at: new Date().toISOString() }];
+    await assertStage("Payment pending");
+  });
+
+  it("ignores cancelled milestones when all remaining milestones are settled", async () => {
+    resetDb("contract_active", true);
+    db.contract_milestones = [
+      { id: "m1", contract_id: CONTRACT_ID, status: "fully_settled" },
+      { id: "m2", contract_id: CONTRACT_ID, status: "cancelled" },
+    ];
+    await assertStage("Settled");
+  });
+
   it("7) contract_completed resolves to 'Completed'", async () => {
     resetDb("contract_completed", true);
     await assertStage("Completed");

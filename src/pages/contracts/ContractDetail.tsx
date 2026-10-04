@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { WorkflowStatusTracker } from "@/components/workflow/WorkflowStatusTracker";
 import { EscrowStatusCard } from "@/components/payments/EscrowStatusCard";
 import { FundEscrowModal } from "@/components/payments/FundEscrowModal";
+import { fmtCurrency, type SupportedCurrency } from "@/lib/currency";
 
 export default function ContractDetail() {
   const { id } = useParams();
@@ -27,6 +28,7 @@ export default function ContractDetail() {
   const [loading, setLoading] = useState(true);
   const [newM, setNewM] = useState({ title: "", description: "", amount: "", due_date: "" });
   const [fundEscrowOpen, setFundEscrowOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const load = async () => {
     if (!id) return;
@@ -55,69 +57,105 @@ export default function ContractDetail() {
 
   const isFounder = user?.id === c?.founder_id;
   const isBuilder = user?.id === c?.builder_id;
-  const founderSigned = signatures.some((s) => s.role === "founder");
-  const builderSigned = signatures.some((s) => s.role === "builder");
+  const founderSigned = signatures.some((s) => s.role === "founder" && s.signed_by === c?.founder_id);
+  const builderSigned = signatures.some((s) => s.role === "builder" && s.signed_by === c?.builder_id);
   const bothSigned = founderSigned && builderSigned;
   const activeMilestones = milestones.filter((m) => m.status !== "cancelled");
-  const totalMilestones = activeMilestones.reduce((a, b) => a + Number(b.amount || 0), 0);
+  const totalMilestones = activeMilestones.reduce((a, b) => a + Math.round(Number(b.amount || 0) * 100), 0) / 100;
+  const money = (amount: number | string | null | undefined) => fmtCurrency(amount, (c?.currency ?? "USD") as SupportedCurrency, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const canEdit = isFounder && c?.status === "contract_drafted" && signatures.length === 0 && !c?.escrow_funded;
+  const canFund = bothSigned && !c?.escrow_funded && ["sent_for_signing", "partially_signed"].includes(c?.status) && totalMilestones > 0;
 
   const addMilestone = async () => {
-    if (!newM.title) return;
-    await supabase.from("contract_milestones").insert({
+    if (!canEdit || !newM.title.trim()) return;
+    const amount = Number(newM.amount);
+    if (!Number.isFinite(amount) || amount <= 0 || Math.abs(amount * 100 - Math.round(amount * 100)) > 0.000001) {
+      toast.error("Enter a positive milestone amount with at most two decimal places");
+      return;
+    }
+    const { error } = await supabase.from("contract_milestones").insert({
       contract_id: id,
-      title: newM.title,
+      title: newM.title.trim(),
       description: newM.description || null,
-      amount: Number(newM.amount) || 0,
+      amount,
+      currency: c.currency,
       due_date: newM.due_date || null,
       order_index: milestones.length,
     });
+    if (error) { toast.error(error.message); return; }
     setNewM({ title: "", description: "", amount: "", due_date: "" });
     load();
   };
 
   const removeMilestone = async (mid: string) => {
-    await supabase.from("contract_milestones").update({ status: "cancelled" }).eq("id", mid);
+    if (!canEdit) return;
+    const { error } = await supabase.from("contract_milestones").update({ status: "cancelled" }).eq("id", mid);
+    if (error) { toast.error(error.message); return; }
     load();
   };
 
   const updateClause = async (field: "ip_assignment" | "nda_included" | "non_compete", val: boolean) => {
-    await supabase.from("contracts").update({ [field]: val } as any).eq("id", id);
+    if (!canEdit) return;
+    const { error } = await supabase.from("contracts").update({ [field]: val } as any).eq("id", id);
+    if (error) { toast.error(error.message); return; }
     load();
   };
 
   const sendForSigning = async () => {
-    await supabase.from("contracts").update({ status: "sent_for_signing" }).eq("id", id);
-    await supabase.rpc("send_notification", {
-      _user_id: c.builder_id,
-      _type: "contract_sent",
-      _title: "Contract ready for signing",
-      _body: "The founder has sent the contract for your signature.",
-      _link: `/contracts/${id}`,
-    });
-    toast.success("Sent for signing");
-    load();
+    if (!canEdit || saving) return;
+    if (!activeMilestones.length || activeMilestones.some((m) => !Number.isFinite(Number(m.amount)) || Number(m.amount) <= 0)) {
+      toast.error("Add valid milestones before sending the contract for signing");
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("contracts").update({ status: "sent_for_signing", escrow_amount: totalMilestones }).eq("id", id);
+      if (error) { toast.error(error.message); return; }
+      await supabase.rpc("send_notification", {
+        _user_id: c.builder_id,
+        _type: "contract_sent",
+        _title: "Contract ready for signing",
+        _body: "The founder has sent the contract for your signature.",
+        _link: `/contracts/${id}`,
+      });
+      toast.success("Sent for signing");
+      await load();
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const sign = async () => {
-    if (!user) return;
-    const role = isFounder ? "founder" : "builder";
-    await supabase.from("contract_signatures").insert({ contract_id: id, signed_by: user.id, role });
+    if (!user || (!isFounder && !isBuilder) || saving) return;
+    setSaving(true);
+    try {
+      const role = isFounder ? "founder" : "builder";
+      const { error } = await supabase.from("contract_signatures").insert({ contract_id: id, signed_by: user.id, role });
+      if (error) { toast.error("Could not sign contract: " + error.message); return; }
 
-    // Status transitions are handled by the contract_on_signature DB trigger:
-    //   first signature → partially_signed; both signed + escrow funded → contract_active
-    const otherSigned = role === "founder" ? builderSigned : founderSigned;
-    const otherId = role === "founder" ? c.builder_id : c.founder_id;
-    await supabase.rpc("send_notification", {
-      _user_id: otherId,
-      _type: "contract_signed",
-      _title: `${role === "founder" ? "Founder" : "Builder"} signed the contract`,
-      _body: otherSigned
-        ? "Both parties signed. Waiting for founder to fund escrow to activate."
-        : "Awaiting the other party's signature.",
-      _link: `/contracts/${id}`,
-    });
-    toast.success("Signed");
-    load();
+      // The signature trigger advances the contract status atomically.
+      const otherSigned = role === "founder" ? builderSigned : founderSigned;
+      const otherId = role === "founder" ? c.builder_id : c.founder_id;
+      await supabase.rpc("send_notification", {
+        _user_id: otherId,
+        _type: "contract_signed",
+        _title: `${role === "founder" ? "Founder" : "Builder"} signed the contract`,
+        _body: otherSigned
+          ? c.escrow_funded
+            ? "Both parties signed and escrow is funded. The contract is now active."
+            : "Both parties signed. Waiting for founder to fund escrow to activate."
+          : "Awaiting the other party's signature.",
+        _link: `/contracts/${id}`,
+      });
+      toast.success("Signed");
+      await load();
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const downloadPdf = () => {
@@ -137,11 +175,11 @@ export default function ContractDetail() {
       <h2>Parties</h2>
       <p>Founder: ${esc(parties.founder ?? c.founder_id)}<br/>Builder: ${esc(parties.builder ?? c.builder_id)}</p>
       <h2>Terms</h2>
-      <p>Start date: ${esc(c.start_date ?? "—")}<br/>Escrow amount: ₹${esc(c.escrow_amount ?? 0)}<br/>
+      <p>Start date: ${esc(c.start_date ?? "—")}<br/>Escrow amount: ${esc(money(totalMilestones))}<br/>
       IP Assignment: ${c.ip_assignment ? "Yes" : "No"} · NDA: ${c.nda_included ? "Yes" : "No"} · Non-compete: ${c.non_compete ? "Yes" : "No"}</p>
       <h2>Milestones</h2>
       <table><tr><th>#</th><th>Title</th><th>Amount</th><th>Due</th></tr>
-      ${activeMilestones.map((m, i) => `<tr><td>${i+1}</td><td>${esc(m.title)}</td><td>₹${esc(m.amount)}</td><td>${esc(m.due_date ?? "—")}</td></tr>`).join("")}
+      ${activeMilestones.map((m, i) => `<tr><td>${i+1}</td><td>${esc(m.title)}</td><td>${esc(money(m.amount))}</td><td>${esc(m.due_date ?? "—")}</td></tr>`).join("")}
       </table>
       <div class="sig">
         <div>Founder<br/>${esc(parties.founder ?? "")}<br/>${founderSigned ? "✓ Signed" : "Pending"}</div>
@@ -216,12 +254,12 @@ export default function ContractDetail() {
       )}
 
       {/* Both signed, escrow not funded yet */}
-      {bothSigned && !c.escrow_funded && isFounder && (
+      {canFund && isFounder && (
         <Card className="border-amber-500/40 bg-amber-50/40 dark:bg-amber-950/20">
           <CardContent className="py-4 flex items-center justify-between gap-4">
             <div className="text-sm">
               <div className="font-medium">Both parties signed — fund escrow to activate</div>
-              <div className="text-muted-foreground text-xs mt-1">Deposit ₹{totalMilestones.toLocaleString()} to release the contract and let the builder begin work.</div>
+              <div className="text-muted-foreground text-xs mt-1">Deposit {money(totalMilestones)} to activate the contract and let the builder begin work.</div>
             </div>
             <Button className="bg-emerald-600 hover:bg-emerald-700 shrink-0" onClick={() => setFundEscrowOpen(true)}>
               <ShieldCheck className="h-4 w-4 mr-2" />Fund escrow
@@ -236,15 +274,15 @@ export default function ContractDetail() {
           <Card>
             <CardHeader><CardTitle className="text-base">Clauses</CardTitle></CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <Clause label="IP assignment to founder" value={c.ip_assignment} disabled={!isFounder || c.status !== "contract_drafted"} onChange={(v) => updateClause("ip_assignment", v)} />
-              <Clause label="NDA included" value={c.nda_included} disabled={!isFounder || c.status !== "contract_drafted"} onChange={(v) => updateClause("nda_included", v)} />
-              <Clause label="Non-compete" value={c.non_compete} disabled={!isFounder || c.status !== "contract_drafted"} onChange={(v) => updateClause("non_compete", v)} />
+              <Clause label="IP assignment to founder" value={c.ip_assignment} disabled={!canEdit} onChange={(v) => updateClause("ip_assignment", v)} />
+              <Clause label="NDA included" value={c.nda_included} disabled={!canEdit} onChange={(v) => updateClause("nda_included", v)} />
+              <Clause label="Non-compete" value={c.non_compete} disabled={!canEdit} onChange={(v) => updateClause("non_compete", v)} />
             </CardContent>
           </Card>
 
           {/* Milestones */}
           <Card>
-            <CardHeader><CardTitle className="text-base">Milestones · ₹{totalMilestones.toLocaleString()}</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">Milestones · {money(totalMilestones)}</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               {activeMilestones.map((m, i) => (
                 <div key={m.id} className="flex items-start justify-between gap-3 p-3 border rounded-md">
@@ -252,14 +290,14 @@ export default function ContractDetail() {
                     <div className="text-sm font-medium">{i + 1}. {m.title}</div>
                     {m.description && <p className="text-xs text-muted-foreground mt-1">{m.description}</p>}
                     <div className="text-xs text-muted-foreground mt-1">
-                      {m.due_date ? format(new Date(m.due_date), "PP") : "No date"} · ₹{m.amount}
+                      {m.due_date ? format(new Date(m.due_date), "PP") : "No date"} · {money(m.amount)}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {m.status !== "in_progress" && (
                       <Badge variant="outline" className="text-[10px] capitalize">{m.status.replace(/_/g, " ")}</Badge>
                     )}
-                    {isFounder && c.status === "contract_drafted" && (
+                    {canEdit && (
                       <Button size="icon" variant="ghost" onClick={() => removeMilestone(m.id)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -268,12 +306,12 @@ export default function ContractDetail() {
                 </div>
               ))}
 
-              {isFounder && c.status === "contract_drafted" && (
+              {canEdit && (
                 <div className="space-y-2 p-3 border-2 border-dashed rounded-md">
                   <Input placeholder="Milestone title" value={newM.title} onChange={(e) => setNewM({ ...newM, title: e.target.value })} />
                   <Textarea rows={2} placeholder="Description" value={newM.description} onChange={(e) => setNewM({ ...newM, description: e.target.value })} />
                   <div className="grid grid-cols-2 gap-2">
-                    <Input type="number" placeholder="Amount (₹)" value={newM.amount} onChange={(e) => setNewM({ ...newM, amount: e.target.value })} />
+                    <Input type="number" min="0.01" step="0.01" placeholder={`Amount (${c.currency})`} value={newM.amount} onChange={(e) => setNewM({ ...newM, amount: e.target.value })} />
                     <Input type="date" value={newM.due_date} onChange={(e) => setNewM({ ...newM, due_date: e.target.value })} />
                   </div>
                   <Button size="sm" onClick={addMilestone}><Plus className="h-4 w-4 mr-1" />Add milestone</Button>
@@ -291,6 +329,8 @@ export default function ContractDetail() {
             escrowFunded={!!c.escrow_funded}
             escrowBalance={Number(c.escrow_balance ?? 0)}
             isFounder={isFounder}
+            canFund={canFund}
+            currency={c.currency}
             onFundClick={() => setFundEscrowOpen(true)}
           />
 
@@ -301,13 +341,13 @@ export default function ContractDetail() {
               <SignRow label="Founder" signed={founderSigned} name={parties.founder} />
               <SignRow label="Builder" signed={builderSigned} name={parties.builder} />
 
-              {isFounder && c.status === "contract_drafted" && activeMilestones.length > 0 && (
-                <Button className="w-full" size="sm" onClick={sendForSigning}>Send for signing</Button>
+              {canEdit && activeMilestones.length > 0 && (
+                <Button className="w-full" size="sm" onClick={sendForSigning} disabled={saving}>Send for signing</Button>
               )}
 
               {((isFounder && !founderSigned) || (isBuilder && !builderSigned)) &&
                 (c.status === "sent_for_signing" || c.status === "partially_signed") && (
-                <Button className="w-full" size="sm" onClick={sign}>
+                <Button className="w-full" size="sm" onClick={sign} disabled={saving}>
                   <FileSignature className="h-4 w-4 mr-2" />Sign contract
                 </Button>
               )}

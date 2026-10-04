@@ -14,6 +14,7 @@ import {
   MessageSquare, Rocket, MailCheck, ClipboardCheck, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getFounderAgentError } from "@/lib/founderAgentClient";
 
 type Part =
   | { type: "text"; text: string }
@@ -50,7 +51,7 @@ const STAGE_DETAILS = [
   { label: "Draft project", desc: "Generate project brief & deliverables" },
   { label: "Match builders", desc: "Scan builder network & proof scores" },
   { label: "Send invitations", desc: "Dispatch invites to top-matching talent" },
-  { label: "Evaluate submissions", desc: "Review & score incoming code & PRs" },
+  { label: "Evaluate submissions", desc: "Assess submitted evidence and business fit" },
   { label: "Shortlist", desc: "Select finalists for interview & award" },
 ];
 
@@ -61,7 +62,8 @@ const STARTERS = [
 ];
 
 export default function FounderAgent() {
-  const { user, role } = useAuth();
+  const { user, role, roleLoading } = useAuth();
+  const userId = user?.id;
   const { threadId: routeThreadId } = useParams();
   const navigate = useNavigate();
   const [thread, setThread] = useState<Thread | null>(null);
@@ -74,118 +76,219 @@ export default function FounderAgent() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const refreshTimer = useRef<number | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [evaluationError, setEvaluationError] = useState<string | null>(null);
+  const [evaluating, setEvaluating] = useState(false);
+  const [evaluationRemaining, setEvaluationRemaining] = useState(0);
+  const scope = `${userId ?? ""}:${routeThreadId ?? ""}:${role ?? ""}:${roleLoading ? "loading" : "ready"}:${loadAttempt}`;
+  const scopeRef = useRef(scope);
+  scopeRef.current = scope;
+  const operationRef = useRef<{ scope: string; token: symbol } | null>(null);
+  const refreshSequence = useRef(0);
+  const evaluationRef = useRef<{ scope: string; running: boolean; queued: boolean } | null>(null);
+  const readOnly = thread?.status === "archived";
+  const ready = !!thread && (!routeThreadId || routeThreadId === thread.id) && !loadingThread;
 
-  // Load thread by URL, or pick latest / create then navigate to canonical URL
+  // Read failures must not be mistaken for a missing chat.
   useEffect(() => {
-    if (!user) return;
     let mounted = true;
+    scopeRef.current = scope;
+    const cleanup = () => { mounted = false; if (scopeRef.current === scope) scopeRef.current = ""; };
+    operationRef.current = null;
+    evaluationRef.current = null;
+    refreshSequence.current++;
+    setBusy(null);
+    setSending(false);
+    setEvaluating(false);
+    setEvaluationRemaining(0);
+    setEvaluationError(null);
+    setInput("");
+    setMessages([]);
+    setThread(null);
+    setLoadError(null);
+    if (!userId || roleLoading || role !== "startup") {
+      setLoadingThread(!!roleLoading);
+      return cleanup;
+    }
+    setLoadingThread(true);
     (async () => {
-      setLoadingThread(true);
-      setMessages([]);
-      setThread(null);
-
+      try {
       let t: Thread | null = null;
       if (routeThreadId) {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("agent_threads")
           .select("*")
           .eq("id", routeThreadId)
-          .eq("founder_id", user.id)
+          .eq("founder_id", userId)
           .maybeSingle();
+        if (!mounted) return;
+        if (error) throw error;
         t = (data as Thread | null) ?? null;
-        if (!t) {
-          if (mounted) navigate("/agent", { replace: true });
-          return;
-        }
+        if (!t) throw new Error("This agent chat could not be found or is no longer available.");
       } else {
-        const { data: existing } = await supabase
+        const { data: existing, error } = await supabase
           .from("agent_threads")
           .select("*")
-          .eq("founder_id", user.id)
+          .eq("founder_id", userId)
           .eq("status", "active")
           .order("updated_at", { ascending: false })
           .limit(1)
           .maybeSingle();
+        if (!mounted) return;
+        if (error) throw error;
         t = existing as Thread | null;
         if (!t) {
-          const { data: created, error } = await supabase
+          const { data: created, error: createError } = await supabase
             .from("agent_threads")
-            .insert({ founder_id: user.id, status: "active", current_stage: 0, stats: {} })
+            .insert({ founder_id: userId, status: "active", current_stage: 0, stats: {} })
             .select("*")
             .single();
-          if (error) {
-            toast.error("Couldn't start agent thread");
-            if (mounted) setLoadingThread(false);
-            return;
-          }
+          if (!mounted) return;
+          if (createError) throw createError;
           t = created as Thread;
         }
-        if (mounted && t) navigate(`/agent/${t.id}`, { replace: true });
+        if (!t) throw new Error("Couldn't start an agent chat.");
+        navigate(`/agent/${t.id}`, { replace: true });
+        return;
       }
 
       if (!mounted || !t) return;
-      setThread(t);
-      const { data: msgs } = await supabase
+      const { data: msgs, error: messageError } = await supabase
         .from("agent_messages")
         .select("*")
         .eq("thread_id", t.id)
         .order("created_at", { ascending: true });
-      if (mounted) setMessages((msgs ?? []) as Message[]);
+      if (!mounted) return;
+      if (messageError) throw messageError;
+      setThread(t);
+      setMessages((msgs ?? []) as Message[]);
       setLoadingThread(false);
+      } catch (error) {
+        const failure = await getFounderAgentError(error);
+        if (!mounted) return;
+        setLoadError(failure.message);
+        setLoadingThread(false);
+      }
     })();
-    return () => { mounted = false; };
-  }, [user, routeThreadId, navigate]);
+    return cleanup;
+  }, [userId, role, roleLoading, routeThreadId, navigate, loadAttempt]);
+
+  async function reloadThread(id: string, requestScope: string) {
+    const sequence = ++refreshSequence.current;
+    const [threadResult, messageResult] = await Promise.all([
+      supabase.from("agent_threads").select("*").eq("id", id).eq("founder_id", userId).single(),
+      supabase.from("agent_messages").select("*").eq("thread_id", id).order("created_at", { ascending: true }),
+    ]);
+    if (scopeRef.current !== requestScope || sequence !== refreshSequence.current) return;
+    if (threadResult.error) throw threadResult.error;
+    if (messageResult.error) throw messageResult.error;
+    if (threadResult.data) setThread(threadResult.data as Thread);
+    setMessages((messageResult.data ?? []) as Message[]);
+  }
 
   // Realtime: thread + messages
   useEffect(() => {
-    if (!thread) return;
+    if (!thread || role !== "startup" || roleLoading) return;
+    let mounted = true;
+    const id = thread.id;
     const chan = supabase
       .channel(`agent_thread_${thread.id}`)
       .on("postgres_changes",
         { event: "*", schema: "public", table: "agent_messages", filter: `thread_id=eq.${thread.id}` },
-        async () => {
-          const { data } = await supabase
-            .from("agent_messages")
-            .select("*")
-            .eq("thread_id", thread.id)
-            .order("created_at", { ascending: true });
-          setMessages((data ?? []) as Message[]);
+        () => {
+          if (!mounted || scopeRef.current !== scope) return;
+          void reloadThread(id, scope).catch(async (error) => {
+            const failure = await getFounderAgentError(error);
+            if (mounted && scopeRef.current === scope) setLoadError(failure.message);
+          });
         })
       .on("postgres_changes",
         { event: "UPDATE", schema: "public", table: "agent_threads", filter: `id=eq.${thread.id}` },
-        (payload) => setThread(payload.new as Thread))
+        (payload) => { if (mounted && scopeRef.current === scope) setThread(payload.new as Thread); })
       .subscribe();
-    return () => { supabase.removeChannel(chan); };
-  }, [thread?.id]);
+    return () => { mounted = false; void supabase.removeChannel(chan); };
+  }, [thread?.id, role, roleLoading, scope]);
 
-  // Realtime: submissions for the active project → auto-evaluate.
+  // Catch up after time away and serialize bursts of new submissions.
+  async function syncEvaluations(id: string, requestScope: string) {
+    if (scopeRef.current !== requestScope) return;
+    const running = evaluationRef.current;
+    if (running?.scope === requestScope && running.running) { running.queued = true; return; }
+    const work = { scope: requestScope, running: true, queued: false };
+    evaluationRef.current = work;
+    setEvaluating(true);
+    setEvaluationError(null);
+    try {
+      let passes = 0;
+      let continuePending = false;
+      do {
+        work.queued = false;
+        const { data, error } = await supabase.functions.invoke("founder-agent", {
+          body: { thread_id: id, intent: "sync_evaluations" },
+        });
+        if (error || data?.error) throw await getFounderAgentError(error, data);
+        if (scopeRef.current !== requestScope || evaluationRef.current !== work) return;
+        const remaining = Math.max(0, Number(data?.remaining ?? 0) || 0);
+        const failed = Number(data?.failed ?? 0) > 0 || !!data?.evaluation_errors?.length;
+        setEvaluationRemaining(remaining);
+        if (failed) {
+          const details = (data?.evaluation_errors ?? []).map((failure: { message?: string }) => failure.message).filter(Boolean).slice(0, 2).join(" ");
+          setEvaluationError(`Some submissions couldn't be evaluated. ${details ? `${details} ` : ""}Refresh evaluations to retry.`);
+        }
+        continuePending = !failed && remaining > 0 && Number(data?.evaluated ?? 0) > 0;
+        await reloadThread(id, requestScope);
+        passes++;
+        if (failed) break;
+      } while ((work.queued || continuePending) && passes < 3 && scopeRef.current === requestScope);
+    } catch (error) {
+      const failure = await getFounderAgentError(error);
+      if (scopeRef.current === requestScope) setEvaluationError(failure.message);
+    } finally {
+      if (evaluationRef.current === work) {
+        work.running = false;
+        if (scopeRef.current === requestScope) setEvaluating(false);
+      }
+    }
+  }
+
+  // Evaluations are recovered even if submissions arrived while this chat was closed.
   useEffect(() => {
-    if (!thread?.project_id) return;
+    if (!thread?.project_id || thread.status !== "active" || role !== "startup" || roleLoading) return;
     const pid = thread.project_id;
+    const id = thread.id;
+    let mounted = true;
+    void syncEvaluations(id, scope);
     const chan = supabase
       .channel(`agent_subs_${pid}`)
       .on("postgres_changes",
         { event: "INSERT", schema: "public", table: "submissions", filter: `project_id=eq.${pid}` },
-        (payload) => {
-          const sid = (payload.new as any)?.id;
-          if (sid) void invokeAgent("evaluate_new_submission", { submission_id: sid });
-        })
+        () => { if (mounted) void syncEvaluations(id, scope); })
       .subscribe();
-    return () => { supabase.removeChannel(chan); };
-  }, [thread?.project_id]);
+    return () => { mounted = false; void supabase.removeChannel(chan); };
+  }, [thread?.id, thread?.project_id, thread?.status, role, roleLoading, scope]);
 
   // Realtime: evaluation rows → just refresh stats (debounced), no chat appends.
   useEffect(() => {
-    if (!thread?.project_id) return;
+    if (!thread?.project_id || thread.status !== "active" || role !== "startup" || roleLoading) return;
     const pid = thread.project_id;
+    const id = thread.id;
     const chan = supabase
       .channel(`agent_evals_${pid}`)
       .on("postgres_changes",
         { event: "*", schema: "public", table: "ai_submission_evaluations", filter: `project_id=eq.${pid}` },
         () => {
           if (refreshTimer.current) window.clearTimeout(refreshTimer.current);
-          refreshTimer.current = window.setTimeout(() => {
-            void invokeAgent("refresh_stats");
+          refreshTimer.current = window.setTimeout(async () => {
+            if (scopeRef.current !== scope) return;
+            try {
+              const { data, error } = await supabase.functions.invoke("founder-agent", { body: { thread_id: id, intent: "refresh_stats" } });
+              if (error || data?.error) throw await getFounderAgentError(error, data);
+              await reloadThread(id, scope);
+            } catch (error) {
+              const failure = await getFounderAgentError(error);
+              if (scopeRef.current === scope) setEvaluationError(failure.message);
+            }
           }, 2000);
         })
       .subscribe();
@@ -193,7 +296,7 @@ export default function FounderAgent() {
       supabase.removeChannel(chan);
       if (refreshTimer.current) window.clearTimeout(refreshTimer.current);
     };
-  }, [thread?.project_id]);
+  }, [thread?.id, thread?.project_id, thread?.status, role, roleLoading, scope]);
 
   // Auto-scroll
   useEffect(() => {
@@ -222,80 +325,91 @@ export default function FounderAgent() {
     return -1;
   }, [messages]);
 
-  async function invokeAgent(intent: string, payload: any = {}) {
-    if (!thread) return;
+  function beginOperation(intent: string) {
+    if (!ready || role !== "startup" || roleLoading || (readOnly && intent !== "reset") || operationRef.current) return null;
+    const operation = { scope, token: Symbol(intent) };
+    operationRef.current = operation;
     setBusy(intent);
+    return operation;
+  }
+
+  function finishOperation(operation: { scope: string; token: symbol }) {
+    if (operationRef.current === operation) {
+      operationRef.current = null;
+      if (scopeRef.current === operation.scope) { setBusy(null); setSending(false); }
+    }
+  }
+
+  async function invokeAgent(intent: string, payload: any = {}) {
+    if (intent === "sync_evaluations") {
+      if (ready && thread && !readOnly) await syncEvaluations(thread.id, scope);
+      return;
+    }
+    const operation = beginOperation(intent);
+    if (!operation || !thread) return;
     try {
       const { data, error } = await supabase.functions.invoke("founder-agent", {
         body: { thread_id: thread.id, intent, ...payload },
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.message || data.error);
-      const [{ data: t }, { data: m }] = await Promise.all([
-        supabase.from("agent_threads").select("*").eq("id", thread.id).single(),
-        supabase.from("agent_messages").select("*").eq("thread_id", thread.id).order("created_at", { ascending: true }),
-      ]);
-      if (t) setThread(t as Thread);
-      if (m) setMessages(m as Message[]);
-    } catch (e: any) {
-      if (intent !== "refresh_stats" && intent !== "evaluate_new_submission") {
-        toast.error(e?.message ?? "Agent failed");
-      }
-    } finally {
-      setBusy(null);
-    }
+      if (error || data?.error) throw await getFounderAgentError(error, data);
+      await reloadThread(thread.id, operation.scope);
+    } catch (error) {
+      const failure = await getFounderAgentError(error);
+      if (scopeRef.current === operation.scope) toast.error(failure.message);
+    } finally { finishOperation(operation); }
   }
 
   async function send() {
     const text = input.trim();
-    if (!text || sending || !thread) return;
+    if (!text || !thread) return;
+    const operation = beginOperation("chat");
+    if (!operation) return;
     setInput("");
     setSending(true);
+    let accepted = false;
     try {
       const { data, error } = await supabase.functions.invoke("founder-agent", {
         body: { thread_id: thread.id, intent: "chat", message: text },
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.message || data.error);
-      const [{ data: t }, { data: m }] = await Promise.all([
-        supabase.from("agent_threads").select("*").eq("id", thread.id).single(),
-        supabase.from("agent_messages").select("*").eq("thread_id", thread.id).order("created_at", { ascending: true }),
-      ]);
-      if (t) setThread(t as Thread);
-      if (m) setMessages(m as Message[]);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Agent failed");
-      setInput(text);
-    } finally {
-      setSending(false);
-    }
+      if (error || data?.error) throw await getFounderAgentError(error, data);
+      accepted = true;
+      await reloadThread(thread.id, operation.scope);
+    } catch (error) {
+      const failure = await getFounderAgentError(error);
+      if (scopeRef.current === operation.scope) {
+        toast.error(failure.message);
+        if (!accepted) setInput(text);
+      }
+    } finally { finishOperation(operation); }
   }
 
   async function resetThread() {
-    if (!thread) return;
-    const ok = window.confirm("Start a new agent session? Current chat will be archived.");
+    if (!thread || operationRef.current || !ready) return;
+    const ok = readOnly || window.confirm("Start a new agent session? Current chat will be archived.");
     if (!ok) return;
-    setBusy("reset");
+    const operation = beginOperation("reset");
+    if (!operation) return;
     try {
-      const { data } = await supabase.functions.invoke("founder-agent", {
+      const { data, error } = await supabase.functions.invoke("founder-agent", {
         body: { thread_id: thread.id, intent: "reset" },
       });
-      if (data?.thread_id) {
-        setMessages([]);
-        setThread(null);
-        navigate(`/agent/${data.thread_id}`, { replace: true });
-      }
-    } finally {
-      setBusy(null);
-    }
+      if (error || data?.error) throw await getFounderAgentError(error, data);
+      if (!data?.thread_id) throw new Error("Couldn't start a new session. Please try again.");
+      if (scopeRef.current === operation.scope) navigate(`/agent/${data.thread_id}`, { replace: true });
+    } catch (error) {
+      const failure = await getFounderAgentError(error);
+      if (scopeRef.current === operation.scope) toast.error(failure.message);
+    } finally { finishOperation(operation); }
   }
 
   function quickAction(intent: string, payload?: any) {
     void invokeAgent(intent, payload);
   }
+  const actionBusy = readOnly || !ready ? "unavailable" : busy;
 
-  if (role && role !== "startup") {
-    return <div className="p-6"><Card className="p-6">The agent is available to founders only.</Card></div>;
+  if (roleLoading) return <div className="p-6"><Skeleton className="h-32" /></div>;
+  if (role !== "startup") {
+    return <div className="p-6"><Card className="p-6">The agent is available to startups only.</Card></div>;
   }
 
   return (
@@ -358,7 +472,7 @@ export default function FounderAgent() {
               className="h-8 px-2 sm:px-3 text-xs font-medium"
               title="New session"
               onClick={resetThread}
-              disabled={busy === "reset"}
+              disabled={!!busy || !ready}
             >
               <RotateCcw className="h-3.5 w-3.5 sm:mr-1.5 shrink-0" />
               <span className="hidden sm:inline">New session</span>
@@ -407,7 +521,7 @@ export default function FounderAgent() {
           <div className="flex items-center gap-2 truncate">
             <div className="flex h-2 w-2 rounded-full bg-primary animate-pulse shrink-0" />
             <span className="font-semibold text-foreground shrink-0">Stage {stage}/6:</span>
-            <span className="text-muted-foreground truncate">{STAGES[stage - 1] ?? "Done"}</span>
+            <span className="text-muted-foreground truncate">{stageLabel(stage)}</span>
           </div>
           <span className="text-[11px] font-medium text-primary shrink-0 flex items-center gap-0.5 ml-2">
             Details <ArrowRight className="h-3 w-3" />
@@ -417,9 +531,17 @@ export default function FounderAgent() {
         {/* Messages scroll area */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 sm:px-5 py-3 sm:py-4 space-y-4">
           <Walkthrough userId={user?.id} />
+          {readOnly && <div role="status" className="rounded-lg border p-3 text-sm text-muted-foreground">This session is archived. Start a new session to continue.</div>}
+          {loadError && <div role="alert" className="rounded-lg border border-destructive/30 p-3 text-sm">
+            <p>{loadError}</p>
+            <Button size="sm" variant="outline" className="mt-2" onClick={() => setLoadAttempt((n) => n + 1)}>Retry loading chat</Button>
+          </div>}
+          {evaluationError && <div role="alert" className="rounded-lg border border-destructive/30 p-3 text-sm">Evaluation update failed: {evaluationError}</div>}
+          {evaluating && <div role="status" className="text-xs text-muted-foreground">Checking pending submission evaluations…</div>}
+          {!evaluating && evaluationRemaining > 0 && <div role="status" className="text-xs text-muted-foreground">{evaluationRemaining} submission(s) still need evaluation. Use Refresh evaluations to continue.</div>}
           {loadingThread ? (
             <div className="space-y-3"><Skeleton className="h-16 w-2/3" /><Skeleton className="h-16 w-1/2 ml-auto" /></div>
-          ) : messages.length === 0 ? (
+          ) : messages.length === 0 && !loadError ? (
             <Intro onPick={(t) => { setInput(t); taRef.current?.focus(); }} />
           ) : (
             messages.map((m, idx) => (
@@ -428,9 +550,9 @@ export default function FounderAgent() {
                 msg={m}
                 isLatestPreview={idx === latestPreviewIdx}
                 isLatestBuilders={idx === latestBuildersIdx}
-                awaiting={awaiting}
+                awaiting={readOnly ? null : awaiting}
                 onAction={invokeAgent}
-                busy={busy}
+                busy={actionBusy}
               />
             ))
           )}
@@ -444,16 +566,19 @@ export default function FounderAgent() {
           )}
 
           {/* Quick actions after project is posted */}
-          {thread?.project_id && !sending && messages.length > 0 && (
+          {thread?.project_id && !readOnly && (
             <div className="flex flex-wrap gap-1.5 pt-1">
-              <Button size="sm" variant="outline" disabled={!!busy} onClick={() => quickAction("fetch_shortlist")}>
+              <Button size="sm" variant="outline" disabled={!!actionBusy} onClick={() => quickAction("fetch_shortlist")}>
                 <Trophy className="h-3 w-3 mr-1" /> Show shortlist
               </Button>
-              <Button size="sm" variant="outline" disabled={!!busy} onClick={() => quickAction("broaden_match")}>
+              <Button size="sm" variant="outline" disabled={!!actionBusy} onClick={() => quickAction("broaden_match")}>
                 <Search className="h-3 w-3 mr-1" /> Broaden match
               </Button>
-              <Button size="sm" variant="outline" disabled={!!busy} onClick={() => { setInput("What's the status?"); }}>
+              <Button size="sm" variant="outline" disabled={!!actionBusy} onClick={() => quickAction("status")}>
                 <Users className="h-3 w-3 mr-1" /> Status
+              </Button>
+              <Button size="sm" variant="outline" disabled={evaluating || !!actionBusy} onClick={() => quickAction("sync_evaluations")}>
+                <RotateCcw className="h-3 w-3 mr-1" /> Refresh evaluations
               </Button>
             </div>
           )}
@@ -472,11 +597,13 @@ export default function FounderAgent() {
               rows={2}
               placeholder="Tell me what you need to build…"
               className="resize-none min-h-[52px] sm:min-h-[58px] text-sm"
-              disabled={sending || loadingThread}
+              disabled={!!actionBusy}
+              aria-label="Message the startup agent"
             />
             <Button
               onClick={send}
-              disabled={!input.trim() || sending || loadingThread}
+              disabled={!input.trim() || !!actionBusy}
+              aria-label="Send message"
               size="icon"
               className="h-[52px] sm:h-[58px] w-11 sm:w-12 shrink-0"
             >
@@ -527,7 +654,7 @@ export default function FounderAgent() {
           stage={stage}
           stats={stats}
           project_id={thread?.project_id ?? null}
-          busy={busy}
+          busy={actionBusy}
           quickAction={quickAction}
           onReturnToChat={() => setMobileTab("chat")}
         />
@@ -560,7 +687,7 @@ function StagesSidebar({
             Agent Stages
           </div>
           <Badge variant="outline" className="text-[10px] font-medium px-1.5 py-0 h-4">
-            {stage}/6 completed
+            {Math.max(0, stage - 1)}/6 completed
           </Badge>
         </div>
 
@@ -568,7 +695,7 @@ function StagesSidebar({
         <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden mb-3.5">
           <div
             className="h-full bg-primary transition-all duration-300"
-            style={{ width: `${Math.min(100, Math.max(12, (stage / 6) * 100))}%` }}
+            style={{ width: `${Math.min(100, Math.max(0, ((stage - 1) / 6) * 100))}%` }}
           />
         </div>
 
@@ -656,7 +783,7 @@ function StagesSidebar({
       )}
 
       {/* Quick actions on mobile in stages view */}
-      {project_id && (
+      {project_id && busy !== "unavailable" && (
         <Card className="p-4 border shadow-xs lg:hidden">
           <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2.5">
             Quick Actions
@@ -670,6 +797,9 @@ function StagesSidebar({
             </Button>
             <Button size="sm" variant="outline" disabled={!!busy} onClick={() => quickAction("status")}>
               <Users className="h-3.5 w-3.5 mr-1" /> Check status
+            </Button>
+            <Button size="sm" variant="outline" disabled={!!busy} onClick={() => quickAction("sync_evaluations")}>
+              <RotateCcw className="h-3.5 w-3.5 mr-1" /> Refresh evaluations
             </Button>
           </div>
         </Card>
@@ -848,6 +978,9 @@ function ProjectPreview({ project, live, busy, onAction }: {
         <span>· {project.difficulty || "mid"}</span>
         {project.skills?.length ? <span>· {project.skills.slice(0, 4).join(", ")}</span> : null}
       </div>
+      {project.requirements && <div className="border-t pt-2"><h4 className="text-xs font-semibold">Requirements</h4><p className="mt-1 whitespace-pre-line text-xs text-muted-foreground">{project.requirements}</p></div>}
+      {project.deliverables && <div className="border-t pt-2"><h4 className="text-xs font-semibold">Deliverables</h4><p className="mt-1 whitespace-pre-line text-xs text-muted-foreground">{project.deliverables}</p></div>}
+      {(project.budget_min != null || project.budget_max != null) && <p className="text-xs">Budget: {project.currency || "USD"} {project.budget_min ?? "—"} – {project.budget_max ?? "—"}</p>}
       {live ? (
         <div className="flex gap-2 pt-2">
           <Button size="sm" onClick={() => onAction("approve_post")} disabled={!!busy}>

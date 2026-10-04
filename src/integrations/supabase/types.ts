@@ -664,6 +664,7 @@ export type Database = {
           escrow_funded: boolean | null
           escrow_funded_at: string | null
           escrow_provider: string | null
+          escrow_screenshot_url: string | null
           escrow_transaction_ref: string | null
           founder_id: string
           id: string
@@ -689,6 +690,7 @@ export type Database = {
           escrow_funded?: boolean | null
           escrow_funded_at?: string | null
           escrow_provider?: string | null
+          escrow_screenshot_url?: string | null
           escrow_transaction_ref?: string | null
           founder_id: string
           id?: string
@@ -714,6 +716,7 @@ export type Database = {
           escrow_funded?: boolean | null
           escrow_funded_at?: string | null
           escrow_provider?: string | null
+          escrow_screenshot_url?: string | null
           escrow_transaction_ref?: string | null
           founder_id?: string
           id?: string
@@ -2400,6 +2403,27 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      invite_agent_builders: {
+        Args: { _thread_id: string; _founder_id: string; _builder_ids: string[] }
+        Returns: Json
+      }
+      post_agent_project: {
+        Args: { _thread_id: string; _founder_id: string }
+        Returns: Json
+      }
+      reset_agent_thread: {
+        Args: { _thread_id: string; _founder_id: string }
+        Returns: Json
+      }
+      update_agent_thread: {
+        Args: {
+          _thread_id: string
+          _founder_id: string
+          _stats_patch?: Json
+          _stage?: number
+        }
+        Returns: Json
       }
       is_conversation_participant: {
         Args: { _conv: string; _user: string }

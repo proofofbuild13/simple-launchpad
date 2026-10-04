@@ -1,4 +1,4 @@
-﻿-- Startup Control Panel: aggregated stats function + cleanup policies
+-- Startup Control Panel: aggregated stats function + cleanup policies
 
 -- Single round-trip stats query for startup dashboard
 CREATE OR REPLACE FUNCTION public.get_startup_stats(_founder_id uuid)

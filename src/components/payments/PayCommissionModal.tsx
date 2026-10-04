@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { PLATFORM_PAYEE } from "@/config/platformPayee";
+import { fmtCurrency, type SupportedCurrency } from "@/lib/currency";
 
 interface Props {
   open: boolean;
@@ -22,11 +23,15 @@ export function PayCommissionModal({ open, onOpenChange, invoice, contractId, on
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (open) { setRef(""); setFile(null); }
+  }, [open, invoice?.id]);
+
   if (!invoice) return null;
 
   const submit = async () => {
-    if (!user) return;
-    if (!ref) return toast.error("Reference required");
+    if (!user || saving) return;
+    if (!ref.trim()) return toast.error("Reference required");
     setSaving(true);
     try {
       let screenshot: string | null = null;
@@ -40,7 +45,8 @@ export function PayCommissionModal({ open, onOpenChange, invoice, contractId, on
         invoice_id: invoice.id,
         startup_id: user.id,
         amount: invoice.commission_amount,
-        transaction_ref: ref,
+        currency: invoice.currency ?? "USD",
+        transaction_ref: ref.trim(),
         screenshot_url: screenshot,
       });
       if (error) throw error;
@@ -62,7 +68,7 @@ export function PayCommissionModal({ open, onOpenChange, invoice, contractId, on
         </DialogHeader>
         <div className="space-y-3">
           <div className="rounded-md border p-3 text-xs space-y-1">
-            <div className="flex justify-between"><span>Amount due</span><span className="font-mono font-semibold">${invoice.commission_amount}</span></div>
+            <div className="flex justify-between"><span>Amount due</span><span className="font-mono font-semibold">{fmtCurrency(invoice.commission_amount, (invoice.currency ?? "USD") as SupportedCurrency, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
             <div className="flex justify-between"><span>Due date</span><span>{new Date(invoice.due_date).toLocaleDateString()}</span></div>
           </div>
           <div className="rounded-md bg-muted p-3 text-xs space-y-1">

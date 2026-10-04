@@ -1,46 +1,58 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { ShieldCheck, Info } from "lucide-react";
-import { PLATFORM_PAYEE, COMMISSION_RATE } from "@/config/platformPayee";
+import { PLATFORM_PAYEE } from "@/config/platformPayee";
 import { ensureBuilderPaymentReady } from "@/lib/builderPaymentCheck";
+import { fmtCurrency, type SupportedCurrency } from "@/lib/currency";
 
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   contract: any;
   milestones: any[];
+  currency?: SupportedCurrency;
   onDone: () => void;
 }
 
-export function FundEscrowModal({ open, onOpenChange, contract, milestones, onDone }: Props) {
+export function FundEscrowModal({ open, onOpenChange, contract, milestones, currency, onDone }: Props) {
   const { user } = useAuth();
   const [ref, setRef] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const submitting = useRef(false);
+
+  useEffect(() => {
+    if (open) { setRef(""); setFile(null); }
+  }, [open, contract?.id]);
 
   if (!contract) return null;
 
   const totalAmount = milestones
     .filter((m) => m.status !== "cancelled")
-    .reduce((a, b) => a + Number(b.amount || 0), 0);
+    .reduce((a, b) => a + Math.round(Number(b.amount || 0) * 100), 0) / 100;
 
-  const commission = Math.round(totalAmount * COMMISSION_RATE * 100) / 100;
+  const money = (amount: number) => fmtCurrency(amount, currency ?? contract.currency ?? "USD", {
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  });
 
   const submit = async () => {
-    if (!user) return;
+    if (!user || submitting.current) return;
     if (!ref.trim()) { toast.error("Transaction reference required"); return; }
-    const ready = await ensureBuilderPaymentReady(contract);
-    if (!ready) return;
+    if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+      toast.error("Add valid milestone amounts before funding escrow"); return;
+    }
+    submitting.current = true;
     setSaving(true);
     try {
+      const ready = await ensureBuilderPaymentReady(contract);
+      if (!ready) return;
       let screenshotUrl: string | null = null;
       if (file) {
         const path = `${user.id}/escrow-${contract.id}-${Date.now()}-${file.name}`;
@@ -56,18 +68,19 @@ export function FundEscrowModal({ open, onOpenChange, contract, milestones, onDo
         _screenshot_url: screenshotUrl,
       });
       if (error) throw error;
-      toast.success("Escrow funded — contract is now active");
+      toast.success("Escrow deposit recorded");
       onDone();
       onOpenChange(false);
     } catch (e: any) {
       toast.error(e.message);
     } finally {
+      submitting.current = false;
       setSaving(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(value) => { if (!saving) onOpenChange(value); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -87,15 +100,15 @@ export function FundEscrowModal({ open, onOpenChange, contract, milestones, onDo
           <div className="rounded-md border divide-y text-sm">
             <div className="flex justify-between px-3 py-2">
               <span className="text-muted-foreground">Milestones total</span>
-              <span className="font-mono font-medium">₹{totalAmount.toLocaleString()}</span>
+              <span className="font-mono font-medium">{money(totalAmount)}</span>
             </div>
             <div className="flex justify-between px-3 py-2">
               <span className="text-muted-foreground">Platform commission</span>
-              <span className="font-mono text-muted-foreground">₹{commission.toLocaleString()} (billed per milestone)</span>
+              <span className="text-muted-foreground">Billed separately per milestone</span>
             </div>
             <div className="flex justify-between px-3 py-2 font-medium">
               <span>Amount to deposit now</span>
-              <span className="font-mono">₹{totalAmount.toLocaleString()}</span>
+              <span className="font-mono">{money(totalAmount)}</span>
             </div>
           </div>
 
@@ -131,16 +144,17 @@ export function FundEscrowModal({ open, onOpenChange, contract, milestones, onDo
                 onChange={(e) => setRef(e.target.value)}
                 placeholder="e.g. 407812345678"
                 className="font-mono"
+                disabled={saving}
               />
             </div>
             <div>
               <Label>Payment screenshot (optional)</Label>
-              <Input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+              <Input type="file" accept="image/*" disabled={saving} onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
             </div>
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
+            <Button variant="outline" className="flex-1" disabled={saving} onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700" onClick={submit} disabled={saving}>

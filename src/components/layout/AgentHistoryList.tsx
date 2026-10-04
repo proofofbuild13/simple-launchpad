@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate, useParams } from "react-router-dom";
 import { Plus, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { getFounderAgentError } from "@/lib/founderAgentClient";
 
 type ThreadRow = {
   id: string;
@@ -23,12 +24,13 @@ type ThreadWithTitle = ThreadRow & { title: string };
 
 async function fetchTitles(threadIds: string[]): Promise<Record<string, string>> {
   if (threadIds.length === 0) return {};
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("agent_messages")
     .select("thread_id, content, role, created_at")
     .in("thread_id", threadIds)
     .eq("role", "user")
     .order("created_at", { ascending: true });
+  if (error) throw error;
   const map: Record<string, string> = {};
   for (const m of (data ?? []) as any[]) {
     if (!map[m.thread_id] && typeof m.content === "string" && m.content.trim()) {
@@ -39,7 +41,8 @@ async function fetchTitles(threadIds: string[]): Promise<Record<string, string>>
 }
 
 export function AgentHistoryList() {
-  const { user } = useAuth();
+  const { user, role, roleLoading } = useAuth();
+  const userId = user?.id;
   const navigate = useNavigate();
   const { threadId } = useParams();
   const { state } = useSidebar();
@@ -47,66 +50,101 @@ export function AgentHistoryList() {
   const [threads, setThreads] = useState<ThreadWithTitle[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const sequence = useRef(0);
+  const currentUser = useRef(userId);
+  currentUser.current = userId;
+  const createRef = useRef(false);
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   async function load() {
-    if (!user) return;
+    if (!userId || role !== "startup" || roleLoading) return;
+    const requestSequence = ++sequence.current;
     setLoading(true);
-    const { data } = await supabase
+    try {
+    const { data, error } = await supabase
       .from("agent_threads")
       .select("id, status, updated_at, created_at")
-      .eq("founder_id", user.id)
+      .eq("founder_id", userId)
       .order("updated_at", { ascending: false })
       .limit(20);
+    if (error) throw error;
     const rows = (data ?? []) as ThreadRow[];
     const titles = await fetchTitles(rows.map((r) => r.id));
+    if (requestSequence !== sequence.current || currentUser.current !== userId) return;
     setThreads(
       rows.map((r) => ({
         ...r,
         title: titles[r.id] || `New chat · ${new Date(r.created_at).toLocaleDateString()}`,
       }))
     );
-    setLoading(false);
+    setLoadError(null);
+    } catch (error) {
+      const failure = await getFounderAgentError(error);
+      if (requestSequence === sequence.current && currentUser.current === userId) setLoadError(failure.message);
+    } finally {
+      if (requestSequence === sequence.current && currentUser.current === userId) setLoading(false);
+    }
   }
 
   useEffect(() => {
-    if (!user) return;
+    setThreads([]);
+    setLoadError(null);
+    if (!userId || role !== "startup" || roleLoading) { setLoading(false); return; }
     void load();
+    let refreshTimer: number | undefined;
+    const refresh = () => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => void load(), 100);
+    };
     const channel = supabase
-      .channel(`agent_threads_sidebar_${user.id}`)
+      .channel(`agent_threads_sidebar_${userId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "agent_threads", filter: `founder_id=eq.${user.id}` },
-        () => void load()
+        { event: "*", schema: "public", table: "agent_threads", filter: `founder_id=eq.${userId}` },
+        refresh
       )
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "agent_messages" },
-        () => void load()
+        refresh
       )
       .subscribe();
     return () => {
-      supabase.removeChannel(channel);
+      sequence.current++;
+      window.clearTimeout(refreshTimer);
+      void supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [userId, role, roleLoading]);
 
   async function newChat() {
-    if (!user || creating) return;
+    if (!userId || role !== "startup" || roleLoading || createRef.current) return;
+    createRef.current = true;
     setCreating(true);
+    try {
     const { data, error } = await supabase
       .from("agent_threads")
-      .insert({ founder_id: user.id, status: "active", current_stage: 0, stats: {} })
+      .insert({ founder_id: userId, status: "active", current_stage: 0, stats: {} })
       .select("id")
       .single();
-    setCreating(false);
-    if (error || !data) {
-      toast.error("Couldn't create a new chat");
-      return;
+    if (error) throw error;
+    if (!data) throw new Error("Couldn't create a new chat");
+    if (mountedRef.current && currentUser.current === userId) navigate(`/agent/${data.id}`);
+    } catch (error) {
+      const failure = await getFounderAgentError(error);
+      if (mountedRef.current && currentUser.current === userId) toast.error(failure.message);
+    } finally {
+      createRef.current = false;
+      if (mountedRef.current && currentUser.current === userId) setCreating(false);
     }
-    navigate(`/agent/${data.id}`);
   }
 
-  if (collapsed) return null;
+  if (collapsed || role !== "startup" || roleLoading) return null;
 
   return (
     <SidebarMenuSub>
@@ -127,7 +165,11 @@ export function AgentHistoryList() {
         </SidebarMenuSubItem>
       )}
 
-      {!loading && threads.length === 0 && (
+      {loadError && <SidebarMenuSubItem>
+        <button type="button" className="px-2 py-1.5 text-xs text-destructive" onClick={() => void load()} title={loadError}>Couldn't load chats. Retry</button>
+      </SidebarMenuSubItem>}
+
+      {!loading && !loadError && threads.length === 0 && (
         <SidebarMenuSubItem>
           <span className="px-2 py-1.5 text-xs text-muted-foreground">No chats yet</span>
         </SidebarMenuSubItem>

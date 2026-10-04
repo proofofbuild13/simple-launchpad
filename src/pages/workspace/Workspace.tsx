@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,6 +17,7 @@ import { ensureBuilderPaymentReady } from "@/lib/builderPaymentCheck";
 import { ConfirmReceiptModal } from "@/components/payments/ConfirmReceiptModal";
 import { PayCommissionModal } from "@/components/payments/PayCommissionModal";
 import { CommissionInvoiceCard } from "@/components/payments/CommissionInvoiceCard";
+import { fmtCurrency } from "@/lib/currency";
 
 const STATUS_COLOR: Record<string, string> = {
   in_progress: "bg-blue-500/15 text-blue-600",
@@ -54,7 +55,8 @@ export default function Workspace() {
   const [delForm, setDelForm] = useState({ demo_url: "", write_up: "", file_urls: "" });
   const [revReason, setRevReason] = useState("");
   const [disputeReason, setDisputeReason] = useState("");
-  const [commissionRate, setCommissionRate] = useState<number>(0.15);
+  const [releasing, setReleasing] = useState(false);
+  const releaseInFlight = useRef(false);
 
 
   // payment modal state
@@ -99,8 +101,18 @@ export default function Workspace() {
           const cpMap: Record<string, any> = {};
           (cps ?? []).forEach((p) => { if (!cpMap[p.invoice_id]) cpMap[p.invoice_id] = p; });
           setCommissionPayments(cpMap);
+        } else {
+          setCommissionPayments({});
         }
+      } else {
+        setInvoices({});
+        setCommissionPayments({});
       }
+    } else {
+      setDeliverables({});
+      setPaymentRecords({});
+      setInvoices({});
+      setCommissionPayments({});
     }
 
     // names
@@ -111,17 +123,14 @@ export default function Workspace() {
     setLoading(false);
   };
   useEffect(() => { load(); }, [id]);
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase.from("platform_settings").select("value").eq("key", "commission_rate").maybeSingle();
-      const v = data?.value ? Number(data.value) : NaN;
-      if (!Number.isNaN(v) && v > 0 && v < 1) setCommissionRate(v);
-    })();
-  }, []);
 
 
   const isFounder = user?.id === contract?.founder_id;
   const isBuilder = user?.id === contract?.builder_id;
+  const isActive = ["contract_active", "active"].includes(contract?.status);
+  const money = (amount: number | string | null | undefined) => fmtCurrency(amount, contract?.currency ?? "USD", {
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  });
 
   const notifyOther = async (type: string, title: string, body: string) => {
     if (!contract || !user) return;
@@ -132,7 +141,7 @@ export default function Workspace() {
   };
 
   const submitDeliverable = async (m: any) => {
-    if (!user) return;
+    if (!user || !isBuilder || !isActive) return;
     const revisions = (deliverables[m.id] ?? []).length + 1;
     if (revisions > 3) {
       toast.error("Max revisions reached — opening dispute");
@@ -141,7 +150,7 @@ export default function Workspace() {
       load(); return;
     }
 
-    await supabase.from("deliverables").insert({
+    const { error: deliveryError } = await supabase.from("deliverables").insert({
       milestone_id: m.id,
       submitted_by: user.id,
       file_urls: delForm.file_urls ? delForm.file_urls.split(",").map((s) => s.trim()) : [],
@@ -149,7 +158,9 @@ export default function Workspace() {
       write_up: delForm.write_up || null,
       revision_number: revisions,
     });
-    await supabase.from("contract_milestones").update({ status: "submitted" }).eq("id", m.id);
+    if (deliveryError) { toast.error(deliveryError.message); return; }
+    const { error: milestoneError } = await supabase.from("contract_milestones").update({ status: "submitted" }).eq("id", m.id);
+    if (milestoneError) { toast.error(milestoneError.message); return; }
     await notifyOther("deliverable_submitted", "New deliverable submitted", `Builder submitted "${m.title}" (revision ${revisions}).`);
     setDelForm({ demo_url: "", write_up: "", file_urls: "" });
     setActive(null);
@@ -158,31 +169,42 @@ export default function Workspace() {
   };
 
   const approve = async (m: any) => {
-    const ready = await ensureBuilderPaymentReady(contract);
-    if (!ready) { setActive(null); return; }
+    if (!isFounder || !isActive || releaseInFlight.current) return;
+    releaseInFlight.current = true;
+    setReleasing(true);
+    try {
+      const ready = await ensureBuilderPaymentReady(contract);
+      if (!ready) return;
 
-    if (contract?.escrow_funded) {
-      const { error } = await supabase.rpc("release_escrow_for_milestone", { _milestone_id: m.id });
-      if (error) {
-        toast.error("Escrow release failed: " + error.message);
-        return;
+      if (contract?.escrow_funded) {
+        // The RPC approves and releases in one transaction; a failed release
+        // must leave the submitted milestone available for another attempt.
+        const { error } = await supabase.rpc("release_escrow_for_milestone", { _milestone_id: m.id });
+        if (error) throw new Error("Escrow release failed: " + error.message);
+        toast.success("Milestone approved — escrow release recorded");
+      } else {
+        const { error: mErr } = await supabase.from("contract_milestones").update({ status: "approved" }).eq("id", m.id);
+        if (mErr) throw mErr;
+        await notifyOther("milestone_approved", "Milestone approved", `"${m.title}" was approved. Awaiting payment.`);
+        toast.success("Milestone approved — record the payment");
+        setRecordMilestone(m);
+        setRecordOpen(true);
       }
-      toast.success("Milestone approved — escrow released to builder");
-    } else {
-      const { error: mErr } = await supabase.from("contract_milestones").update({ status: "approved" }).eq("id", m.id);
-      if (mErr) { toast.error(mErr.message); return; }
-      await notifyOther("milestone_approved", "Milestone approved", `"${m.title}" was approved. Awaiting payment.`);
-      toast.success("Milestone approved — record the payment");
-      setRecordMilestone(m);
-      setRecordOpen(true);
+      setActive(null);
+      await load();
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      releaseInFlight.current = false;
+      setReleasing(false);
     }
-    setActive(null);
-    load();
   };
 
   const requestRevision = async (m: any) => {
+    if (!isFounder || !isActive || releaseInFlight.current) return;
     if (!revReason) return toast.error("Add a reason");
-    await supabase.from("contract_milestones").update({ status: "revision_requested" }).eq("id", m.id);
+    const { error } = await supabase.from("contract_milestones").update({ status: "revision_requested" }).eq("id", m.id);
+    if (error) { toast.error(error.message); return; }
     await notifyOther("revision_requested", "Revision requested", `On "${m.title}": ${revReason}`);
     setRevReason(""); setActive(null);
     toast.success("Revision requested");
@@ -190,7 +212,7 @@ export default function Workspace() {
   };
 
   const openDispute = async (m: any) => {
-    if (!user || !disputeReason) return;
+    if (!user || !isActive || !disputeReason || releaseInFlight.current) return;
     const { error } = await supabase.rpc("raise_dispute", { _milestone_id: m.id, _reason: disputeReason });
     if (error) { toast.error(error.message); return; }
     setDisputeReason(""); setActive(null);
@@ -218,8 +240,8 @@ export default function Workspace() {
           <h1 className="text-xl sm:text-2xl font-semibold truncate">{contract.projects?.title}</h1>
           <div className="flex items-center gap-2 text-sm shrink-0">
             <Wallet className="h-4 w-4 text-muted-foreground" />
-            <span className="font-mono">${totalPaid.toLocaleString()}</span>
-            <span className="text-muted-foreground">/ ${Number(contract.escrow_amount ?? 0).toLocaleString()}</span>
+            <span className="font-mono">{money(totalPaid)}</span>
+            <span className="text-muted-foreground">/ {money(contract.escrow_amount)}</span>
           </div>
         </div>
       </div>
@@ -229,6 +251,12 @@ export default function Workspace() {
         : (contract.status === "contract_active" || contract.status === "active") ? 4
         : 3
       } /></CardContent></Card>
+
+      {!isActive && contract.status !== "contract_completed" && (
+        <Card><CardContent className="py-4 text-sm text-muted-foreground">
+          Work and payments become available after both parties sign and the startup funds escrow.
+        </CardContent></Card>
+      )}
 
       {/* Kanban board — horizontally scrollable on mobile */}
       <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0 pb-2">
@@ -245,7 +273,7 @@ export default function Workspace() {
                     <Card className="hover:border-primary transition-colors">
                       <CardContent className="p-3 space-y-1">
                         <div className="text-sm font-medium">{m.title}</div>
-                        <div className="text-xs text-muted-foreground">${Number(m.amount).toLocaleString()}</div>
+                        <div className="text-xs text-muted-foreground">{money(m.amount)}</div>
                         <Badge className={`${STATUS_COLOR[m.status]} text-[10px]`} variant="outline">{m.status?.replace(/_/g, " ")}</Badge>
                         {m.status === "approved" && paymentRecords[m.id] && (
                           <div className="text-[10px] text-muted-foreground pt-1">
@@ -292,7 +320,7 @@ export default function Workspace() {
               </div>
             )}
 
-            {isBuilder && (active.status === "in_progress" || active.status === "revision_requested") && (
+            {isBuilder && isActive && (active.status === "in_progress" || active.status === "revision_requested") && (
               <div className="space-y-2 p-3 border-2 border-dashed rounded-md">
                 <Label>Submit deliverable</Label>
                 <Input placeholder="Demo URL" value={delForm.demo_url} onChange={(e) => setDelForm({ ...delForm, demo_url: e.target.value })} />
@@ -302,37 +330,43 @@ export default function Workspace() {
               </div>
             )}
 
-            {isFounder && active.status === "submitted" && (
+            {isFounder && isActive && active.status === "submitted" && (
               <div className="space-y-3">
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" onClick={() => approve(active)}>
+                  <Button size="sm" disabled={releasing} onClick={() => approve(active)}>
                     <CheckCircle2 className="h-4 w-4 mr-1" />
                     {contract?.escrow_funded ? "Approve & release escrow" : "Approve milestone"}
                   </Button>
                   <div className="flex gap-2 items-center">
                     <Input placeholder="Revision reason" value={revReason} onChange={(e) => setRevReason(e.target.value)} className="w-60" />
-                    <Button size="sm" variant="outline" onClick={() => requestRevision(active)}><RotateCw className="h-4 w-4 mr-1" />Request revision</Button>
+                    <Button size="sm" variant="outline" disabled={releasing} onClick={() => requestRevision(active)}><RotateCw className="h-4 w-4 mr-1" />Request revision</Button>
                   </div>
                 </div>
                 {contract?.escrow_funded && (
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <ShieldCheck className="h-3 w-3 text-emerald-600" />
-                    Approving will automatically release ${active.amount} from escrow.
+                    Approving records a release of {money(active.amount)} from escrow. Platform fees are billed separately.
                   </p>
                 )}
               </div>
             )}
 
-            {isFounder && active.status === "approved" && !paymentRecords[active.id] && !contract?.escrow_funded && (
+            {isFounder && isActive && active.status === "approved" && !paymentRecords[active.id] && contract?.escrow_funded && (
+              <Button size="sm" disabled={releasing} onClick={() => approve(active)}>
+                <ShieldCheck className="h-4 w-4 mr-1" />Release escrow
+              </Button>
+            )}
+
+            {isFounder && isActive && active.status === "approved" && !paymentRecords[active.id] && !contract?.escrow_funded && (
               <Button size="sm" onClick={() => { setRecordMilestone(active); setRecordOpen(true); }}>
                 <Wallet className="h-4 w-4 mr-1" />Record payment
               </Button>
             )}
 
-            {(isFounder || isBuilder) && active.status !== "fully_settled" && active.status !== "dispute" && (
+            {isActive && (isFounder || isBuilder) && active.status !== "fully_settled" && active.status !== "dispute" && (
               <div className="flex gap-2 items-center pt-3 border-t">
                 <Input placeholder="Dispute reason" value={disputeReason} onChange={(e) => setDisputeReason(e.target.value)} className="flex-1" />
-                <Button size="sm" variant="ghost" onClick={() => openDispute(active)}><AlertTriangle className="h-4 w-4 mr-1" />Open dispute</Button>
+                <Button size="sm" variant="ghost" disabled={releasing} onClick={() => openDispute(active)}><AlertTriangle className="h-4 w-4 mr-1" />Open dispute</Button>
               </div>
             )}
           </CardContent>
@@ -364,7 +398,7 @@ export default function Workspace() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <CardTitle className="text-base">{m.title}</CardTitle>
-                    <p className="text-xs text-muted-foreground">${Number(m.amount).toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">{money(m.amount)}</p>
                   </div>
                   {m.status === "escrow_released" && (
                     <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30" variant="outline">
@@ -385,24 +419,29 @@ export default function Workspace() {
                       <ShieldCheck className="h-3.5 w-3.5" />Released from escrow
                     </div>
                     <div className="grid grid-cols-3 gap-2 pt-1">
-                      <div><span className="text-muted-foreground">Gross</span><div className="font-mono">${Number(m.amount).toLocaleString()}</div></div>
-                      <div><span className="text-muted-foreground">Commission ({(commissionRate * 100).toFixed(0)}%)</span><div className="font-mono">-${(Number(m.amount) * commissionRate).toFixed(2)}</div></div>
-                      <div><span className="text-muted-foreground">Builder receives</span><div className="font-mono">${(Number(m.amount) * (1 - commissionRate)).toFixed(2)}</div></div>
+                      <div><span className="text-muted-foreground">Released</span><div className="font-mono">{money(m.amount)}</div></div>
+                      <div><span className="text-muted-foreground">Platform fee{inv ? ` (${Number((Number(inv.commission_rate) * 100).toFixed(2))}%)` : ""}</span><div className="font-mono">{inv ? money(inv.commission_amount) : "Invoice pending"}</div></div>
+                      <div><span className="text-muted-foreground">Builder payment</span><div className="font-mono">{money(pr?.confirmed_amount ?? m.amount)}</div></div>
 
                     </div>
+                    <p className="text-muted-foreground">The startup pays the platform fee separately.</p>
                   </div>
                 )}
                 <PaymentTimeline
                   current={
-                    contract?.escrow_funded && m.status === "fully_settled" ? 7
-                      : contract?.escrow_funded && m.status === "escrow_released" ? 4
-                      : stage
+                    m.status === "fully_settled" || pr?.status === "settled" ? 7 : stage
                   }
                 />
 
 
                 {/* Step 1: founder records — manual flow only */}
-                {isFounder && !pr && m.status === "approved" && !contract?.escrow_funded && (
+                {isFounder && isActive && !pr && m.status === "approved" && contract?.escrow_funded && (
+                  <Button size="sm" disabled={releasing} onClick={() => approve(m)}>
+                    <ShieldCheck className="h-4 w-4 mr-1" />Release escrow
+                  </Button>
+                )}
+
+                {isFounder && isActive && !pr && m.status === "approved" && !contract?.escrow_funded && (
                   <Button size="sm" onClick={() => { setRecordMilestone(m); setRecordOpen(true); }}>
                     <Wallet className="h-4 w-4 mr-1" />Record builder payment
                   </Button>
@@ -416,12 +455,12 @@ export default function Workspace() {
                       <Badge variant="outline" className="capitalize">{pr.status}</Badge>
                     </div>
                     <div className="grid grid-cols-2 gap-1 text-muted-foreground">
-                      <div>Declared: <span className="text-foreground font-mono">${Number(pr.declared_amount).toLocaleString()}</span></div>
+                      <div>Declared: <span className="text-foreground font-mono">{money(pr.declared_amount)}</span></div>
                       <div>Method: <span className="text-foreground uppercase">{pr.payment_method}</span></div>
                       <div>Ref: <span className="text-foreground font-mono">{pr.transaction_ref}</span></div>
-                      {pr.confirmed_amount != null && <div>Confirmed: <span className="text-foreground font-mono">${Number(pr.confirmed_amount).toLocaleString()}</span></div>}
+                      {pr.confirmed_amount != null && <div>Confirmed: <span className="text-foreground font-mono">{money(pr.confirmed_amount)}</span></div>}
                     </div>
-                    {isBuilder && pr.status === "declared" && (
+                    {isBuilder && isActive && pr.status === "declared" && pr.payment_method !== "escrow" && (
                       <Button size="sm" className="mt-2" onClick={() => { setConfirmRecord(pr); setConfirmOpen(true); }}>
                         <CheckCircle2 className="h-4 w-4 mr-1" />Confirm receipt
                       </Button>
@@ -441,7 +480,7 @@ export default function Workspace() {
                 )}
 
                 {/* Step 5: founder pays commission */}
-                {isFounder && inv && inv.status !== "paid" && !cp && (
+                {isFounder && isActive && inv && !["paid", "waived"].includes(inv.status) && (!cp || cp.status === "rejected") && (
                   <Button size="sm" onClick={() => { setPayInvoice(inv); setPayCommissionOpen(true); }}>
                     <FileText className="h-4 w-4 mr-1" />Pay platform fee
                   </Button>
@@ -454,7 +493,7 @@ export default function Workspace() {
                       <span className="font-medium">Platform fee payment</span>
                       <Badge variant="outline" className="capitalize">{cp.status.replace(/_/g, " ")}</Badge>
                     </div>
-                    <div className="text-muted-foreground">Ref <span className="text-foreground font-mono">{cp.transaction_ref}</span> · ${Number(cp.amount).toLocaleString()}</div>
+                    <div className="text-muted-foreground">Ref <span className="text-foreground font-mono">{cp.transaction_ref}</span> · {money(cp.amount)}</div>
                     {cp.status === "submitted" && <p className="text-muted-foreground">Awaiting admin verification.</p>}
                     {cp.status === "rejected" && cp.admin_notes && <p className="text-destructive">{cp.admin_notes}</p>}
                   </div>
@@ -476,6 +515,7 @@ export default function Workspace() {
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         paymentRecord={confirmRecord}
+        currency={contract.currency ?? "USD"}
         onDone={load}
       />
       <PayCommissionModal
