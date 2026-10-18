@@ -61,6 +61,7 @@ import AdminDisputeDetail from "./pages/admin/AdminDisputeDetail";
 import FounderAgent from "./pages/agent/FounderAgent";
 import Deals from "./pages/deals/Deals";
 import Collective from "./pages/collective/Collective";
+import ChallengeDeal from "./pages/collective/ChallengeDeal";
 import DealDetail from "./pages/deals/DealDetail";
 import StartupControlPanel from "./pages/startup/StartupControlPanel";
 
@@ -101,6 +102,7 @@ const App = () => (
               <Route path="/agent/:threadId" element={<FounderAgent />} />
 
               <Route path="/collective" element={<Collective />} />
+              <Route path="/challenges/:id" element={<ChallengeDeal />} />
 
               <Route path="/deals" element={<Deals />} />
               <Route path="/deals/:id" element={<DealDetail />} />

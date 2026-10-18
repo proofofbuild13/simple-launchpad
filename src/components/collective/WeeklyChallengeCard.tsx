@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -354,17 +355,15 @@ export function WeeklyChallengeCard({
           </div>
         ) : (
           <div>
-            {perspective === "builder" ? (
-              <Button className="w-full h-8 text-xs bg-amber-600 hover:bg-amber-700 text-white shadow-sm" onClick={() => setOpen(true)}>
-                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                Enter challenge
+            <Link to={`/challenges/${challenge.id}`}>
+              <Button className="w-full h-8 text-xs bg-amber-600 hover:bg-amber-700 text-white shadow-sm">
+                {challenge.created_by === user?.id ? (
+                  <><Users className="h-3.5 w-3.5 mr-1.5" /> Review applications</>
+                ) : (
+                  <><Sparkles className="h-3.5 w-3.5 mr-1.5" /> {perspective === "builder" ? "Apply to challenge" : "View challenge"}</>
+                )}
               </Button>
-            ) : (
-              <Button variant="outline" className="w-full h-8 text-xs border-amber-500/30 text-amber-800 dark:text-amber-300" onClick={() => toast.info(`${count} builders have submitted entries.`)}>
-                <Users className="h-3.5 w-3.5 mr-1.5" />
-                View entries ({count})
-              </Button>
-            )}
+            </Link>
           </div>
         )}
 
