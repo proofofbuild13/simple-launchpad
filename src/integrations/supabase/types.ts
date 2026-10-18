@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
@@ -2393,6 +2393,15 @@ export type Database = {
           summary: string
         }[]
       }
+      get_startup_stats: {
+        Args: { _founder_id: string }
+        Returns: {
+          active_projects: number
+          total_spend: number
+          total_submissions: number
+          unique_builders: number
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -2405,23 +2414,10 @@ export type Database = {
         Returns: boolean
       }
       invite_agent_builders: {
-        Args: { _thread_id: string; _founder_id: string; _builder_ids: string[] }
-        Returns: Json
-      }
-      post_agent_project: {
-        Args: { _thread_id: string; _founder_id: string }
-        Returns: Json
-      }
-      reset_agent_thread: {
-        Args: { _thread_id: string; _founder_id: string }
-        Returns: Json
-      }
-      update_agent_thread: {
         Args: {
-          _thread_id: string
+          _builder_ids: string[]
           _founder_id: string
-          _stats_patch?: Json
-          _stage?: number
+          _thread_id: string
         }
         Returns: Json
       }
@@ -2439,13 +2435,29 @@ export type Database = {
         Returns: string
       }
       mask_account: { Args: { _acc: string }; Returns: string }
+      post_agent_project: {
+        Args: { _founder_id: string; _thread_id: string }
+        Returns: Json
+      }
       raise_dispute: {
         Args: { _milestone_id: string; _reason: string }
+        Returns: string
+      }
+      record_escrow_release: {
+        Args: {
+          _admin_resolution?: boolean
+          _contract_id: string
+          _milestone_id: string
+        }
         Returns: string
       }
       release_escrow_for_milestone: {
         Args: { _milestone_id: string }
         Returns: string
+      }
+      reset_agent_thread: {
+        Args: { _founder_id: string; _thread_id: string }
+        Returns: Json
       }
       resolve_dispute: {
         Args: { _direction: string; _dispute_id: string; _resolution: string }
@@ -2462,6 +2474,15 @@ export type Database = {
         Returns: string
       }
       set_my_builder_phone: { Args: { _phone: string }; Returns: undefined }
+      update_agent_thread: {
+        Args: {
+          _founder_id: string
+          _stage?: number
+          _stats_patch?: Json
+          _thread_id: string
+        }
+        Returns: Json
+      }
       user_has_any_role: { Args: { _uid: string }; Returns: boolean }
       verify_commission_payment: {
         Args: { _approve: boolean; _notes?: string; _payment_id: string }
