@@ -347,6 +347,62 @@ export type Database = {
         }
         Relationships: []
       }
+      challenge_applications: {
+        Row: {
+          approved_at: string | null
+          builder_id: string
+          challenge_id: string
+          created_at: string
+          feedback: string | null
+          id: string
+          pitch: string
+          portfolio_url: string | null
+          reviewed_at: string | null
+          status: string
+          submission_url: string | null
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          builder_id: string
+          challenge_id: string
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          pitch: string
+          portfolio_url?: string | null
+          reviewed_at?: string | null
+          status?: string
+          submission_url?: string | null
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          builder_id?: string
+          challenge_id?: string
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          pitch?: string
+          portfolio_url?: string | null
+          reviewed_at?: string | null
+          status?: string
+          submission_url?: string | null
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_applications_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "community_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       collective_comments: {
         Row: {
           content: string
@@ -2327,6 +2383,10 @@ export type Database = {
         }[]
       }
       can_delete_project: { Args: { _project_id: string }; Returns: Json }
+      challenge_application_count: {
+        Args: { _challenge: string }
+        Returns: number
+      }
       confirm_payment_record: {
         Args: { _confirmed_amount: number; _id: string; _screenshot?: string }
         Returns: string
@@ -2420,6 +2480,10 @@ export type Database = {
           _thread_id: string
         }
         Returns: Json
+      }
+      is_challenge_creator: {
+        Args: { _challenge: string; _user: string }
+        Returns: boolean
       }
       is_conversation_participant: {
         Args: { _conv: string; _user: string }
