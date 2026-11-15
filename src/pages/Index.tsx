@@ -20,7 +20,7 @@ const orgJsonLd = {
   url: "https://proofbuild.in/",
   logo: "https://proofbuild.in/logo.png",
   description:
-    "Execution-based Web3 hiring platform. Onchain founders post real challenges, builders ship deployed dApps, escrow and contracts handled.",
+    "Execution-based hiring for Crypto and Web3, AI, and robotics. Founders post real challenges and builders prove they can deliver.",
   sameAs: ["https://twitter.com/", "https://github.com/"],
 };
 
@@ -31,17 +31,17 @@ const Index = () => {
         <title>proof_of_Build — Hire Web3 builders who already shipped it</title>
         <meta
           name="description"
-          content="Execution-based Web3 hiring. Founders post onchain challenges, Solidity/Rust/Move builders ship deployed dApps, escrow and contracts handled end-to-end."
+          content="Find proven builders for Crypto and Web3, AI, and robotics projects. Post a real challenge, review working submissions, and hire with confidence."
         />
         <meta
           name="keywords"
-          content="hire web3 developers, solidity developer, rust solana developer, dao tooling, defi engineers, onchain hiring, web3 escrow, dapp builders"
+          content="hire web3 developers, solidity developer, rust solana developer, AI engineers, AI agents, robotics developers, ROS 2, autonomous systems, onchain hiring, dapp builders"
         />
         <link rel="canonical" href="https://proofbuild.in/" />
         <meta property="og:title" content="proof_of_Build — Hire Web3 builders who already shipped it" />
         <meta
           property="og:description"
-          content="Execution-based Web3 hiring. Founders post onchain challenges, Solidity/Rust/Move builders ship deployed dApps, escrow and contracts handled end-to-end."
+          content="Find proven builders for Crypto and Web3, AI, and robotics projects. Post a real challenge, review working submissions, and hire with confidence."
         />
         <meta property="og:url" content="https://proofbuild.in/" />
         <meta property="og:type" content="website" />
