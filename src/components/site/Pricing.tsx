@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 
 const includes = [
   "Unlimited project posts & submissions",
-  "AI-scored evaluation on every submission",
+  "AI-assisted submission assessment",
   "Side-by-side prototype review",
   "Milestone escrow with admin-mediated disputes",
   "Auto-generated 3 / 6 / 12-milestone contracts",
@@ -18,7 +18,7 @@ const tiers = [
     type: "Posting & submissions",
     fee: "Free",
     unit: "",
-    desc: "Post unlimited challenges, receive unlimited submissions, run AI evaluation and interviews — all at no cost. You only pay when you successfully onboard a builder.",
+    desc: "Post challenges, receive submissions, review work, and interview candidates without an upfront posting fee.",
   },
   {
     type: "Milestone contracts",
@@ -39,11 +39,11 @@ export const Pricing = () => (
     <div className="max-w-3xl mb-14">
       <div className="font-mono text-xs text-signal uppercase tracking-widest mb-3">Pricing</div>
       <h2 className="font-display text-5xl md:text-6xl text-balance leading-[1.02]">
-        Free to post. <em className="text-signal not-italic italic font-light">Pay only when a builder is onboarded.</em>
+        Free to post. <em className="text-signal not-italic italic font-light">Pay when you hire.</em>
       </h2>
       <p className="mt-6 text-muted-foreground max-w-2xl text-lg">
-        No subscriptions. No per-seat fees. No charge to post, review, or interview. The platform earns a
-        transparent commission only when work is signed off and money actually moves to the builder.
+        No subscriptions or per-seat fees. Posting and review are free. A 15% platform commission applies to
+        milestone releases; a separate 8.33% placement fee applies when a full-time offer is accepted.
       </p>
     </div>
 
@@ -59,7 +59,7 @@ export const Pricing = () => (
         >
           {i === 1 && (
             <span className="absolute -top-3 left-8 font-mono text-[10px] uppercase tracking-widest bg-signal text-ink px-2.5 py-1 rounded-full">
-              Most common
+              Milestone fee
             </span>
           )}
           <div className="font-mono text-[11px] uppercase tracking-widest mb-3 text-signal">
@@ -113,7 +113,7 @@ export const Pricing = () => (
     </div>
 
     <p className="mt-8 text-center font-mono text-xs text-muted-foreground">
-      Commission applies only on successfully onboarded builders. No hire = no fee, ever.
+      No upfront posting fee. Milestone and full-time placement fees have separate terms above.
     </p>
   </section>
 );

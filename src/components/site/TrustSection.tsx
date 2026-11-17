@@ -3,39 +3,39 @@ import { Lock, Scale, Sparkles, FileSignature, Wallet, ShieldCheck } from "lucid
 const pillars = [
   {
     icon: Wallet,
-    title: "Milestone escrow, not promises",
-    body: "Funds for every milestone sit in platform escrow before work begins. Releases happen only after the founder signs off — and every movement is recorded in an immutable ledger.",
-    tag: "Escrow ledger",
+    title: "Milestone-based payments",
+    body: "Set milestones in the contract and review the work before signing off on a release. The platform's payment flow is described in the contract terms.",
+    tag: "Milestones",
   },
   {
     icon: Sparkles,
-    title: "AI evaluation on every submission",
-    body: "Gemini-powered scoring grades each submission against the brief — code quality, completeness, fit — so founders can shortlist in minutes instead of weeks of manual review.",
-    tag: "Gemini 3 Flash",
+    title: "AI-assisted submission assessment",
+    body: "AI can assess the project details and submission descriptions to surface considerations. It does not inspect linked repositories or replace a technical review.",
+    tag: "AI-assisted",
   },
   {
     icon: FileSignature,
-    title: "IP & NDA, automated at signing",
-    body: "Contractor agreement, NDA and IP-assignment are generated and counter-signed as part of the contract flow. Ownership transfers cleanly the moment work is paid for.",
-    tag: "Auto-generated",
+    title: "Clear written agreements",
+    body: "Review the confidentiality, ownership, and delivery terms in the agreement before signing. Make sure the scope reflects what both sides expect.",
+    tag: "Agreements",
   },
   {
     icon: Scale,
-    title: "Disputes mediated by humans",
-    body: "If a milestone goes sideways, our admin team reviews the contract artifacts, escrow state and message history — and resolves with a documented, audited decision.",
-    tag: "Admin-mediated",
+    title: "A process for disagreements",
+    body: "If there is a disagreement, refer to the signed terms and use the platform's dispute process to request review.",
+    tag: "Dispute process",
   },
   {
     icon: Lock,
-    title: "Built on row-level security",
-    body: "Every record — projects, submissions, payments, messages — is gated by Postgres RLS. No client-side trust, no privilege escalation, no shared role tables.",
-    tag: "RLS-enforced",
+    title: "Access controls",
+    body: "Project, submission, and account access is governed by platform permissions. Only share information you intend to include in your project or submission.",
+    tag: "Permissions",
   },
   {
     icon: ShieldCheck,
-    title: "Audited admin actions",
-    body: "Every privileged action by our team — status changes, payouts, dispute rulings — is written to an append-only audit log you can request at any time.",
-    tag: "Append-only logs",
+    title: "A record of your work",
+    body: "Keep project details, submissions, messages, and signed terms together as you review work and discuss an engagement.",
+    tag: "Project history",
   },
 ];
 
@@ -45,13 +45,12 @@ export const TrustSection = () => (
       <div className="lg:col-span-5">
         <div className="font-mono text-xs text-signal uppercase tracking-widest mb-3">Trust & safety</div>
         <h2 className="font-display text-5xl md:text-6xl text-balance leading-[1.02]">
-          Six guarantees behind every <em className="text-signal not-italic italic font-light">onchain contract</em>.
+          Clear expectations for <em className="text-signal not-italic italic font-light">both sides.</em>
         </h2>
       </div>
       <p className="lg:col-span-6 lg:col-start-7 text-muted-foreground text-lg leading-relaxed self-end">
-        Hiring pseudonymous builders on the internet to ship production Web3 code is a trust problem. We've
-        built the platform so neither side has to take the other purely on faith — money, IP and reputation
-        are all protected by the system, not the handshake.
+        Technical hiring calls for a clear scope, reviewable submissions, and agreed responsibilities. Those
+        basics matter whether the work is in Crypto/Web3, AI, or Robotics.
       </p>
     </div>
 

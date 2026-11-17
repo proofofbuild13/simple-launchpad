@@ -1,8 +1,8 @@
 const steps = [
-  { n: "01", title: "Post the onchain challenge", body: "Describe the contract, indexer, dApp or DAO tool you need. Set deliverables, timeline and bounty. Public, unlisted, or invite-only." },
-  { n: "02", title: "Builders ship dApps", body: "Solidity, Rust, Move and fullstack Web3 builders submit working prototypes — repo, verified contracts on testnet, live URL, walkthrough." },
-  { n: "03", title: "Review side-by-side", body: "Score on code quality, UX, gas, security posture and fit. Shortlist, interview, pick the builder who already solved it." },
-  { n: "04", title: "Hire with escrow", body: "Fund milestones in escrow, sign the contract, convert winners into 3, 6 or 12-month engagements." },
+  { n: "01", title: "Define the challenge", body: "Describe the problem, deliverables, timeline, and what a strong solution should demonstrate." },
+  { n: "02", title: "Review submitted work", body: "Builders share prototypes, repositories, demos, and walkthroughs relevant to your challenge." },
+  { n: "03", title: "Compare the evidence", body: "Assess submissions against your brief, shortlist candidates, and interview where useful." },
+  { n: "04", title: "Agree the next step", body: "Choose a builder and agree on scope, milestones, and contract terms for the work ahead." },
 ];
 
 export const HowItWorks = () => (
@@ -10,9 +10,9 @@ export const HowItWorks = () => (
     <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
       <div>
         <div className="font-mono text-xs text-signal uppercase tracking-widest mb-3">The loop</div>
-        <h2 className="font-display text-5xl md:text-6xl max-w-2xl text-balance">A hiring funnel that ships onchain.</h2>
+        <h2 className="font-display text-5xl md:text-6xl max-w-2xl text-balance">From a real challenge to an informed hiring decision.</h2>
       </div>
-      <p className="text-muted-foreground max-w-sm">Four steps from a vague onchain idea to a shipped protocol and a Web3 team that's already proven they can deliver.</p>
+      <p className="text-muted-foreground max-w-sm">A clear brief, reviewable work, and a direct path to choosing the right builder.</p>
     </div>
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-border rounded-2xl overflow-hidden border border-border shadow-card">
       {steps.map((s) => (

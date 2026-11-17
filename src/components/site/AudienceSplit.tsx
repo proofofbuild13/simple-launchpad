@@ -3,27 +3,27 @@ import { ArrowUpRight, Check } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const founders = {
-  tag: "For Web3 founders",
-  title: "Hire the onchain builder who already shipped it.",
+  tag: "For founders",
+  title: "Find builders through relevant work.",
   bullets: [
-    "Post a real onchain challenge in under 5 minutes",
-    "Review deployed contracts and dApps side-by-side",
-    "Pay only when a milestone is signed off",
-    "Convert winners into 3 / 6 / 12-month engagements",
+    "Describe a Crypto/Web3, AI, or Robotics challenge",
+    "Review prototypes and supporting work",
+    "Shortlist and interview candidates",
+    "Agree the next scope of work",
   ],
-  cta: { label: "Post an onchain challenge", to: "/register/startup" },
+  cta: { label: "Post a challenge", to: "/register/startup" },
 };
 
 const builders = {
-  tag: "For onchain builders",
-  title: "Get hired on the strength of what you deploy.",
+  tag: "For builders",
+  title: "Let your work make the introduction.",
   bullets: [
-    "Browse paid Web3 challenges from real founders",
-    "Show repos, verified contracts and live dApp demos",
-    "Escrow-protected milestones — no chasing invoices",
-    "Land long-term Web3 contracts without re-interviewing",
+    "Explore challenges that match your skills",
+    "Share repositories, demos, and walkthroughs",
+    "Explain your approach and contribution",
+    "Discuss project or longer-term opportunities",
   ],
-  cta: { label: "Apply as a Web3 builder", to: "/register/builder" },
+  cta: { label: "Join as a builder", to: "/register/builder" },
 };
 
 const Card = ({ data, dark }: { data: typeof founders; dark?: boolean }) => (
@@ -67,7 +67,7 @@ export const AudienceSplit = () => (
   <section className="container py-24 md:py-32 border-t border-border">
     <div className="max-w-3xl mb-16">
       <div className="font-mono text-xs text-signal uppercase tracking-widest mb-3">Two sides, one loop</div>
-      <h2 className="font-display text-5xl md:text-6xl text-balance">Built for both sides of the Web3 table.</h2>
+      <h2 className="font-display text-5xl md:text-6xl text-balance">Built for founders and builders.</h2>
     </div>
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card data={founders} />

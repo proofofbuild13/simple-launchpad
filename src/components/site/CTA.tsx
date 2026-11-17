@@ -8,21 +8,21 @@ export const CTA = () => (
       <div className="absolute -right-20 -top-20 h-80 w-80 rounded-full bg-gradient-signal blur-3xl opacity-20" />
       <div className="relative max-w-3xl">
         <h2 className="font-display text-5xl md:text-7xl leading-[0.95] text-balance">
-          Stop interviewing. <br/>
-          <em className="text-signal not-italic italic font-light">Start shipping onchain.</em>
+          Start with a <br />
+          <em className="text-signal not-italic italic font-light">real challenge.</em>
         </h2>
         <p className="mt-6 text-lg text-muted-foreground max-w-xl">
-          Post your first onchain challenge in under 5 minutes. Free until you hire.
+          Connect with builders working in Crypto/Web3, AI, and Robotics. Free to post.
         </p>
         <div className="mt-10 flex flex-wrap gap-3">
           <Link to="/register/startup">
             <Button size="lg" className="bg-ink text-ink-foreground hover:bg-ink/90 h-12 px-6 text-base">
-              Post an onchain challenge <ArrowUpRight className="ml-1 h-4 w-4" />
+              Post a challenge <ArrowUpRight className="ml-1 h-4 w-4" />
             </Button>
           </Link>
           <Link to="/register/builder">
             <Button size="lg" variant="outline" className="h-12 px-6 text-base">
-              Apply as a Web3 builder
+              Join as a builder
             </Button>
           </Link>
         </div>

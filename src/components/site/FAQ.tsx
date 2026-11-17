@@ -7,24 +7,24 @@ import {
 
 const faqs = [
   {
-    q: "Which chains and stacks are supported?",
-    a: "All EVM chains (Ethereum, Base, Arbitrum, Optimism, Polygon, and other L2s), Solana, and Move-based chains (Aptos, Sui). Builders list their primary stack — Solidity/Foundry, Rust/Anchor, Move, plus frontend tooling like Viem, Wagmi, RainbowKit, Privy, and indexer stacks like The Graph.",
+    q: "What kinds of projects can I post?",
+    a: "Challenges can cover Crypto/Web3, AI, or Robotics. For Web3 work, examples include EVM chains, Solana, and Move-based chains, with stacks such as Solidity, Rust, and Move. Describe the skills and deliverables your project needs in the brief.",
   },
   {
     q: "Can pseudonymous builders participate?",
-    a: "Yes. Web3 talent often ships under a handle. Pseudonymous builders can submit and get hired — every profile is still judged on verifiable onchain work (deployed contracts, verified addresses, public repos) and on-platform reviews from past founders.",
+    a: "Builders can share work that is relevant to the challenge, such as a repository, prototype, demo, or walkthrough. For Web3 projects, this may include deployed contracts or public repositories.",
   },
   {
     q: "Who owns the contracts and repo after handoff?",
-    a: "Builders retain rights to their submissions until you hire them. On hire, a signed IP-assignment and contractor agreement transfers full ownership of the code, contracts and deploy keys to your company — automated as part of contract signing.",
+    a: "Ownership and confidentiality terms are set out in the agreement. Review those terms and confirm they cover the deliverables and materials involved before signing.",
   },
   {
     q: "How does escrow work?",
-    a: "When you start a contract, funds for each milestone are held by the platform in fiat escrow. Money is released to the builder only after you sign off on the milestone — and disputes are mediated by our admin team using the artifacts attached to the contract.",
+    a: "Milestone payment terms are set out in the contract. Review the funding, release, and dispute terms before you begin work.",
   },
   {
     q: "What does it cost?",
-    a: "Posting a challenge is free. The platform takes a flat commission on the contract value when you hire — clearly shown before you accept any offer. No subscriptions, no per-seat fees.",
+    a: "Posting and reviewing submissions are free. The platform fee is 15% on milestone releases. A separate one-time fee of 8.33% applies if a builder accepts a full-time offer. See the pricing section for details.",
   },
   {
     q: "What if no submission is good enough?",
@@ -32,7 +32,7 @@ const faqs = [
   },
   {
     q: "Can I convert a builder to a full-time hire?",
-    a: "Yes. You can convert any winning builder into a 3, 6 or 12-month engagement directly from the contract — the IP, NDA and payment terms carry over automatically.",
+    a: "You can discuss further work with a builder after reviewing their submission. The scope, duration, ownership, and payment terms should be agreed in the relevant contract.",
   },
 ];
 
@@ -44,9 +44,7 @@ export const FAQ = () => (
         <h2 className="font-display text-5xl md:text-6xl text-balance leading-[1.02]">
           Questions, <em className="text-signal not-italic italic font-light">answered</em>.
         </h2>
-        <p className="mt-6 text-muted-foreground max-w-sm">
-          Everything Web3 founders and builders typically ask before posting their first onchain challenge.
-        </p>
+        <p className="mt-6 text-muted-foreground max-w-sm">Answers for founders and builders working across Crypto/Web3, AI, and Robotics.</p>
       </div>
       <div className="lg:col-span-8">
         <Accordion type="single" collapsible className="w-full">

@@ -53,8 +53,7 @@ export const Footer = () => (
           <span className="font-display text-xl">proof_of_Build</span>
         </div>
         <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
-          Execution-based hiring. Founders post real challenges, builders ship prototypes, escrow and contracts
-          handled end-to-end.
+          Execution-based hiring for Crypto/Web3, AI, and Robotics. Founders post real challenges; builders share prototypes and supporting work.
         </p>
         <div className="mt-6 flex gap-3 text-xs font-mono text-muted-foreground">
           <a href="#" className="hover:text-foreground">Twitter</a>
