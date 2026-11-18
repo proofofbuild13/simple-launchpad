@@ -11,15 +11,15 @@ const faqs = [
     a: "Challenges can cover Crypto/Web3, AI, or Robotics. For Web3 work, examples include EVM chains, Solana, and Move-based chains, with stacks such as Solidity, Rust, and Move. Describe the skills and deliverables your project needs in the brief.",
   },
   {
-    q: "Can pseudonymous builders participate?",
-    a: "Builders can share work that is relevant to the challenge, such as a repository, prototype, demo, or walkthrough. For Web3 projects, this may include deployed contracts or public repositories.",
+    q: "What should builders include in a submission?",
+    a: "Share work that is relevant to the challenge, such as a repository, prototype, demo, or walkthrough. For Web3 projects, this may include deployed contracts or public repositories.",
   },
   {
-    q: "Who owns the contracts and repo after handoff?",
+    q: "Who owns the submitted work after hire?",
     a: "Ownership and confidentiality terms are set out in the agreement. Review those terms and confirm they cover the deliverables and materials involved before signing.",
   },
   {
-    q: "How does escrow work?",
+    q: "How do milestone payments work?",
     a: "Milestone payment terms are set out in the contract. Review the funding, release, and dispute terms before you begin work.",
   },
   {
@@ -31,13 +31,13 @@ const faqs = [
     a: "You're never obligated to hire. If no submission meets the bar, you can close the challenge with no further commitment. Builders are told upfront that submission ≠ guaranteed payout.",
   },
   {
-    q: "Can I convert a builder to a full-time hire?",
+    q: "Can I continue working with a builder?",
     a: "You can discuss further work with a builder after reviewing their submission. The scope, duration, ownership, and payment terms should be agreed in the relevant contract.",
   },
 ];
 
 export const FAQ = () => (
-  <section className="container py-24 md:py-32 border-t border-border">
+  <section id="faq" className="container py-24 md:py-32 border-t border-border">
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
       <div className="lg:col-span-4">
         <div className="font-mono text-xs text-signal uppercase tracking-widest mb-3">FAQ</div>

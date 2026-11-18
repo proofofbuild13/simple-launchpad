@@ -9,8 +9,8 @@ const pillars = [
   },
   {
     icon: Sparkles,
-    title: "AI-assisted submission assessment",
-    body: "AI can assess the project details and submission descriptions to surface considerations. It does not inspect linked repositories or replace a technical review.",
+    title: "AI-assisted startup assessment",
+    body: "For startup submissions, AI reviews the brief and written submission for business factors. It does not inspect code, demos, or hardware, and is not a technical review.",
     tag: "AI-assisted",
   },
   {

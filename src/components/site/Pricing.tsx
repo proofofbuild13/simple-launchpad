@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 
 const includes = [
   "Unlimited project posts & submissions",
-  "AI-assisted submission assessment",
+  "AI-assisted startup submission assessment",
   "Side-by-side prototype review",
   "Milestone escrow with admin-mediated disputes",
   "Auto-generated 3 / 6 / 12-milestone contracts",
@@ -86,8 +86,8 @@ export const Pricing = () => (
           What every contract includes.
         </h3>
         <p className="text-muted-foreground mb-8">
-          One commission covers the whole lifecycle — from posting the challenge through escrow release,
-          dispute mediation, and conversion. No hidden processing fees, no add-ons.
+          Posting is free. Milestone releases and accepted full-time offers have separate fees, shown above.
+          Review the applicable terms before agreeing to an engagement.
         </p>
         <div className="flex flex-wrap gap-3">
           <Link to="/register/startup">
