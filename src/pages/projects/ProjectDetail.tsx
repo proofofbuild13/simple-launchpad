@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, Send, Building2, CheckCircle2, Briefcase, MapPin, DollarSign } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { engagementBadgeClass, engagementLabel, formatCtcRange, submissionCta, isHireToBuild } from "@/lib/engagement";
 
 export default function ProjectDetail() {
@@ -33,6 +34,7 @@ export default function ProjectDetail() {
   const mySubmission = submissions.find((s) => s.builder_id === user?.id);
   const deadlinePassed = project.deadline && new Date(project.deadline) < new Date();
   const closed = project.hire_locked || deadlinePassed || project.status === "closed" || project.status === "completed";
+  const canSubmit = role === "builder" && !isFounder;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -67,26 +69,64 @@ export default function ProjectDetail() {
             )}
             <Badge variant="secondary" className="px-3 py-1 text-sm font-medium">{project.status}</Badge>
           </div>
-
-          {role === "builder" && !isFounder && (
-            <div className="mt-2 w-full sm:w-auto">
-              {!closed ? (
-                <Link to={`/projects/${project.id}/submit`} className="w-full">
-                  <Button size="lg" className={`w-full sm:w-auto shadow-md hover:shadow-lg transition-shadow ${isHireToBuild(project) ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}>
-                    {isHireToBuild(project) ? <Briefcase className="h-4 w-4 mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                    {mySubmission ? (isHireToBuild(project) ? "Apply again" : "Submit another idea") : submissionCta(project.engagement_type)}
-                  </Button>
-                </Link>
-              ) : (
-                <Badge variant="outline" className="px-3 py-1 text-xs bg-muted/50 text-muted-foreground border-dashed">
-                  {isHireToBuild(project) ? "Role Closed" : "Submissions Closed"}
-                </Badge>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
+      {canSubmit ? (
+        <Tabs defaultValue="details" className="space-y-4">
+          <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto">
+            <TabsTrigger value="details">Project details</TabsTrigger>
+            <TabsTrigger value="submit"><Send className="h-4 w-4 mr-2" />Submit your idea</TabsTrigger>
+          </TabsList>
+          <TabsContent value="details" className="space-y-6">
+            <ProjectSections project={project} submissions={submissions} isFounder={isFounder} />
+          </TabsContent>
+          <TabsContent value="submit" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Submit your idea</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  study the Problem statement, analysis the Requirements and make the Deliverables and submit your idea, get onboard for the project
+                </p>
+                {mySubmission && (
+                  <div className="rounded-md border border-primary/30 bg-primary/5 px-3 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm">
+                      <div className="flex items-center gap-2 text-primary">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span className="font-medium">You have already submitted an idea for this project.</span>
+                      </div>
+                      <Link to={`/submissions/${mySubmission.id}`}>
+                        <Button size="sm" variant="outline" className="bg-background">View your submission</Button>
+                      </Link>
+                  </div>
+                )}
+                {closed ? (
+                  <Badge variant="outline" className="px-3 py-1 text-xs bg-muted/50 text-muted-foreground border-dashed">
+                    {isHireToBuild(project) ? "Role Closed" : "Submissions Closed"}
+                  </Badge>
+                ) : (
+                  <Link to={`/projects/${project.id}/submit`}>
+                    <Button size="lg" className={`shadow-md hover:shadow-lg transition-shadow ${isHireToBuild(project) ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}>
+                      {isHireToBuild(project) ? <Briefcase className="h-4 w-4 mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                      {mySubmission ? (isHireToBuild(project) ? "Apply again" : "Submit another idea") : submissionCta(project.engagement_type)}
+                    </Button>
+                  </Link>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <ProjectSections project={project} submissions={submissions} isFounder={isFounder} />
+      )}
+    </div>
+  );
+}
+
+function ProjectSections({ project, submissions, isFounder }: { project: any; submissions: any[]; isFounder: boolean }) {
+  return (
+    <>
       {isHireToBuild(project) && (
         <div className="grid sm:grid-cols-3 gap-3">
           {project.job_title && (
@@ -101,20 +141,6 @@ export default function ProjectDetail() {
         </div>
       )}
 
-      {role === "builder" && !isFounder && mySubmission && (
-        <Card className="border-primary/30 bg-primary/5 shadow-sm">
-          <CardContent className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm">
-            <div className="flex items-center gap-2 text-primary">
-              <CheckCircle2 className="h-4 w-4" />
-              <span className="font-medium">You have already submitted an idea for this project.</span>
-            </div>
-            <Link to={`/submissions/${mySubmission.id}`}>
-              <Button size="sm" variant="outline" className="bg-background">View your submission</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      )}
-
       <div className="grid md:grid-cols-3 gap-4">
         <Card><CardHeader><CardTitle className="text-xs text-muted-foreground">Timeline</CardTitle></CardHeader><CardContent className="font-medium">{project.timeline || "—"}</CardContent></Card>
         <Card><CardHeader><CardTitle className="text-xs text-muted-foreground">Difficulty</CardTitle></CardHeader><CardContent className="font-medium capitalize">{project.difficulty || "—"}</CardContent></Card>
@@ -124,8 +150,6 @@ export default function ProjectDetail() {
       <Section title="Problem statement">{project.description}</Section>
       <Section title="Requirements">{project.requirements}</Section>
       <Section title="Deliverables">{project.deliverables}</Section>
-
-
 
       {isFounder && (
         <Card>
@@ -149,7 +173,7 @@ export default function ProjectDetail() {
           </CardContent>
         </Card>
       )}
-    </div>
+    </>
   );
 }
 
